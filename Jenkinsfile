@@ -1,45 +1,15 @@
 pipeline {
     agent any
-	
-    environment {
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-key')
-	GIT_TOKEN = credentials('git-token')
-    }
-	
     stages {
-        stage('Git Checkout') {
+        stage('Checkout Code') {
             steps {
-	       git "https://${GIT_TOKEN}@github.com/ShihWen/data-sharing.git"
+                checkout scm
             }
         }
-        
-        stage('Terraform Init') {
+        stage('Hello World') {
             steps {
-                script {
-                    sh 'terraform init'
-                }
-            }
-        }
-        
-        stage('Terraform Plan') {
-            steps {
-                script {
-                    sh 'terraform plan -out=tfplan'
-                }
-            }
-        }
-
-	    stage('Manual Approval') {
-            steps {
-                input "Approve?"
-            }
-        }
-	    
-        stage('Terraform Apply') {
-            steps {
-                script {
-                    sh 'terraform apply tfplan'
-                }
+                echo 'Hello from Jenkins Dev Pipeline!'
+                sh 'echo "Running a shell command"'
             }
         }
     }
