@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    tools {
+        terraform 'Terraform-v1.11.3'
+    }
     environment {
         // GCP Project ID - Replace with your actual GCP Project ID
         GCP_PROJECT_ID = 'open-data-v2-cicd'
