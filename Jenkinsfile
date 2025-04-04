@@ -19,7 +19,7 @@ pipeline {
         }
         stage('Configure GCP Authentication') {
             steps {
-                withCredentials([file(credentialsId: 'gcp-sa-key-data-sharing', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                withCredentials([file(credentialsId: 'gcp-sa-key-dev', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $GCP_PROJECT_ID'
                 }
