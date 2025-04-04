@@ -16,8 +16,10 @@ pipeline {
         }
         stage('Configure GCP Authentication') {
             steps {
-                // Authenticate with GCP using Service Account Key (replace 'gcp-sa-key' with your credential ID)
-                googleServiceAccount authJsonSecretId: 'gcp-sa-key-data-sharing'
+                withCredentials([file(credentialsId: 'gcp-sa-key-data-sharing', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
+                    sh 'gcloud config set project $GCP_PROJECT_ID'
+                }
             }
         }
         stage('Terraform Init') {
