@@ -22,6 +22,8 @@ pipeline {
                 withCredentials([file(credentialsId: 'gcp-sa-key-dev-2', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $GCP_PROJECT_ID'
+                    sh 'gcloud auth list'
+                    sh 'gcloud config list'
                 }
             }
         }
