@@ -27,7 +27,7 @@ pipeline {
         }
         stage('Terraform Init') {
             steps {
-                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="region=${GCP_REGION}"'
+                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}"'
             }
         }
         stage('Terraform Validate') {
