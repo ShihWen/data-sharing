@@ -49,6 +49,9 @@ pipeline {
 
                 // For main/prod pipeline, consider manual approval step before apply
                 input message: 'Approve Terraform Apply to Production?', ok: 'Proceed with Apply'
+                // Check if Jenkins is using correct SA
+                sh 'gcloud auth list'
+                sh 'gcloud config list'
                 sh 'terraform apply tfplan'
             }
         }
