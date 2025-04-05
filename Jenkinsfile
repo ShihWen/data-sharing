@@ -10,6 +10,8 @@ pipeline {
         TF_STATE_BUCKET = 'terraform-state-bucket--data-sharing'
         // GCP Region - Adjust if needed
         GCP_REGION = 'asia-east1'
+        // for checking policies
+        SERVICE_ACCOUNT_EMAIL = 'jenkins-cicd-dev@open-data-v2-cicd.iam.gserviceaccount.com'
     }
     stages {
         stage('Checkout Code') {
@@ -24,6 +26,16 @@ pipeline {
                     sh 'gcloud config set project $GCP_PROJECT_ID'
                     sh 'gcloud auth list'
                     sh 'gcloud config list'
+                }
+            }
+        }
+        stage('Check IAM Policies') {
+            steps {
+                script {
+                    echo "Checking IAM Policy for Service Account: ${SERVICE_ACCOUNT_EMAIL}"
+                    def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${SERVICE_ACCOUNT_EMAIL}", returnStdout: true).trim()
+                    echo "IAM Policy:"
+                    echo "${policyOutput}"
                 }
             }
         }
