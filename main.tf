@@ -2,6 +2,7 @@ terraform {
   backend "gcs" {
     bucket = "terraform-state-bucket--data-sharing"  # your bucket name
     prefix = "terraform/state"                       # path inside the bucket
+    region = "asia-east1"  // <--- Region is defined HERE in backend.tf
   }
 }
 
