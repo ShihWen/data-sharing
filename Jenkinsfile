@@ -21,21 +21,11 @@ pipeline {
         }
         stage('Configure GCP Authentication') {
             steps {
-                withCredentials([file(credentialsId: 'gcp-sa-key-dev-2', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                withCredentials([file(credentialsId: 'gcp-sa-dev', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $GCP_PROJECT_ID'
                     sh 'gcloud auth list'
                     sh 'gcloud config list'
-                }
-            }
-        }
-        stage('Check IAM Policies') {
-            steps {
-                script {
-                    echo "Checking IAM Policy for Service Account: ${SERVICE_ACCOUNT_EMAIL}"
-                    def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${SERVICE_ACCOUNT_EMAIL}", returnStdout: true).trim()
-                    echo "IAM Policy:"
-                    echo "${policyOutput}"
                 }
             }
         }
