@@ -3,7 +3,7 @@ terraform {
     bucket = "terraform-state-bucket-project-data-sharing"  # your bucket name
     prefix = "terraform/state"                       # path inside the bucket
     region = "asia-east1"  
-    service_account_email = "jenkins-cicd-dev@open-data-v2-cicd.iam.gserviceaccount.com" # Explicitly specify SA email
+    service_account_email = "jenkins-tf-dev@open-data-v2-cicd.iam.gserviceaccount.com" # Explicitly specify SA email
   }
 }
 
