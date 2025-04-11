@@ -31,7 +31,7 @@ pipeline {
         }
         stage('Terraform Init') {
             steps {
-                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}"'
+                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -reconfigure'
             }
         }
         stage('Terraform Validate') {
