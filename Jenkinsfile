@@ -11,7 +11,7 @@ pipeline {
         // GCP Region - Adjust if needed
         GCP_REGION = 'asia-east1'
         // for checking policies
-        SERVICE_ACCOUNT_EMAIL = 'jenkins-cicd-dev@open-data-v2-cicd.iam.gserviceaccount.com'
+        SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-dev@open-data-v2-cicd.iam.gserviceaccount.com'
     }
     stages {
         stage('Checkout Code') {
