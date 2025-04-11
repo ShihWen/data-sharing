@@ -7,7 +7,7 @@ pipeline {
         // GCP Project ID - Replace with your actual GCP Project ID
         GCP_PROJECT_ID = 'open-data-v2-cicd'
         // GCS Bucket for Terraform State - Replace with your GCS bucket name
-        TF_STATE_BUCKET = 'terraform-state-bucket--data-sharing'
+        TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing'
         // GCP Region - Adjust if needed
         GCP_REGION = 'asia-east1'
         // for checking policies
