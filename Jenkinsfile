@@ -31,7 +31,10 @@ pipeline {
         }
         stage('Terraform Init') {
             steps {
-                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state'
+                        sh '''
+                        gcloud config set account $SERVICE_ACCOUNT_EMAIL
+                        terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state
+                        '''
             }
         }
         stage('Terraform Validate') {
