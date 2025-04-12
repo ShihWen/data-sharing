@@ -22,6 +22,13 @@ pipeline {
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $GCP_PROJECT_ID'
                     echo "GCP Authentication Configured as: ${SERVICE_ACCOUNT_EMAIL}"
+
+                    sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state'
+                    sh 'terraform validate'
+                    sh 'terraform plan -out=tfplan'
+                    archiveArtifacts artifacts: 'tfplan'
+                    input message: 'Approve Terraform Apply to Production?', ok: 'Proceed with Apply'
+                    sh 'terraform apply tfplan'
                 }
             }
         }
@@ -35,30 +42,30 @@ pipeline {
                 }
             }
         }
-        stage('Terraform Init') {
-            steps {
-                sh 'gcloud auth list'
-                sh 'gcloud config list'
-                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state'
-            }
-        }
-        stage('Terraform Validate') {
-            steps {
-                sh 'terraform validate'
-            }
-        }
-        stage('Terraform Plan') {
-            steps {
-                sh 'terraform plan -out=tfplan'
-                archiveArtifacts artifacts: 'tfplan'
-            }
-        }
-        stage('Terraform Apply') {
-            steps {
-                input message: 'Approve Terraform Apply to Production?', ok: 'Proceed with Apply'
-                sh 'terraform apply tfplan'
-            }
-        }
+        // stage('Terraform Init') {
+        //     steps {
+        //         sh 'gcloud auth list'
+        //         sh 'gcloud config list'
+        //         sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state'
+        //     }
+        // }
+        // stage('Terraform Validate') {
+        //     steps {
+        //         sh 'terraform validate'
+        //     }
+        // }
+        // stage('Terraform Plan') {
+        //     steps {
+        //         sh 'terraform plan -out=tfplan'
+        //         archiveArtifacts artifacts: 'tfplan'
+        //     }
+        // }
+        // stage('Terraform Apply') {
+        //     steps {
+        //         input message: 'Approve Terraform Apply to Production?', ok: 'Proceed with Apply'
+        //         sh 'terraform apply tfplan'
+        //     }
+        // }
     }
     post {
         failure {
