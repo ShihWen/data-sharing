@@ -22,13 +22,15 @@ pipeline {
         stage('Configure GCP Authentication') {
             steps {
                 withCredentials([file(credentialsId: 'gcp-sa-dev', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'echo "GOOGLE_APPLICATION_CREDENTIALS path: $GOOGLE_APPLICATION_CREDENTIALS"'
-                    
-                    sh 'echo ${GOOGLE_APPLICATION_CREDENTIALS} > tmp'
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $GCP_PROJECT_ID'
                     sh 'gcloud auth list'
                     sh 'gcloud config list'
+                    // --- Add gsutil ls test HERE ---
+                    echo "Testing GCS Bucket Access with gsutil..."
+                    sh "gsutil ls gs://${TF_STATE_BUCKET}" // Test GCS access
+                    echo "GCS Bucket Access Test Completed."
+                    // --- End gsutil ls test ---
                 }
                 sh 'cat tmp'
             }
