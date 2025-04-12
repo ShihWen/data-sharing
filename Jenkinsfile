@@ -23,15 +23,14 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'gcp-sa-dev', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh 'echo "GOOGLE_APPLICATION_CREDENTIALS path: $GOOGLE_APPLICATION_CREDENTIALS"'
-                    // unmask(['GOOGLE_APPLICATION_CREDENTIALS']) { // Unmask GOOGLE_APPLICATION_CREDENTIALS for the next step
-                // echo "Unmasked GOOGLE_APPLICATION_CREDENTIALS path: $GOOGLE_APPLICATION_CREDENTIALS" // Unmasked echo - will show actual path
-                    // }
-                    sh 'echo credential path: ${GOOGLE_APPLICATION_CREDENTIALS}'
+                    
+                    sh 'echo ${GOOGLE_APPLICATION_CREDENTIALS} > tmp'
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $GCP_PROJECT_ID'
                     sh 'gcloud auth list'
                     sh 'gcloud config list'
                 }
+                sh 'cat tmp'
             }
         }
         stage('Terraform Init') {
