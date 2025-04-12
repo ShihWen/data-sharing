@@ -37,6 +37,8 @@ pipeline {
         }
         stage('Terraform Init') {
             steps {
+                sh 'gcloud auth list'
+                sh 'gcloud config list'
                 sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state'
             }
         }
