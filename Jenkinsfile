@@ -1,16 +1,13 @@
 pipeline {
     agent any
     tools {
-        terraform 'Terraform-v1.11.3'
+        terraform 'Terraform-v1.11.3' // Ensure tool name matches your Jenkins Global Tool Configuration
     }
     environment {
-        // GCP Project ID - Replace with your actual GCP Project ID
+        // --- REPLACE THESE WITH YOUR ACTUAL VALUES ---
         GCP_PROJECT_ID = 'open-data-v2-cicd'
-        // GCS Bucket for Terraform State - Replace with your GCS bucket name
         TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing'
-        // GCP Region - Adjust if needed
         GCP_REGION = 'asia-east1'
-        // for checking policies
         SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-dev@open-data-v2-cicd.iam.gserviceaccount.com'
     }
     stages {
@@ -21,26 +18,26 @@ pipeline {
         }
         stage('Configure GCP Authentication') {
             steps {
-                withCredentials([file(credentialsId: 'gcp-sa-dev', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                withCredentials([file(credentialsId: 'gcp-sa-dev', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) { // Ensure 'gcp-sa-dev' is your Credential ID in Jenkins
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $GCP_PROJECT_ID'
-                    sh 'gcloud auth list'
-                    sh 'gcloud config list'
-                    // --- Add gsutil ls test HERE ---
-                    echo "Testing GCS Bucket Access with gsutil..."
-                    sh "gsutil ls gs://${TF_STATE_BUCKET}" // Test GCS access
-                    echo "GCS Bucket Access Test Completed."
-                    // --- End gsutil ls test ---
+                    echo "GCP Authentication Configured as: ${SERVICE_ACCOUNT_EMAIL}"
                 }
-                sh 'cat tmp'
+            }
+        }
+        stage('Check IAM Policies') {
+            steps {
+                script {
+                    echo "Checking IAM Policy for Service Account: ${SERVICE_ACCOUNT_EMAIL}"
+                    def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${SERVICE_ACCOUNT_EMAIL}", returnStdout: true).trim()
+                    echo "IAM Policy:"
+                    echo "${policyOutput}"
+                }
             }
         }
         stage('Terraform Init') {
             steps {
-                        sh '''
-                        gcloud config set account $SERVICE_ACCOUNT_EMAIL
-                        terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state
-                        '''
+                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="region=${GCP_REGION}" -migrate-state'
             }
         }
         stage('Terraform Validate') {
@@ -51,20 +48,12 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 sh 'terraform plan -out=tfplan'
-                // Optionally, archive the plan file as an artifact for review
                 archiveArtifacts artifacts: 'tfplan'
             }
         }
         stage('Terraform Apply') {
             steps {
-                // For automated apply (e.g., for dev/staging)
-                // sh 'terraform apply tfplan'
-
-                // For main/prod pipeline, consider manual approval step before apply
                 input message: 'Approve Terraform Apply to Production?', ok: 'Proceed with Apply'
-                // Check if Jenkins is using correct SA
-                sh 'gcloud auth list'
-                sh 'gcloud config list'
                 sh 'terraform apply tfplan'
             }
         }
@@ -73,13 +62,13 @@ pipeline {
         failure {
             script {
                 echo "Terraform Pipeline Failed!"
-                // Add notifications (e.g., email, Slack) here if needed
+                // TODO: Add failure notifications (e.g., email, Slack)
             }
         }
         success {
             script {
                 echo "Terraform Pipeline Succeeded!"
-                // Add notifications here if needed
+                // TODO: Add success notifications (e.g., email, Slack)
             }
         }
     }
