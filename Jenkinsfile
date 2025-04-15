@@ -9,6 +9,7 @@ pipeline {
         TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing'
         GCP_REGION = 'asia-east1'
         SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-dev@open-data-v2-cicd.iam.gserviceaccount.com'
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
     }
     stages {
         stage('Checkout Code') {
