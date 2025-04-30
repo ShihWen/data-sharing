@@ -20,7 +20,7 @@ pipeline {
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd.iam.gserviceaccount.com'
 
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
+        // GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
 
         // --- DYNAMIC ENVIRONMENT VARIABLES (Set in a stage) ---
         // TARGET_GCP_PROJECT_ID
@@ -49,7 +49,6 @@ pipeline {
                         env.TARGET_TF_STATE_BUCKET = env.PROD_TF_STATE_BUCKET
                         env.TARGET_SA_CREDENTIAL_ID = env.PROD_SA_CREDENTIAL_ID
                         env.TARGET_SERVICE_ACCOUNT_EMAIL = env.PROD_SERVICE_ACCOUNT_EMAIL
-                        // env.GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-prod')
                         echo "Targeting Production Environment"
                     } else if (params.environment == 'dev') { // Default to dev if parameter is 'dev'
                         env.DEPLOYMENT_ENV = 'dev'
@@ -57,7 +56,6 @@ pipeline {
                         env.TARGET_TF_STATE_BUCKET = env.DEV_TF_STATE_BUCKET
                         env.TARGET_SA_CREDENTIAL_ID = env.DEV_SA_CREDENTIAL_ID
                         env.TARGET_SERVICE_ACCOUNT_EMAIL = env.DEV_SERVICE_ACCOUNT_EMAIL
-                        // env.GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
                         echo "Targeting Development Environment"
                     } else {
                         // This case should not be reachable with a choice parameter, but good practice
@@ -95,19 +93,25 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 // Use dynamic environment variables for Terraform commands
-                sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
+                }     
             }
         }
         stage('Terraform Validate') {
             steps {
-                sh 'terraform validate'
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh 'terraform validate'
+                }                
             }
         }
         stage('Terraform Plan') {
             steps {
                 // Use dynamic environment variables for Terraform commands
-                sh 'terraform plan -out=tfplan'
-                archiveArtifacts artifacts: 'tfplan'
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh 'terraform plan -out=tfplan'
+                    archiveArtifacts artifacts: 'tfplan'
+                }
             }
         }
         stage('Terraform Apply') {
@@ -115,7 +119,9 @@ pipeline {
                 // Use dynamic environment variable in input message
                 input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
                 // Use dynamic environment variables for Terraform commands
-                sh 'terraform apply tfplan'
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                     sh 'terraform apply tfplan'
+                }       
             }
         }
     }
