@@ -116,9 +116,9 @@ pipeline {
         }
         stage('Terraform Apply') {
             steps {
-                // Use dynamic environment variable in input message
-                input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
-                // Use dynamic environment variables for Terraform commands
+                if (params.environment == 'main') {
+                    input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+                }
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                      sh 'terraform apply tfplan'
                 }       
