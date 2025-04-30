@@ -18,7 +18,7 @@ pipeline {
         PROD_GCP_PROJECT_ID = 'open-data-v2-cicd-prod'
         PROD_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing-prod'
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
-        PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd.iam.gserviceaccount.com'
+        PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd-prod.iam.gserviceaccount.com'
 
         // GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
 
