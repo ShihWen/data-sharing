@@ -20,7 +20,7 @@ pipeline {
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd.iam.gserviceaccount.com'
 
-        GOOGLE_APPLICATION_CREDENTIALS
+        GOOGLE_APPLICATION_CREDENTIALS = ''
 
         // --- DYNAMIC ENVIRONMENT VARIABLES (Set in a stage) ---
         // TARGET_GCP_PROJECT_ID
