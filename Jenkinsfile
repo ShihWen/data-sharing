@@ -26,7 +26,7 @@ pipeline {
         // TARGET_SA_CREDENTIAL_ID
         // TARGET_SERVICE_ACCOUNT_EMAIL
 
-        GCP_REGION = 'asia-east1' // Your GCP Region (common for both environments)
+        // GCP_REGION = 'asia-east1' // Your GCP Region (common for both environments)
         // Note: GOOGLE_APPLICATION_CREDENTIALS will be set by withCredentials block
     }
     stages {
@@ -91,7 +91,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 // Use dynamic environment variables for Terraform commands
-                sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -backend-config="region=${GCP_REGION}" -migrate-state'
+                sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
             }
         }
         stage('Terraform Validate') {
