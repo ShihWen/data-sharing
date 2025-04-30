@@ -116,17 +116,25 @@ pipeline {
         }
         stage('Terraform Apply') {
             steps {
-                if (params.environment == 'main') {
-                    input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+                script { // Use script block for easier conditional logic with steps
+        
+                    // Check if manual approval is required (for 'main' environment)
+                    if (params.environment == 'main') {
+                        echo "Manual approval required for ${DEPLOYMENT_ENV} environment."
+                        input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+                    } else {
+                        echo "Auto-applying to ${DEPLOYMENT_ENV} environment."
+                        // No manual approval needed for 'dev' or other branches
+                    }
                     withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                         // Ensure the SA is active for this block
+                         sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
+                         sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
+        
+                         // Execute the Terraform Apply command
                          sh 'terraform apply tfplan'
-                     }     
-                } else {
-                    withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                         sh 'terraform apply tfplan'
-                     }
+                    }
                 }
-                 
             }
         }
     }
