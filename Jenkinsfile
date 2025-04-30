@@ -118,10 +118,15 @@ pipeline {
             steps {
                 if (params.environment == 'main') {
                     input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+                    withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                         sh 'terraform apply tfplan'
+                     }     
+                } else {
+                    withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                         sh 'terraform apply tfplan'
+                     }
                 }
-                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                     sh 'terraform apply tfplan'
-                }       
+                 
             }
         }
     }
