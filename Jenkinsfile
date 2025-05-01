@@ -101,7 +101,7 @@ pipeline {
         stage('Terraform Validate') {
             steps {
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'terraform validate -var-file=${DEPLOYMENT_ENV}.tfvars'
+                    sh 'terraform validate'
                 }                
             }
         }
