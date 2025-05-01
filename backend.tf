@@ -1,9 +1,11 @@
 terraform {
   backend "gcs" {
-    bucket = "terraform-state-bucket-project-data-sharing"  # REPLACE with your GCS bucket name
-    prefix = "terraform/state"                       # Optional: path inside the bucket for state files
-    region = "asia-east1"                             # REPLACE with your bucket's region
-    # Optional - Explicitly specify the service account email (recommended for clarity)
-    # service_account_email = "jenkins-cicd-dev@open-data-v2-cicd.iam.gserviceaccount.com" # REPLACE with your SA email
+    # Bucket name is environment-specific, so we'll pass it via -backend-config in Jenkinsfile
+    # bucket = var.terraform_state_bucket_name # THIS IS NOT ALLOWED IN BACKEND BLOCK
+
+    prefix = "terraform/state" # Shared path inside the bucket
+    region = "asia-east1" # Set region here if it's the same for all environments
+
+    # service_account_email = "jenkins-cicd-dev@open-data-v2-cicd.iam.gserviceaccount.com" # Optional, can be set here or picked up from GCLOUD_AUTH_ACTIVATED
   }
 }

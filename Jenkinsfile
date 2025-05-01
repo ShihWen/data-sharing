@@ -101,7 +101,7 @@ pipeline {
         stage('Terraform Validate') {
             steps {
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'terraform validate'
+                    sh 'terraform validate -var-file=${DEPLOYMENT_ENV}.tfvars'
                 }                
             }
         }
@@ -109,7 +109,7 @@ pipeline {
             steps {
                 // Use dynamic environment variables for Terraform commands
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'terraform plan -out=tfplan'
+                    sh 'terraform plan -out=tfplan -var-file=${DEPLOYMENT_ENV}.tfvars'
                     archiveArtifacts artifacts: 'tfplan'
                 }
             }
@@ -132,7 +132,7 @@ pipeline {
                          sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
         
                          // Execute the Terraform Apply command
-                         sh 'terraform apply tfplan'
+                         sh 'terraform apply tfplan -var-file=${DEPLOYMENT_ENV}.tfvars'
                     }
                 }
             }
