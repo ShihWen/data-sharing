@@ -109,7 +109,7 @@ pipeline {
             steps {
                 // Use dynamic environment variables for Terraform commands
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'terraform plan -out=tfplan'
+                    sh 'terraform plan -out=tfplan -var-file=${DEPLOYMENT_ENV}.tfvars'
                     archiveArtifacts artifacts: 'tfplan'
                 }
             }
