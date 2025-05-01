@@ -132,7 +132,7 @@ pipeline {
                          sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
         
                          // Execute the Terraform Apply command
-                         sh 'terraform apply tfplan -var-file=${DEPLOYMENT_ENV}.tfvars'
+                         sh 'terraform apply tfplan'
                     }
                 }
             }
