@@ -69,62 +69,83 @@ pipeline {
             }
         }
 
-        // --- Define a single stage to handle GCP & Terraform Operations ---
-        stage('Run GCP & Terraform Operations') {
+        stage('Configure GCP Authentication') {
             steps {
-                // All steps for this stage requiring credentials or specific directories go here
-
-                // Start the withCredentials block (wraps subsequent steps)
+                // Use the dynamic credential ID
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-
-                    // Perform initial gcloud authentication and project configuration once
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
-                    sh 'gcloud config set project $TARGET_GCP_PROJECT_ID'
-                    echo "GCP Authentication Configured for Project: ${TARGET_GCP_PROJECT_ID} as: ${TARGET_SERVICE_ACCOUNT_EMAIL}"
-
-                    // Optional: gsutil test can be here
-                    // echo "Testing GCS Bucket Access with gsutil..."
-                    // sh "gsutil ls gs://${TARGET_TF_STATE_BUCKET}"
-                    // echo "GCS Bucket Access Test Completed."
-
-                    // Navigate into the terraform directory (wraps subsequent steps)
-                    dir('terraform') { // Assume your Terraform code is in a 'terraform' subfolder
-
-                        // --- Terraform Operations ---
-
-                        // Check IAM Policies (runs inside 'terraform' dir, after gcloud auth)
-                        script {
-                           echo "Checking IAM Policy for Service Account: ${TARGET_SERVICE_ACCOUNT_EMAIL} in Project: ${TARGET_GCP_PROJECT_ID}"
-                           // Ensure gcloud command uses the correct project (already set by gcloud config)
-                           def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${TARGET_SERVICE_ACCOUNT_EMAIL} --project=${TARGET_GCP_PROJECT_ID}", returnStdout: true).trim()
-                           echo "IAM Policy:"
-                           echo "${policyOutput}"
-                        }
-
-                        // Terraform Init
+                    sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Use TARGET_GCP_PROJECT_ID
+                    echo "GCP Authentication Configured for Project: ${TARGET_GCP_PROJECT_ID} as: ${TARGET_SERVICE_ACCOUNT_EMAIL}" // Use TARGET_SERVICE_ACCOUNT_EMAIL
+                }
+            }
+        }
+        // Note: Check IAM Policies stage can remain, using TARGET_SERVICE_ACCOUNT_EMAIL and TARGET_GCP_PROJECT_ID
+        stage('Check IAM Policies') {
+            steps {
+                script {
+                    echo "Checking IAM Policy for Service Account: ${TARGET_SERVICE_ACCOUNT_EMAIL} in Project: ${TARGET_GCP_PROJECT_ID}"
+                    def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${TARGET_SERVICE_ACCOUNT_EMAIL} --project=${TARGET_GCP_PROJECT_ID}", returnStdout: true).trim()
+                    echo "IAM Policy:"
+                    echo "${policyOutput}"
+                }
+            }
+        }
+        stage('Terraform Init') {
+            steps {
+                // Use dynamic environment variables for Terraform commands
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    dir('terraform'){
                         sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
-
-                        // Terraform Validate
+                    }
+                }     
+            }
+        }
+        stage('Terraform Validate') {
+            steps {
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    dir('terraform'){
                         sh 'terraform validate'
-
-                        // Terraform Plan
+                    }
+                }                
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                // Use dynamic environment variables for Terraform commands
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    dir('terraform'){
                         sh 'terraform plan -out=tfplan -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
-                        // Note: archiveArtifacts path is relative to workspace root by default,
-                        // might need adjustment if running from within 'terraform' dir
                         archiveArtifacts artifacts: 'tfplan'
-
-                        // Terraform Apply
-                        // Manual approval step can be here or outside the dir block
+                    }
+                }
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                script { // Use script block for easier conditional logic with steps
+        
+                    // Check if manual approval is required (for 'main' environment)
+                    if (params.environment == 'main') {
+                        echo "Manual approval required for ${DEPLOYMENT_ENV} environment."
                         input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
-
-                        // Pass the correct variable file based on the selected environment
-                        sh 'terraform apply tfplan' // Apply the saved plan file - NO -var-file HERE
-
-                    } // End of dir('terraform') block
-                } // End of withCredentials block
-            } // End of steps block for 'Run GCP & Terraform Operations' stage
-        } // End of 'Run GCP & Terraform Operations' stage
-    } // End of top-level stages block
+                    } else {
+                        echo "Auto-applying to ${DEPLOYMENT_ENV} environment."
+                        // No manual approval needed for 'dev' or other branches
+                    }
+                    withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                         // Ensure the SA is active for this block
+                         dir('terraform'){
+                            sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
+                            sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
+        
+                            // Execute the Terraform Apply command
+                            sh 'terraform apply tfplan'
+                         }
+                    }
+                }
+            }
+        }
+    }
     post {
          // Add the clean up for the copied key file if you used that approach
          // The deleteDir step works relative to the current directory, or with absolute path
