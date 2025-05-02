@@ -9,7 +9,7 @@ pipeline {
                description: 'Select the deployment environment')
     }
     environment {
-        // ... (Define DEV_..., PROD_... environment variables) ...
+        # --- DEFINE ALL ENVIRONMENT-SPECIFIC VALUES ---
         DEV_GCP_PROJECT_ID = 'open-data-v2-cicd'
         DEV_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing'
         DEV_SA_CREDENTIAL_ID = 'gcp-sa-dev'
@@ -20,16 +20,16 @@ pipeline {
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd-prod.iam.gserviceaccount.com'
 
-        // --- Dynamic Environment Variables (Set in a stage) ---
-        // These will be set in the 'Determine Environment Variables' stage
-        // TARGET_GCP_PROJECT_ID
-        // TARGET_TF_STATE_BUCKET
-        // TARGET_SA_CREDENTIAL_ID
-        // TARGET_SERVICE_ACCOUNT_EMAIL
-        // DEPLOYMENT_ENV
+        # --- Dynamic Environment Variables (Set in a stage) ---
+        # These will be set in the 'Determine Environment Variables' stage
+        # TARGET_GCP_PROJECT_ID
+        # TARGET_TF_STATE_BUCKET
+        # TARGET_SA_CREDENTIAL_ID
+        # TARGET_SERVICE_ACCOUNT_EMAIL
+        # DEPLOYMENT_ENV
 
         GCP_REGION = 'asia-east1' // Your GCP Region (common for both environments)
-        // Note: GOOGLE_APPLICATION_CREDENTIALS variable is managed by withCredentials
+        # Note: GOOGLE_APPLICATION_CREDENTIALS variable is managed by withCredentials
     }
     stages {
         stage('Checkout Code') {
@@ -69,102 +69,84 @@ pipeline {
             }
         }
 
-        // --- Wrap all subsequent stages requiring credentials and/or the terraform dir ---
+        # --- Define a single stage to handle GCP & Terraform Operations ---
         stage('Run GCP & Terraform Operations') {
             steps {
-                // Start the withCredentials block
+                # All steps for this stage requiring credentials or specific directories go here
+
+                # Start the withCredentials block (wraps subsequent steps)
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
 
-                    // Optional: Copy credential to persistent workspace location if needed for complex scenarios
-                    // def persistentKeyFilePath = "${WORKSPACE}/gcp_sa_key.json"
-                    // sh "cp '$GOOGLE_APPLICATION_CREDENTIALS' '${persistentKeyFilePath}'"
-                    // // Ensure subsequent gcloud/terraform uses this copied file if needed
-                    // // sh "gcloud auth activate-service-account --key-file='${persistentKeyFilePath}'"
-
-                    // Perform initial gcloud authentication and project configuration once
+                    # Perform initial gcloud authentication and project configuration once
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $TARGET_GCP_PROJECT_ID'
                     echo "GCP Authentication Configured for Project: ${TARGET_GCP_PROJECT_ID} as: ${TARGET_SERVICE_ACCOUNT_EMAIL}"
 
-                    // Optional: gsutil test can be here
-                    // echo "Testing GCS Bucket Access with gsutil..."
-                    // sh "gsutil ls gs://${TARGET_TF_STATE_BUCKET}"
-                    // echo "GCS Bucket Access Test Completed."
+                    # Optional: gsutil test can be here
+                    # echo "Testing GCS Bucket Access with gsutil..."
+                    # sh "gsutil ls gs://${TARGET_TF_STATE_BUCKET}"
+                    # echo "GCS Bucket Access Test Completed."
 
-                    // Navigate into the terraform directory
-                    dir('terraform') { // Assume your Terraform code is in a 'terraform' subfolder
+                    # Navigate into the terraform directory (wraps subsequent steps)
+                    dir('terraform') { # Assume your Terraform code is in a 'terraform' subfolder
 
-                        // Add stages that require credentials and are within the terraform directory
-                        stage('Check IAM Policies') { // Moved Check IAM Policies here if it needs credentials and runs after gcloud auth
-                            steps {
-                                script {
-                                    echo "Checking IAM Policy for Service Account: ${TARGET_SERVICE_ACCOUNT_EMAIL} in Project: ${TARGET_GCP_PROJECT_ID}"
-                                    // Ensure gcloud command uses the correct project (already set by gcloud config)
-                                    def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${TARGET_SERVICE_ACCOUNT_EMAIL} --project=${TARGET_GCP_PROJECT_ID}", returnStdout: true).trim()
-                                    echo "IAM Policy:"
-                                    echo "${policyOutput}"
-                                }
-                            }
+                        # --- Terraform Operations ---
+
+                        # Check IAM Policies (runs inside 'terraform' dir, after gcloud auth)
+                        script {
+                           echo "Checking IAM Policy for Service Account: ${TARGET_SERVICE_ACCOUNT_EMAIL} in Project: ${TARGET_GCP_PROJECT_ID}"
+                           # Ensure gcloud command uses the correct project (already set by gcloud config)
+                           def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${TARGET_SERVICE_ACCOUNT_EMAIL} --project=${TARGET_GCP_PROJECT_ID}", returnStdout: true).trim()
+                           echo "IAM Policy:"
+                           echo "${policyOutput}"
                         }
 
-                        stage('Terraform Init') {
-                            steps {
-                                // Terraform commands now inherit credentials and project from gcloud config
-                                // Use TARGET_TF_STATE_BUCKET for the bucket name via -backend-config
-                                // Rely on backend.tf for region, DO NOT pass region via -backend-config here
-                                sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
-                            }
-                        }
-                        stage('Terraform Validate') {
-                            steps {
-                                // Pass the correct variable file based on the selected environment
-                                sh 'terraform validate -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
-                            }
-                        }
-                        stage('Terraform Plan') {
-                            steps {
-                                // Pass the correct variable file based on the selected environment
-                                sh 'terraform plan -out=tfplan -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
-                                // Note: archiveArtifacts path is relative to workspace root by default
-                                archiveArtifacts artifacts: 'tfplan' // Archives relative to the 'terraform' directory
-                            }
-                        }
-                        stage('Terraform Apply') {
-                            steps {
-                                // Manual approval step can be here or outside the dir block
-                                input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+                        # Terraform Init
+                        sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -backend-config="region=${GCP_REGION}" -migrate-state'
 
-                                // Pass the correct variable file based on the selected environment
-                                sh 'terraform apply tfplan' // Apply the saved plan file - NO -var-file HERE
-                            }
-                        }
-                    } // End of dir('terraform') block
-                } // End of withCredentials block
-            }
-        }
-    }
+                        # Terraform Validate
+                        sh 'terraform validate -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
+
+                        # Terraform Plan
+                        sh 'terraform plan -out=tfplan -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
+                        # Note: archiveArtifacts path is relative to workspace root by default,
+                        # might need adjustment if running from within 'terraform' dir
+                        archiveArtifacts artifacts: 'tfplan'
+
+                        # Terraform Apply
+                        # Manual approval step can be here or outside the dir block
+                        input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+
+                        # Pass the correct variable file based on the selected environment
+                        sh 'terraform apply tfplan' # Apply the saved plan file - NO -var-file HERE
+
+                    } # End of dir('terraform') block
+                } # End of withCredentials block
+            } # End of steps block for 'Run GCP & Terraform Operations' stage
+        } # End of 'Run GCP & Terraform Operations' stage
+    } # End of top-level stages block
     post {
-         // Add the clean up for the copied key file if you used that approach
-         // The deleteDir step works relative to the current directory, or with absolute path
-         // always {
-         //    script {
-         //        echo "Deleting persistent key file..."
-         //        // If copied to workspace root
-         //        deleteDir(dir: "${WORKSPACE}/gcp_sa_key.json")
-         //        // If copied inside the terraform dir
-         //        // dir('terraform') { deleteDir(dir: 'gcp_sa_key.json') }
-         //    }
-         // }
+         # Add the clean up for the copied key file if you used that approach
+         # The deleteDir step works relative to the current directory, or with absolute path
+         # always {
+         #    script {
+         #        echo "Deleting persistent key file..."
+         #        # If copied to workspace root
+         #        # deleteDir(dir: "${WORKSPACE}/gcp_sa_key.json")
+         #        # If copied inside the terraform dir
+         #        # dir('terraform') { deleteDir(dir: 'gcp_sa_key.json') }
+         #    }
+         # }
         failure {
             script {
                 echo "Terraform Pipeline Failed for ${DEPLOYMENT_ENV} Environment!" // Dynamic failure message
-                // TODO: Add failure notifications (e.g., email, Slack)
+                # TODO: Add failure notifications (e.g., email, Slack)
             }
         }
         success {
             script {
                 echo "Terraform Pipeline Succeeded for ${DEPLOYMENT_ENV} Environment!" // Dynamic success message
-                // TODO: Add success notifications (e.g., email, Slack)
+                # TODO: Add success notifications (e.g., email, Slack)
             }
         }
     }
