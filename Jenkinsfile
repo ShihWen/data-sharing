@@ -102,7 +102,7 @@ pipeline {
                         }
 
                         // Terraform Init
-                        sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -backend-config="region=${GCP_REGION}" -migrate-state'
+                        sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
 
                         // Terraform Validate
                         sh 'terraform validate -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
