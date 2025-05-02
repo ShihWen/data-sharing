@@ -28,7 +28,7 @@ pipeline {
         // TARGET_SERVICE_ACCOUNT_EMAIL
         // DEPLOYMENT_ENV
 
-        GCP_REGION = 'asia-east1' // Your GCP Region (common for both environments)
+        // GCP_REGION = 'asia-east1' // Your GCP Region (common for both environments)
         // Note: GOOGLE_APPLICATION_CREDENTIALS variable is managed by withCredentials
     }
     stages {
