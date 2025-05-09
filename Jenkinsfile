@@ -14,22 +14,22 @@ pipeline {
         DEV_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing'
         DEV_SA_CREDENTIAL_ID = 'gcp-sa-dev'
         DEV_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-dev@open-data-v2-cicd.iam.gserviceaccount.com'
-         
+
         PROD_GCP_PROJECT_ID = 'open-data-v2-cicd-prod'
         PROD_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing-prod'
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd-prod.iam.gserviceaccount.com'
 
-        // GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
-
-        // --- DYNAMIC ENVIRONMENT VARIABLES (Set in a stage) ---
+        // --- Dynamic Environment Variables (Set in a stage) ---
+        // These will be set in the 'Determine Environment Variables' stage
         // TARGET_GCP_PROJECT_ID
         // TARGET_TF_STATE_BUCKET
         // TARGET_SA_CREDENTIAL_ID
         // TARGET_SERVICE_ACCOUNT_EMAIL
+        // DEPLOYMENT_ENV
 
         // GCP_REGION = 'asia-east1' // Your GCP Region (common for both environments)
-        // Note: GOOGLE_APPLICATION_CREDENTIALS will be set by withCredentials block
+        // Note: GOOGLE_APPLICATION_CREDENTIALS variable is managed by withCredentials
     }
     stages {
         stage('Checkout Code') {
@@ -37,7 +37,7 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Determine Environment Variables') { // Added stage to set dynamic variables
+        stage('Determine Environment Variables') {
             steps {
                 script {
                     echo "Selected environment parameter: ${params.environment}"
@@ -50,7 +50,7 @@ pipeline {
                         env.TARGET_SA_CREDENTIAL_ID = env.PROD_SA_CREDENTIAL_ID
                         env.TARGET_SERVICE_ACCOUNT_EMAIL = env.PROD_SERVICE_ACCOUNT_EMAIL
                         echo "Targeting Production Environment"
-                    } else if (params.environment == 'dev') { // Default to dev if parameter is 'dev'
+                    } else if (params.environment == 'dev') {
                         env.DEPLOYMENT_ENV = 'dev'
                         env.TARGET_GCP_PROJECT_ID = env.DEV_GCP_PROJECT_ID
                         env.TARGET_TF_STATE_BUCKET = env.DEV_TF_STATE_BUCKET
@@ -58,7 +58,6 @@ pipeline {
                         env.TARGET_SERVICE_ACCOUNT_EMAIL = env.DEV_SERVICE_ACCOUNT_EMAIL
                         echo "Targeting Development Environment"
                     } else {
-                        // This case should not be reachable with a choice parameter, but good practice
                         error "Invalid environment parameter: ${params.environment}. Please select 'dev' or 'main'."
                     }
 
@@ -69,6 +68,7 @@ pipeline {
                 }
             }
         }
+
         stage('Configure GCP Authentication') {
             steps {
                 // Use the dynamic credential ID
@@ -94,14 +94,18 @@ pipeline {
             steps {
                 // Use dynamic environment variables for Terraform commands
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
+                    dir('terraform'){
+                        sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
+                    }
                 }     
             }
         }
         stage('Terraform Validate') {
             steps {
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'terraform validate'
+                    dir('terraform'){
+                        sh 'terraform validate'
+                    }
                 }                
             }
         }
@@ -109,8 +113,10 @@ pipeline {
             steps {
                 // Use dynamic environment variables for Terraform commands
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'terraform plan -out=tfplan -var-file=${DEPLOYMENT_ENV}.tfvars'
-                    archiveArtifacts artifacts: 'tfplan'
+                    dir('terraform'){
+                        sh 'terraform plan -out=tfplan -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
+                        archiveArtifacts artifacts: 'tfplan'
+                    }
                 }
             }
         }
@@ -128,17 +134,30 @@ pipeline {
                     }
                     withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                          // Ensure the SA is active for this block
-                         sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
-                         sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
+                         dir('terraform'){
+                            sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
+                            sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
         
-                         // Execute the Terraform Apply command
-                         sh 'terraform apply tfplan'
+                            // Execute the Terraform Apply command
+                            sh 'terraform apply tfplan'
+                         }
                     }
                 }
             }
         }
     }
     post {
+         // Add the clean up for the copied key file if you used that approach
+         // The deleteDir step works relative to the current directory, or with absolute path
+         // always {
+         //    script {
+         //        echo "Deleting persistent key file..."
+         //        // If copied to workspace root
+         //        // deleteDir(dir: "${WORKSPACE}/gcp_sa_key.json")
+         //        // If copied inside the terraform dir
+         //        // dir('terraform') { deleteDir(dir: 'gcp_sa_key.json') }
+         //    }
+         // }
         failure {
             script {
                 echo "Terraform Pipeline Failed for ${DEPLOYMENT_ENV} Environment!" // Dynamic failure message
