@@ -24,13 +24,3 @@ resource "google_storage_bucket" "my-bucket" {
 
   # Add other resource configurations here, using variables as needed
 }
-
-resource "google_bigquery_dataset" "test_dataset" {
-  dataset_id                  = "test_dataset"
-  project                     = var.gcp_project_id
-  location                    = var.gcp_region
-  delete_contents_on_destroy = true
-  labels = {
-    environment = "dev"
-  }
-}
