@@ -97,10 +97,10 @@ pipeline {
                     dir('terraform'){
                         sh """
                               echo "Checking permissions for service account: ${TARGET_SERVICE_ACCOUNT_EMAIL} on bucket: ${TARGET_TF_STATE_BUCKET}"
-                        
-                              gcloud iam service-accounts test-iam-permissions \
-                                ${TARGET_SERVICE_ACCOUNT_EMAIL} \
+                            
+                              gcloud storage buckets test-iam-permissions gs://${TARGET_TF_STATE_BUCKET} \
                                 --permissions=storage.buckets.get,storage.objects.get,storage.objects.list,storage.objects.create \
+                                --impersonate-service-account=${TARGET_SERVICE_ACCOUNT_EMAIL} \
                                 --project=${TARGET_GCP_PROJECT_ID}
                         """
                         sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
