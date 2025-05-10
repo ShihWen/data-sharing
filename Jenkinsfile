@@ -72,7 +72,7 @@ pipeline {
         stage('Configure GCP Authentication') {
             steps {
                 // Use the dynamic credential ID
-                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
                     sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Use TARGET_GCP_PROJECT_ID
                     echo "GCP Authentication Configured for Project: ${TARGET_GCP_PROJECT_ID} as: ${TARGET_SERVICE_ACCOUNT_EMAIL}" // Use TARGET_SERVICE_ACCOUNT_EMAIL
@@ -93,7 +93,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 // Use dynamic environment variables for Terraform commands
-                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     dir('terraform'){
                         sh """
                               gcloud storage ls gs://${env.TARGET_TF_STATE_BUCKET} --project=${env.TARGET_GCP_PROJECT_ID}
@@ -105,7 +105,7 @@ pipeline {
         }
         stage('Terraform Validate') {
             steps {
-                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     dir('terraform'){
                         sh 'terraform validate'
                     }
@@ -115,7 +115,7 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 // Use dynamic environment variables for Terraform commands
-                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     dir('terraform'){
                         sh 'terraform plan -out=tfplan -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
                         archiveArtifacts artifacts: 'tfplan'
@@ -135,7 +135,7 @@ pipeline {
                         echo "Auto-applying to ${DEPLOYMENT_ENV} environment."
                         // No manual approval needed for 'dev' or other branches
                     }
-                    withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                          // Ensure the SA is active for this block
                          dir('terraform'){
                             sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
