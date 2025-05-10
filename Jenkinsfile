@@ -97,8 +97,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 script {
-                    def credId = env.TARGET_SA_CREDENTIAL_ID
-                    withCredentials([file(credentialsId: credId, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         dir('terraform') {
                             sh """
                                 echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
@@ -123,9 +122,7 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 script {
-                    def credId = env.TARGET_SA_CREDENTIAL_ID
-        
-                    withCredentials([file(credentialsId: credId, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         dir('terraform') {
                             sh """
                                 echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
@@ -142,8 +139,6 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 script {
-                    def credId = env.TARGET_SA_CREDENTIAL_ID
-        
                     if (params.environment == 'main') {
                         echo "Manual approval required for ${env.DEPLOYMENT_ENV} environment."
                         input message: "Approve Terraform Apply to ${env.DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
@@ -151,7 +146,7 @@ pipeline {
                         echo "Auto-applying to ${env.DEPLOYMENT_ENV} environment."
                     }
         
-                    withCredentials([file(credentialsId: credId, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         dir('terraform') {
                             sh """
                                 echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
