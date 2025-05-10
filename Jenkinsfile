@@ -95,7 +95,14 @@ pipeline {
                 // Use dynamic environment variables for Terraform commands
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     dir('terraform'){
-                        sh "echo 'TARGET_SA_CREDENTIAL_ID is: ${env.TARGET_SA_CREDENTIAL_ID}'"
+                        sh """
+                              echo "Checking permissions for service account: ${TARGET_SERVICE_ACCOUNT_EMAIL} on bucket: ${TARGET_TF_STATE_BUCKET}"
+                        
+                              gcloud iam service-accounts test-iam-permissions \
+                                ${TARGET_SERVICE_ACCOUNT_EMAIL} \
+                                --permissions=storage.buckets.get,storage.objects.get,storage.objects.list,storage.objects.create \
+                                --project=${TARGET_GCP_PROJECT_ID}
+                        """
                         sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
                     }
                 }     
