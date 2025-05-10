@@ -1,5 +1,4 @@
 
-
 pipeline {
     agent any
     tools {
@@ -72,28 +71,6 @@ pipeline {
                 }
             }
         }
-
-        // stage('Configure GCP Authentication') {
-        //     steps {
-        //         // Use the dynamic credential ID
-        //         withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-        //             sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
-        //             sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Use TARGET_GCP_PROJECT_ID
-        //             echo "GCP Authentication Configured for Project: ${TARGET_GCP_PROJECT_ID} as: ${TARGET_SERVICE_ACCOUNT_EMAIL}" // Use TARGET_SERVICE_ACCOUNT_EMAIL
-        //         }
-        //     }
-        // }
-        // // Note: Check IAM Policies stage can remain, using TARGET_SERVICE_ACCOUNT_EMAIL and TARGET_GCP_PROJECT_ID
-        // stage('Check IAM Policies') {
-        //     steps {
-        //         script {
-        //             echo "Checking IAM Policy for Service Account: ${TARGET_SERVICE_ACCOUNT_EMAIL} in Project: ${TARGET_GCP_PROJECT_ID}"
-        //             def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${TARGET_SERVICE_ACCOUNT_EMAIL} --project=${TARGET_GCP_PROJECT_ID}", returnStdout: true).trim()
-        //             echo "IAM Policy:"
-        //             echo "${policyOutput}"
-        //         }
-        //     }
-        // }
         stage('Terraform Init') {
             steps {
                 script {
@@ -161,17 +138,6 @@ pipeline {
         }
     }
     post {
-         // Add the clean up for the copied key file if you used that approach
-         // The deleteDir step works relative to the current directory, or with absolute path
-         // always {
-         //    script {
-         //        echo "Deleting persistent key file..."
-         //        // If copied to workspace root
-         //        // deleteDir(dir: "${WORKSPACE}/gcp_sa_key.json")
-         //        // If copied inside the terraform dir
-         //        // dir('terraform') { deleteDir(dir: 'gcp_sa_key.json') }
-         //    }
-         // }
         failure {
             script {
                 echo "Terraform Pipeline Failed for ${DEPLOYMENT_ENV} Environment!" // Dynamic failure message
