@@ -93,24 +93,9 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 // Use dynamic environment variables for Terraform commands
-                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'TEMP_SA_KEY_PATH')]) {
+                withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     dir('terraform'){
-                        script{
-                            echo "--- Verifying gcloud auth before Terraform Init ---"
-                            sh 'gcloud auth list'
-                            sh 'gcloud config list'
-                            echo "--- End gcloud auth verification ---"
-
-                            def terraformInitCommand = 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
-
-                            echo "--- Setting GOOGLE_APPLICATION_CREDENTIALS and Executing Terraform Init ---"
-                            // Explicitly set the environment variable just for this command
-                            sh "GOOGLE_APPLICATION_CREDENTIALS='${TEMP_SA_KEY_PATH}' ${terraformInitCommand}"
-                            echo "--- Terraform Init execution finished ---"
-                            
-                            //sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'    
-                        }
-                        
+                        sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
                     }
                 }     
             }
