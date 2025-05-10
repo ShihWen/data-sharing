@@ -96,12 +96,7 @@ pipeline {
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     dir('terraform'){
                         sh """
-                              echo "Checking permissions for service account: ${TARGET_SERVICE_ACCOUNT_EMAIL} on bucket: ${TARGET_TF_STATE_BUCKET}"
-                            
-                              gcloud storage buckets test-iam-permissions gs://${TARGET_TF_STATE_BUCKET} \
-                                --permissions=storage.buckets.get,storage.objects.get,storage.objects.list,storage.objects.create \
-                                --impersonate-service-account=${TARGET_SERVICE_ACCOUNT_EMAIL} \
-                                --project=${TARGET_GCP_PROJECT_ID}
+                              gcloud storage ls gs://${env.TARGET_TF_STATE_BUCKET} --project=${env.TARGET_GCP_PROJECT_ID}
                         """
                         sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
                     }
