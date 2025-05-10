@@ -122,12 +122,21 @@ pipeline {
         }
         stage('Terraform Plan') {
             steps {
-                // Use dynamic environment variables for Terraform commands
-                dir('terraform'){
-                    sh 'terraform plan -out=tfplan -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
-                    archiveArtifacts artifacts: 'tfplan'
+                script {
+                    def credId = env.TARGET_SA_CREDENTIAL_ID
+        
+                    withCredentials([file(credentialsId: credId, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                        dir('terraform') {
+                            sh """
+                                echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
+                                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                                gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
+                                terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars
+                            """
+                            archiveArtifacts artifacts: 'tfplan'
+                        }
+                    }
                 }
-                
             }
         }
         stage('Terraform Apply') {
