@@ -1,5 +1,4 @@
-// Define outside of pipeline block
-def MYENV_VAR = param.environment == 'dev' ? 'gcp-sa-dev' : 'gcp-sa-prod'
+
 
 pipeline {
     agent any
@@ -23,7 +22,7 @@ pipeline {
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd-prod.iam.gserviceaccount.com'
         
-        GOOGLE_APPLICATION_CREDENTIALS = credentials("${MYENV_VAR}")
+        //GOOGLE_APPLICATION_CREDENTIALS = credentials("${MYENV_VAR}")
         
         // --- Dynamic Environment Variables (Set in a stage) ---
         // These will be set in the 'Determine Environment Variables' stage
@@ -97,16 +96,23 @@ pipeline {
         // }
         stage('Terraform Init') {
             steps {
-                // Use dynamic environment variables for Terraform commands
-                dir('terraform'){
-                    sh """
-                          gcloud storage ls gs://${env.TARGET_TF_STATE_BUCKET} --project=${env.TARGET_GCP_PROJECT_ID}
-                    """
-                    sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
+                script {
+                    def credId = env.TARGET_SA_CREDENTIAL_ID
+                    withCredentials([file(credentialsId: credId, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                        dir('terraform') {
+                            sh """
+                                echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
+                                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                                gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
+                                gcloud storage ls gs://${env.TARGET_TF_STATE_BUCKET}
+                            """
+                            sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
+                        }
+                    }
                 }
-                     
             }
         }
+
         stage('Terraform Validate') {
             steps {
                 dir('terraform'){
@@ -126,24 +132,26 @@ pipeline {
         }
         stage('Terraform Apply') {
             steps {
-                script { // Use script block for easier conditional logic with steps
+                script {
+                    def credId = env.TARGET_SA_CREDENTIAL_ID
         
-                    // Check if manual approval is required (for 'main' environment)
                     if (params.environment == 'main') {
-                        echo "Manual approval required for ${DEPLOYMENT_ENV} environment."
-                        input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+                        echo "Manual approval required for ${env.DEPLOYMENT_ENV} environment."
+                        input message: "Approve Terraform Apply to ${env.DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
                     } else {
-                        echo "Auto-applying to ${DEPLOYMENT_ENV} environment."
-                        // No manual approval needed for 'dev' or other branches
+                        echo "Auto-applying to ${env.DEPLOYMENT_ENV} environment."
                     }
-                         // Ensure the SA is active for this block
-                     dir('terraform'){
-                        // sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
-                        // sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
-    
-                        // Execute the Terraform Apply command
-                        sh 'terraform apply tfplan'
-                     }
+        
+                    withCredentials([file(credentialsId: credId, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                        dir('terraform') {
+                            sh """
+                                echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
+                                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                                gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
+                                terraform apply tfplan
+                            """
+                        }
+                    }
                 }
             }
         }
