@@ -1,5 +1,5 @@
 // Define outside of pipeline block
-def MYENV_VAR = dev == 'yes' ? 'gcp-sa-dev' : 'gcp-sa-prod'
+def MYENV_VAR = environment == 'dev' ? 'gcp-sa-dev' : 'gcp-sa-prod'
 
 pipeline {
     agent any
