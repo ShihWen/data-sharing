@@ -95,6 +95,7 @@ pipeline {
                 // Use dynamic environment variables for Terraform commands
                 withCredentials([file(credentialsId: TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     dir('terraform'){
+                        sh "TARGET_SA_CREDENTIAL_ID is: ${env.TARGET_SA_CREDENTIAL_ID}"
                         sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
                     }
                 }     
