@@ -158,6 +158,15 @@ pipeline {
         }
     }
     post {
+        always { // Added 'always' block in 'post'
+           script {
+               echo "Deleting persistent key file: ${env.PERSISTENT_SA_KEY_PATH}"
+               // deleteDir step works relative to the current directory
+               // We need to delete the file at the PERSISTENT_SA_KEY_PATH
+               sh "rm -f '${env.PERSISTENT_SA_KEY_PATH}'" # Use sh 'rm -f' for robustness
+               echo "Persistent key file deleted."
+           }
+        }
         failure {
             script {
                 echo "Terraform Pipeline Failed for ${DEPLOYMENT_ENV} Environment!" // Dynamic failure message
