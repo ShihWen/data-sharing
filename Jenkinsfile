@@ -163,7 +163,7 @@ pipeline {
                echo "Deleting persistent key file: ${env.PERSISTENT_SA_KEY_PATH}"
                // deleteDir step works relative to the current directory
                // We need to delete the file at the PERSISTENT_SA_KEY_PATH
-               sh "rm -f '${env.PERSISTENT_SA_KEY_PATH}'" # Use sh 'rm -f' for robustness
+               sh "rm -f '${env.PERSISTENT_SA_KEY_PATH}'"
                echo "Persistent key file deleted."
            }
         }
