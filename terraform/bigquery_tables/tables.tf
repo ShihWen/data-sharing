@@ -1,6 +1,9 @@
 # terraform/bigquery_tables/tables.tf
 
 locals {
+  _debug_current_path_module = path.module # Should be ./bigquery_tables when run from terraform/
+  _debug_schemas_dir_to_scan = "${path.module}/schemas" # e.g., ./bigquery_tables/schemas
+
   # Find all .yaml files in the schemas directory and its subdirectories
   table_schema_files = fileset("${path.module}/schemas", "**/*.yaml")
 
@@ -9,7 +12,8 @@ locals {
   # The value will be the parsed YAML content
   table_configs = {
     for fpath in local.table_schema_files :
-    fpath => yamldecode(file("${path.module}/schemas/${fpath}"))
+    # fpath => yamldecode(file("${path.module}/schemas/${fpath}"))
+    fpath => yamldecode(file("${local._debug_schemas_dir_to_scan}/${fpath}")) # Use the debugged path here too
   }
 }
 
@@ -55,15 +59,18 @@ resource "google_bigquery_table" "this" {
 }
 
 # For temp testing
-output "debug_BQT_path_module" {
-  value = path.module
+output "debug_BQT_actual_path_module_in_tables_tf" {
+  value = local._debug_current_path_module
 }
-output "debug_BQT_table_schema_files" {
+output "debug_BQT_schemas_directory_scanned_by_fileset" {
+  value = local._debug_schemas_dir_to_scan
+}
+output "debug_BQT_table_schema_files_FOUND" { # Renamed for clarity
   value = local.table_schema_files
 }
-output "debug_BQT_table_configs" {
+output "debug_BQT_table_configs_PARSED" { # Renamed for clarity
   value     = local.table_configs
-  sensitive = true // just in case
+  sensitive = true
 }
 output "debug_BQT_dynamic_dataset_ids_var" {
   value = var._dynamic_dataset_ids
