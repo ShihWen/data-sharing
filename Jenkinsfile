@@ -20,6 +20,8 @@ pipeline {
         PROD_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing-prod'
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd-prod.iam.gserviceaccount.com'
+
+        PERSISTENT_SA_KEY_PATH = "${WORKSPACE}/gcp_sa_key.json"
         
         //GOOGLE_APPLICATION_CREDENTIALS = credentials("${MYENV_VAR}")
         
