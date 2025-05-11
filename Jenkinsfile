@@ -129,6 +129,7 @@ pipeline {
                                 gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
                                 terraform apply tfplan
+                                terraform show -json tfplan
                             """
                         }
                     }
