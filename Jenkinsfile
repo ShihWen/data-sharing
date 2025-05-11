@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
     tools {
@@ -20,6 +21,10 @@ pipeline {
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd-prod.iam.gserviceaccount.com'
 
+        PERSISTENT_SA_KEY_PATH = "${WORKSPACE}/gcp_sa_key.json"
+        
+        //GOOGLE_APPLICATION_CREDENTIALS = credentials("${MYENV_VAR}")
+        
         // --- Dynamic Environment Variables (Set in a stage) ---
         // These will be set in the 'Determine Environment Variables' stage
         // TARGET_GCP_PROJECT_ID
@@ -68,99 +73,91 @@ pipeline {
                 }
             }
         }
+        // --- Stage to Retrieve and Copy GCP Credentials ---
+        stage('Retrieve & Copy GCP Credentials') {
+            steps {
+                script { // Use script block to manage variables and file operations
+                    // Use withCredentials to get the temporary path to the key file
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'TEMP_SA_KEY_FILE_PATH')]) {
+                        echo "Copying GCP Service Account key from Jenkins credentials to workspace..."
+                        // Copy the temporary file content to the persistent location
+                        sh "cp '${TEMP_SA_KEY_FILE_PATH}' '${env.PERSISTENT_SA_KEY_PATH}'"
+                        echo "GCP Service Account key copied to ${env.PERSISTENT_SA_KEY_PATH}"
 
-        stage('Configure GCP Authentication') {
-            steps {
-                // Use the dynamic credential ID
-                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
-                    sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Use TARGET_GCP_PROJECT_ID
-                    echo "GCP Authentication Configured for Project: ${TARGET_GCP_PROJECT_ID} as: ${TARGET_SERVICE_ACCOUNT_EMAIL}" // Use TARGET_SERVICE_ACCOUNT_EMAIL
+                        // Authenticate gcloud CLI using the copied key file
+                        sh "gcloud auth activate-service-account --key-file='${env.PERSISTENT_SA_KEY_PATH}' --project='${env.TARGET_GCP_PROJECT_ID}'"
+                        echo "GCP Authentication Configured for Project: ${env.TARGET_GCP_PROJECT_ID} as: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
+
+                        // # Optional: gsutil test can be here using the persistent key path implicitly via GOOGLE_APPLICATION_CREDENTIALS
+                        // # echo "Testing GCS Bucket Access with gsutil..."
+                        // # sh "gsutil ls gs://${env.TARGET_TF_STATE_BUCKET}"
+                        // # echo "GCS Bucket Access Test Completed."
+                    }
                 }
             }
         }
-        // Note: Check IAM Policies stage can remain, using TARGET_SERVICE_ACCOUNT_EMAIL and TARGET_GCP_PROJECT_ID
-        stage('Check IAM Policies') {
-            steps {
-                script {
-                    echo "Checking IAM Policy for Service Account: ${TARGET_SERVICE_ACCOUNT_EMAIL} in Project: ${TARGET_GCP_PROJECT_ID}"
-                    def policyOutput = sh(script: "gcloud iam service-accounts get-iam-policy ${TARGET_SERVICE_ACCOUNT_EMAIL} --project=${TARGET_GCP_PROJECT_ID}", returnStdout: true).trim()
-                    echo "IAM Policy:"
-                    echo "${policyOutput}"
-                }
-            }
-        }
+
         stage('Terraform Init') {
+            environment {
+                GOOGLE_APPLICATION_CREDENTIALS = "${env.PERSISTENT_SA_KEY_PATH}"
+            }
             steps {
-                // Use dynamic environment variables for Terraform commands
-                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    dir('terraform'){
-                        sh """
-                              gcloud storage ls gs://${env.TARGET_TF_STATE_BUCKET} --project=${env.TARGET_GCP_PROJECT_ID}
-                        """
+                script {   
+                    dir('terraform') {
                         sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
                     }
-                }     
+                    
+                }
             }
         }
+
         stage('Terraform Validate') {
+            environment {
+                GOOGLE_APPLICATION_CREDENTIALS = "${env.PERSISTENT_SA_KEY_PATH}"
+            }
             steps {
-                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    dir('terraform'){
-                        sh 'terraform validate'
-                    }
-                }                
+                dir('terraform'){
+                    sh 'terraform validate'
+                }             
             }
         }
         stage('Terraform Plan') {
+            environment {
+                GOOGLE_APPLICATION_CREDENTIALS = "${env.PERSISTENT_SA_KEY_PATH}"
+            }
             steps {
-                // Use dynamic environment variables for Terraform commands
-                withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    dir('terraform'){
-                        sh 'terraform plan -out=tfplan -var-file=environments/${DEPLOYMENT_ENV}.tfvars'
+                script {
+                    dir('terraform') {
+                        sh """
+                            terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars
+                        """
                         archiveArtifacts artifacts: 'tfplan'
                     }
                 }
             }
         }
         stage('Terraform Apply') {
+            environment {
+                GOOGLE_APPLICATION_CREDENTIALS = "${env.PERSISTENT_SA_KEY_PATH}"
+            }
             steps {
-                script { // Use script block for easier conditional logic with steps
-        
-                    // Check if manual approval is required (for 'main' environment)
+                script {
                     if (params.environment == 'main') {
-                        echo "Manual approval required for ${DEPLOYMENT_ENV} environment."
-                        input message: "Approve Terraform Apply to ${DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
+                        echo "Manual approval required for ${env.DEPLOYMENT_ENV} environment."
+                        input message: "Approve Terraform Apply to ${env.DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
                     } else {
-                        echo "Auto-applying to ${DEPLOYMENT_ENV} environment."
-                        // No manual approval needed for 'dev' or other branches
+                        echo "Auto-applying to ${env.DEPLOYMENT_ENV} environment."
                     }
-                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                         // Ensure the SA is active for this block
-                         dir('terraform'){
-                            sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
-                            sh 'gcloud config set project $TARGET_GCP_PROJECT_ID' // Ensure project is set for apply command context
-        
-                            // Execute the Terraform Apply command
-                            sh 'terraform apply tfplan'
-                         }
-                    }
+                    dir('terraform') {
+                        sh """
+                            terraform apply tfplan
+                        """
+                    }                   
                 }
             }
         }
     }
     post {
-         // Add the clean up for the copied key file if you used that approach
-         // The deleteDir step works relative to the current directory, or with absolute path
-         // always {
-         //    script {
-         //        echo "Deleting persistent key file..."
-         //        // If copied to workspace root
-         //        // deleteDir(dir: "${WORKSPACE}/gcp_sa_key.json")
-         //        // If copied inside the terraform dir
-         //        // dir('terraform') { deleteDir(dir: 'gcp_sa_key.json') }
-         //    }
-         // }
         failure {
             script {
                 echo "Terraform Pipeline Failed for ${DEPLOYMENT_ENV} Environment!" // Dynamic failure message

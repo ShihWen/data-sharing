@@ -1,0 +1,18 @@
+# This table belongs to the dataset defined by var.sales_dataset_id
+dataset_id_var_name: "sales_dataset_id" # Reference to the variable name holding the dataset ID
+table_id: "orders"
+description: "Table containing order information"
+schema:
+  - {name: "order_id",    type: "STRING",  mode: "REQUIRED", description: "Unique identifier for the order"}
+  - {name: "customer_id", type: "STRING",  mode: "NULLABLE", description: "Customer identifier"}
+  - {name: "order_date",  type: "DATE",    mode: "NULLABLE", description: "Date of the order"}
+  - {name: "total_amount",type: "NUMERIC", mode: "NULLABLE", description: "Total amount of the order"}
+# Optional fields:
+# clustering:
+#   - "customer_id"
+# time_partitioning:
+#   type: "DAY"
+#   field: "order_date"
+labels:
+  data_sensitivity: "medium"
+  source_system: "ecommerce_platform"

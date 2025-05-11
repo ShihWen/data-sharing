@@ -1,0 +1,46 @@
+# Terraform working directory and state files
+# (Good practice even if using remote state, protects against accidental local state)
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+*.tfplan
+*.tfvars.json # If you ever generate tfvars from JSON
+*.tfvars.auto.json # If you ever generate tfvars from JSON
+
+# GCP Service Account Keys
+# Be very specific to avoid accidentally ignoring other important JSON files.
+# If all your SA keys end with -sa.json or similar, use that pattern.
+# Or list them explicitly.
+sa-key-1.json
+
+
+# Secrets directories (if you have a dedicated, uncommitted folder for them)
+# secrets/
+
+# IDE / Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Python virtual environments (if applicable)
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+
+
+# Docker build context temporary files (if you use .dockerignore to manage context)
+# (Typically .dockerignore is preferred for docker build context management)
+
+# Any other sensitive files or build artifacts specific to your project
+# e.g., downloaded archives, compiled binaries not meant for version control
