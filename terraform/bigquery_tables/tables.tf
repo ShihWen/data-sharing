@@ -53,3 +53,18 @@ resource "google_bigquery_table" "this" {
     # Add all other dataset resources defined in datasets.tf here
   ]
 }
+
+# For temp testing
+output "debug_BQT_path_module" {
+  value = path.module
+}
+output "debug_BQT_table_schema_files" {
+  value = local.table_schema_files
+}
+output "debug_BQT_table_configs" {
+  value     = local.table_configs
+  sensitive = true // just in case
+}
+output "debug_BQT_dynamic_dataset_ids_var" {
+  value = var._dynamic_dataset_ids
+}
