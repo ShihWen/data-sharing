@@ -19,3 +19,30 @@ variable "bucket_name" {
   type        = string
   default     = "test-githubdemo-bucket-001" # Example default name
 }
+
+//
+variable "sales_dataset_id" {
+  description = "The ID for the sales BigQuery dataset."
+  type        = string
+}
+
+variable "marketing_dataset_id" {
+  description = "The ID for the marketing BigQuery dataset."
+  type        = string
+}
+
+variable "deployment_env" {
+  description = "The deployment environment (e.g., dev, prod). To be used for tagging etc."
+  type        = string
+  # This will be effectively set by your Jenkins pipeline's DEPLOYMENT_ENV
+  # but you might want a default if running terraform locally.
+  # default     = "dev"
+}
+
+# This is a helper variable to dynamically access other variables by name.
+# It will be populated in your .tfvars files.
+variable "_dynamic_dataset_ids" {
+  description = "A map to allow dynamic lookup of dataset ID variables."
+  type        = map(string)
+  default     = {} # Jenkins will override this
+}
