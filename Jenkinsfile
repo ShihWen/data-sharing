@@ -58,20 +58,15 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'SA_KEY_FILE')]) {
                         dir('terraform') {
-                            // Create a temporary directory with proper permissions
+                            writeFile file: 'tmp_sa_key.json', text: readFile(SA_KEY_FILE)
                             sh """
-                                TEMP_DIR=\$(mktemp -d)
-                                cp \$GOOGLE_APPLICATION_CREDENTIALS \$TEMP_DIR/gcp_key.json
-                                export GOOGLE_APPLICATION_CREDENTIALS=\$TEMP_DIR/gcp_key.json
-                                
-                                gcloud auth activate-service-account --key-file=\$GOOGLE_APPLICATION_CREDENTIALS
+                                gcloud auth activate-service-account --key-file=tmp_sa_key.json
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
                                 terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state
-                                
-                                rm -rf \$TEMP_DIR
                             """
+                            sh 'rm -f tmp_sa_key.json'
                         }
                     }
                 }
@@ -87,17 +82,14 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'SA_KEY_FILE')]) {
                         dir('terraform') {
+                            writeFile file: 'tmp_sa_key.json', text: readFile(SA_KEY_FILE)
                             sh """
-                                TEMP_DIR=\$(mktemp -d)
-                                cp \$GOOGLE_APPLICATION_CREDENTIALS \$TEMP_DIR/gcp_key.json
-                                export GOOGLE_APPLICATION_CREDENTIALS=\$TEMP_DIR/gcp_key.json
-                                
+                                export GOOGLE_APPLICATION_CREDENTIALS=\$PWD/tmp_sa_key.json
                                 terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars
-                                
-                                rm -rf \$TEMP_DIR
                             """
+                            sh 'rm -f tmp_sa_key.json'
                             archiveArtifacts artifacts: 'tfplan'
                         }
                     }
@@ -112,21 +104,16 @@ pipeline {
                         input message: "Approve Terraform Apply to ${env.DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
                     }
 
-                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'SA_KEY_FILE')]) {
                         dir('terraform') {
+                            writeFile file: 'tmp_sa_key.json', text: readFile(SA_KEY_FILE)
                             sh """
-                                TEMP_DIR=\$(mktemp -d)
-                                cp \$GOOGLE_APPLICATION_CREDENTIALS \$TEMP_DIR/gcp_key.json
-                                export GOOGLE_APPLICATION_CREDENTIALS=\$TEMP_DIR/gcp_key.json
-                                
-                                echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
+                                export GOOGLE_APPLICATION_CREDENTIALS=\$PWD/tmp_sa_key.json
                                 gcloud auth activate-service-account --key-file=\$GOOGLE_APPLICATION_CREDENTIALS
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
                                 terraform apply tfplan
-                                
-                                # Clean up
-                                rm -rf \$TEMP_DIR
                             """
+                            sh 'rm -f tmp_sa_key.json'
                         }
                     }
                 }
