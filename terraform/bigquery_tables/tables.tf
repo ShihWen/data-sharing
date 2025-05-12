@@ -1,18 +1,21 @@
 # terraform/bigquery_tables/tables.tf
 
 locals {
-  _debug_current_path_module = path.module # Should be ./bigquery_tables when run from terraform/
-  _debug_schemas_dir_to_scan = "${path.module}/schemas" # e.g., ./bigquery_tables/schemas
+  # Debug variables for path resolution
+  _debug_current_path_module = path.module
+  _debug_current_path_root  = path.root
+  _debug_current_path_cwd   = path.cwd
+  _debug_schema_path        = "${path.module}/schemas"
 
   # Find all .yaml files in the schemas directory and its subdirectories
-  table_schema_files = fileset("${path.module}/schemas", "**/*.yaml")
+  table_schema_files = fileset(local._debug_schema_path, "**/*.yaml")
+
+  # Debug: Print the first file content if any exists
+  _debug_first_file_content = length(local.table_schema_files) > 0 ? yamldecode(file("${local._debug_schema_path}/${tolist(local.table_schema_files)[0]}")) : {}
 
   # Create a map of table configurations from the YAML files
-  # The key for the map will be the file path (unique identifier)
-  # The value will be the parsed YAML content with validation
   table_configs = {
     for fpath in local.table_schema_files : fpath => {
-      # Merge the parsed YAML with default values and validate required fields
       config = merge(
         {
           description = null
@@ -20,18 +23,26 @@ locals {
           clustering = null
           time_partitioning = null
         },
-        yamldecode(file("${path.module}/schemas/${fpath}"))
+        yamldecode(file("${local._debug_schema_path}/${fpath}"))
       )
-      
-      # Extract dataset name from path for depends_on configuration
       dataset_name = split("/", fpath)[0]
     }
   }
 
   # Debug outputs
   _debug = {
-    found_schema_files = local.table_schema_files
-    table_configs = local.table_configs
+    paths = {
+      module_path = local._debug_current_path_module
+      root_path   = local._debug_current_path_root
+      cwd_path    = local._debug_current_path_cwd
+      schema_path = local._debug_schema_path
+    }
+    found_files = {
+      files_found = local.table_schema_files
+      file_count  = length(local.table_schema_files)
+    }
+    first_file_content = local._debug_first_file_content
+    table_configs      = local.table_configs
   }
 
   # Validate all required fields are present in schemas
@@ -69,6 +80,16 @@ resource "null_resource" "schema_validation" {
   }
 }
 
+# Output the table configurations for verification
+output "table_configurations" {
+  value = {
+    for k, v in local.table_configs : k => {
+      dataset_id = try(var._dynamic_dataset_ids[v.config.dataset_id_var_name], "NOT_FOUND")
+      table_id   = v.config.table_id
+    }
+  }
+}
+
 resource "google_bigquery_table" "this" {
   for_each = local.table_configs
 
@@ -79,7 +100,6 @@ resource "google_bigquery_table" "this" {
   description = try(each.value.config.description, null)
   labels      = try(each.value.config.labels, {})
 
-  # Schema is required, so we don't use try() here
   schema = jsonencode(each.value.config.schema)
 
   dynamic "time_partitioning" {
@@ -93,10 +113,8 @@ resource "google_bigquery_table" "this" {
 
   clustering = try(each.value.config.clustering, null)
 
-  # Set deletion_protection based on environment
   deletion_protection = var.deployment_env == "prod" ? true : false
 
-  # Dynamic depends_on based on the dataset the table belongs to
   depends_on = [
     null_resource.schema_validation,
     google_bigquery_dataset.my_dataset_sales,
@@ -104,7 +122,6 @@ resource "google_bigquery_table" "this" {
   ]
 
   lifecycle {
-    # Prevent destruction of production tables unless deletion_protection is first set to false
     prevent_destroy = var.deployment_env == "prod"
   }
 }
