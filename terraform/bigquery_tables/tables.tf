@@ -1,28 +1,9 @@
 # terraform/bigquery_tables/tables.tf
 
 locals {
-  # Debug variables for path resolution
-  _debug_current_path_module = path.module
-  _debug_current_path_root  = path.root
-  _debug_current_path_cwd   = path.cwd
-  _debug_schema_path        = "${path.module}/schemas"
-
-  # Find all .yaml files in the schemas directory and its subdirectories
-  table_schema_files = fileset(local._debug_schema_path, "**/*.yaml")
-
-  # Debug: Print the first file content if any exists
-  _debug_first_file_content = length(local.table_schema_files) > 0 ? yamldecode(file("${local._debug_schema_path}/${tolist(local.table_schema_files)[0]}")) : {
-    dataset_id_var_name = ""
-    table_id = ""
-    description = ""
-    schema = []
-    labels = {
-      data_sensitivity = ""
-      source_system = ""
-    }
-    clustering = []
-    time_partitioning = {}
-  }
+  # Find all .yaml files in the schemas directory
+  schema_path = "${path.module}/schemas"
+  table_schema_files = fileset(local.schema_path, "**/*.yaml")
 
   # Create a map of table configurations from the YAML files
   table_configs = {
@@ -34,26 +15,10 @@ locals {
           clustering = null
           time_partitioning = null
         },
-        yamldecode(file("${local._debug_schema_path}/${fpath}"))
+        yamldecode(file("${local.schema_path}/${fpath}"))
       )
       dataset_name = split("/", fpath)[0]
     }
-  }
-
-  # Debug outputs
-  _debug = {
-    paths = {
-      module_path = local._debug_current_path_module
-      root_path   = local._debug_current_path_root
-      cwd_path    = local._debug_current_path_cwd
-      schema_path = local._debug_schema_path
-    }
-    found_files = {
-      files_found = local.table_schema_files
-      file_count  = length(local.table_schema_files)
-    }
-    first_file_content = local._debug_first_file_content
-    table_configs      = local.table_configs
   }
 
   # Validate all required fields are present in schemas
@@ -63,39 +28,17 @@ locals {
       validation_errors = concat(
         !can(config.config.dataset_id_var_name) ? ["Missing dataset_id_var_name"] : [],
         !can(config.config.table_id) ? ["Missing table_id"] : [],
-        !can(config.config.schema) ? ["Missing schema definition"] : []
+        !can(config.config.schema) ? ["Missing schema definition"] : [],
+        try(length(config.config.schema), 0) == 0 ? ["Schema cannot be empty"] : []
       )
     }
   ]
-
-  # Additional validation for dynamic dataset IDs
-  dataset_id_validation = {
-    for fpath, config in local.table_configs : fpath => {
-      dataset_id_var_name = try(config.config.dataset_id_var_name, "NOT_FOUND")
-      dataset_id_value = try(var._dynamic_dataset_ids[config.config.dataset_id_var_name], "NOT_FOUND")
-    }
-  }
 
   # Check if any tables should be created
   should_create_tables = length(local.table_configs) > 0
   
   # Define environment-specific settings
   is_prod = var.deployment_env == "prod"
-}
-
-# Output debug information
-output "debug_info" {
-  value = local._debug
-}
-
-# Output validation information
-output "validation_info" {
-  value = {
-    schema_validation = local.schema_validation
-    dataset_id_validation = local.dataset_id_validation
-    should_create_tables = local.should_create_tables
-    table_count = length(local.table_configs)
-  }
 }
 
 # Fail if any validation errors are found
@@ -111,17 +54,6 @@ resource "null_resource" "schema_validation" {
       ]))}
       exit 1
     EOF
-  }
-}
-
-# Output the table configurations for verification
-output "table_configurations" {
-  value = {
-    for k, v in local.table_configs : k => {
-      dataset_id = try(var._dynamic_dataset_ids[v.config.dataset_id_var_name], "NOT_FOUND")
-      table_id   = v.config.table_id
-      schema     = try(v.config.schema, [])
-    }
   }
 }
 
