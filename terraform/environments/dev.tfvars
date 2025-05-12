@@ -12,8 +12,9 @@ sales_dataset_id              = "sales_data_dev"
 marketing_dataset_id          = "marketing_data_dev"
 deployment_env                = "dev"
 
+# Map of variable names to actual dataset IDs
+# The keys here must match the dataset_id_var_name values in your schema YAML files
 _dynamic_dataset_ids = {
-  "sales_dataset_id"     = "sales_data_dev"
-  "marketing_dataset_id" = "marketing_data_dev"
-  # Add any other dataset_id variable name and its value here
+  sales_dataset_id     = "sales_data_dev"      # Matches dataset_id_var_name in orders.yaml
+  marketing_dataset_id = "marketing_data_dev"   # For marketing tables
 }

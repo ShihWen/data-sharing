@@ -28,6 +28,12 @@ locals {
     }
   }
 
+  # Debug outputs
+  _debug = {
+    found_schema_files = local.table_schema_files
+    table_configs = local.table_configs
+  }
+
   # Validate all required fields are present in schemas
   # This will fail terraform plan if any required fields are missing
   schema_validation = [
@@ -42,6 +48,11 @@ locals {
   ]
 }
 
+# Output debug information
+output "debug_info" {
+  value = local._debug
+}
+
 # Fail if any validation errors are found
 resource "null_resource" "schema_validation" {
   count = length(flatten([for v in local.schema_validation : v.validation_errors])) > 0 ? "fail" : 0
@@ -54,6 +65,7 @@ resource "null_resource" "schema_validation" {
         [for err in v.validation_errors : "File ${v.file_path}: ${err}"]
       ]))}
       exit 1
+    EOF
   }
 }
 
