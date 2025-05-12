@@ -116,10 +116,12 @@ pipeline {
                                 stat bigquery_tables/schemas/my_dataset_sales/orders.yaml
                             """
                             
-                            // Run terraform plan with debug output
+                            // Run terraform plan with debug output and show the outputs
                             sh """
                                 export TF_LOG=DEBUG
                                 terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars
+                                echo "\nTerraform Outputs:"
+                                terraform show -json tfplan | jq '.planned_values.outputs'
                             """
                             archiveArtifacts artifacts: 'tfplan'
                         }
@@ -144,7 +146,6 @@ pipeline {
                                 gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
                                 terraform apply tfplan
-                                terraform show -json tfplan
                             """
                         }
                     }

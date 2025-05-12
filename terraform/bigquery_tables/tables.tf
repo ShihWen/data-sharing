@@ -64,6 +64,9 @@ locals {
       dataset_id_value = try(var._dynamic_dataset_ids[config.config.dataset_id_var_name], "NOT_FOUND")
     }
   }
+
+  # Check if any tables should be created
+  should_create_tables = length(local.table_configs) > 0
 }
 
 # Output debug information
@@ -76,6 +79,8 @@ output "validation_info" {
   value = {
     schema_validation = local.schema_validation
     dataset_id_validation = local.dataset_id_validation
+    should_create_tables = local.should_create_tables
+    table_count = length(local.table_configs)
   }
 }
 
@@ -101,12 +106,14 @@ output "table_configurations" {
     for k, v in local.table_configs : k => {
       dataset_id = try(var._dynamic_dataset_ids[v.config.dataset_id_var_name], "NOT_FOUND")
       table_id   = v.config.table_id
+      schema     = try(v.config.schema, [])
     }
   }
 }
 
+# Create tables only if we have valid configurations
 resource "google_bigquery_table" "this" {
-  for_each = local.table_configs
+  for_each = local.should_create_tables ? local.table_configs : {}
 
   project    = var.gcp_project_id
   dataset_id = var._dynamic_dataset_ids[each.value.config.dataset_id_var_name]
