@@ -46,7 +46,6 @@ locals {
   }
 
   # Validate all required fields are present in schemas
-  # This will fail terraform plan if any required fields are missing
   schema_validation = [
     for fpath, config in local.table_configs : {
       file_path = fpath
@@ -57,6 +56,14 @@ locals {
       )
     }
   ]
+
+  # Additional validation for dynamic dataset IDs
+  dataset_id_validation = {
+    for fpath, config in local.table_configs : fpath => {
+      dataset_id_var_name = try(config.config.dataset_id_var_name, "NOT_FOUND")
+      dataset_id_value = try(var._dynamic_dataset_ids[config.config.dataset_id_var_name], "NOT_FOUND")
+    }
+  }
 }
 
 # Output debug information
@@ -64,9 +71,17 @@ output "debug_info" {
   value = local._debug
 }
 
+# Output validation information
+output "validation_info" {
+  value = {
+    schema_validation = local.schema_validation
+    dataset_id_validation = local.dataset_id_validation
+  }
+}
+
 # Fail if any validation errors are found
 resource "null_resource" "schema_validation" {
-  count = length(flatten([for v in local.schema_validation : v.validation_errors])) > 0 ? "fail" : 0
+  count = length(flatten([for v in local.schema_validation : v.validation_errors])) > 0 ? 1 : 0
 
   provisioner "local-exec" {
     command = <<EOF

@@ -100,10 +100,25 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         dir('terraform') {
+                            // Debug: Check workspace and files
                             sh """
-                                echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
-                                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-                                gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
+                                echo "Current directory:"
+                                pwd
+                                echo "\nListing terraform directory:"
+                                ls -la
+                                echo "\nListing schema directory:"
+                                ls -la bigquery_tables/schemas/
+                                echo "\nListing sales schema directory:"
+                                ls -la bigquery_tables/schemas/my_dataset_sales/
+                                echo "\nContent of orders.yaml:"
+                                cat bigquery_tables/schemas/my_dataset_sales/orders.yaml
+                                echo "\nChecking file permissions:"
+                                stat bigquery_tables/schemas/my_dataset_sales/orders.yaml
+                            """
+                            
+                            // Run terraform plan with debug output
+                            sh """
+                                export TF_LOG=DEBUG
                                 terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars
                             """
                             archiveArtifacts artifacts: 'tfplan'
