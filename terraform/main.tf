@@ -26,14 +26,19 @@ resource "google_storage_bucket" "my-bucket" {
 module "bigquery_datasets" {
   source = "./bigquery_datasets"
 
-  # Variables are passed implicitly through variable blocks in the module
+  gcp_project_id = var.gcp_project_id
+  gcp_region     = var.gcp_region
+  deployment_env = var.deployment_env
+  _dynamic_dataset_ids = var._dynamic_dataset_ids
 }
 
 # Include the BigQuery tables module
 module "bigquery_tables" {
   source = "./bigquery_tables"
 
-  # Variables are passed implicitly through variable blocks in the module
+  gcp_project_id = var.gcp_project_id
+  deployment_env = var.deployment_env
+  _dynamic_dataset_ids = var._dynamic_dataset_ids
 
   depends_on = [
     module.bigquery_datasets
