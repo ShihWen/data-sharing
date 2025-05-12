@@ -138,7 +138,7 @@ resource "google_bigquery_table" "this" {
 
   clustering = try(each.value.config.clustering, null)
 
-  deletion_protection = local.is_prod ? true : false
+  deletion_protection = local.is_prod
 
   depends_on = [
     null_resource.schema_validation,
@@ -147,7 +147,7 @@ resource "google_bigquery_table" "this" {
   ]
 
   lifecycle {
-    prevent_destroy = local.is_prod
+    prevent_destroy = false  # We'll use deletion_protection instead for environment-specific protection
   }
 }
 
