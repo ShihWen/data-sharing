@@ -2,7 +2,7 @@ datasets:
   - dataset_id_var_name: "sales_dataset_id"
     friendly_name: "Sales Data"
     description: "Dataset for sales related information"
-    dataset_id: "sales_data_dev"
+    dataset_id: "sales_data"
     labels:
       team: "analytics"
       goog-terraform-provisioned: "true"
@@ -10,7 +10,7 @@ datasets:
   - dataset_id_var_name: "marketing_dataset_id"
     friendly_name: "Marketing Data"
     description: "Dataset for marketing campaigns and leads"
-    dataset_id: "marketing_data_dev"
+    dataset_id: "marketing_data"
     labels:
       team: "marketing"
       goog-terraform-provisioned: "true"
@@ -20,7 +20,7 @@ datasets:
   # - dataset_id_var_name: "finance_dataset_id"
   #   friendly_name: "Finance Data"
   #   description: "Dataset for financial records"
-  #   dataset_id: "finance_data_dev"
+  #   dataset_id: "finance_data"
   #   labels:
   #     team: "finance"
   #     goog-terraform-provisioned: "true" 

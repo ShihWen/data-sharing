@@ -6,6 +6,11 @@ locals {
   dataset_configs = {
     for dataset in local.datasets_config.datasets : dataset.dataset_id_var_name => dataset
   }
+
+  # Create a map of dataset IDs with environment suffix
+  dataset_ids = {
+    for k, v in local.dataset_configs : k => "${v.dataset_id}_${var.deployment_env}"
+  }
 }
 
 # Create BigQuery datasets
@@ -13,7 +18,7 @@ resource "google_bigquery_dataset" "datasets" {
   for_each = local.dataset_configs
 
   project    = var.gcp_project_id
-  dataset_id = each.value.dataset_id  # Use the explicit dataset_id from YAML
+  dataset_id = local.dataset_ids[each.key]  # Use the environment-specific dataset ID
   location   = var.gcp_region
 
   friendly_name = each.value.friendly_name
