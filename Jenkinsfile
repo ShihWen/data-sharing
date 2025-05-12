@@ -70,7 +70,7 @@ pipeline {
                                 gcloud auth print-access-token > token.txt
                                 export GOOGLE_OAUTH_ACCESS_TOKEN=\$(cat token.txt)
                                 rm token.txt
-                                terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -backend-config="storage_account=${TARGET_SERVICE_ACCOUNT_EMAIL}" -migrate-state
+                                terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state
                             """
                             sh 'rm -f tmp_sa_key.json'
                         }
