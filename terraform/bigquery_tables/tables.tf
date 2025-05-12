@@ -14,9 +14,12 @@ locals {
   _debug_first_file_content = length(local.table_schema_files) > 0 ? yamldecode(file("${local._debug_schema_path}/${tolist(local.table_schema_files)[0]}")) : {
     dataset_id_var_name = ""
     table_id = ""
-    schema = []
     description = ""
-    labels = {}
+    schema = []
+    labels = {
+      data_sensitivity = ""
+      source_system = ""
+    }
     clustering = []
     time_partitioning = {}
   }
