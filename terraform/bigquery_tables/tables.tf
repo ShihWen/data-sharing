@@ -1,6 +1,9 @@
 # terraform/bigquery_tables/tables.tf
 
 locals {
+  _debug_current_path_module = path.module # Should be ./bigquery_tables when run from terraform/
+  _debug_schemas_dir_to_scan = "${path.module}/schemas" # e.g., ./bigquery_tables/schemas
+
   # Find all .yaml files in the schemas directory and its subdirectories
   table_schema_files = fileset("${path.module}/schemas", "**/*.yaml")
 
@@ -51,7 +54,6 @@ resource "null_resource" "schema_validation" {
         [for err in v.validation_errors : "File ${v.file_path}: ${err}"]
       ]))}
       exit 1
-    EOF
   }
 }
 
@@ -94,3 +96,4 @@ resource "google_bigquery_table" "this" {
     prevent_destroy = var.deployment_env == "prod"
   }
 }
+
