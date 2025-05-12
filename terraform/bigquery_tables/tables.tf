@@ -11,7 +11,15 @@ locals {
   table_schema_files = fileset(local._debug_schema_path, "**/*.yaml")
 
   # Debug: Print the first file content if any exists
-  _debug_first_file_content = length(local.table_schema_files) > 0 ? yamldecode(file("${local._debug_schema_path}/${tolist(local.table_schema_files)[0]}")) : {}
+  _debug_first_file_content = length(local.table_schema_files) > 0 ? yamldecode(file("${local._debug_schema_path}/${tolist(local.table_schema_files)[0]}")) : {
+    dataset_id_var_name = null
+    table_id = null
+    schema = []
+    description = null
+    labels = {}
+    clustering = null
+    time_partitioning = null
+  }
 
   # Create a map of table configurations from the YAML files
   table_configs = {
@@ -141,9 +149,7 @@ resource "google_bigquery_table" "this" {
   deletion_protection = local.is_prod
 
   depends_on = [
-    null_resource.schema_validation,
-    google_bigquery_dataset.my_dataset_sales,
-    google_bigquery_dataset.my_dataset_marketing
+    null_resource.schema_validation
   ]
 
   lifecycle {
