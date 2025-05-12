@@ -13,7 +13,7 @@ resource "google_bigquery_dataset" "datasets" {
   for_each = local.dataset_configs
 
   project    = var.gcp_project_id
-  dataset_id = var._dynamic_dataset_ids[each.key]
+  dataset_id = each.value.dataset_id  # Use the explicit dataset_id from YAML
   location   = var.gcp_region
 
   friendly_name = each.value.friendly_name
