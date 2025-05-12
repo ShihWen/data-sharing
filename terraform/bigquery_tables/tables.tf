@@ -6,50 +6,91 @@ locals {
 
   # Create a map of table configurations from the YAML files
   # The key for the map will be the file path (unique identifier)
-  # The value will be the parsed YAML content
+  # The value will be the parsed YAML content with validation
   table_configs = {
-    for fpath in local.table_schema_files :
-    fpath => yamldecode(file("${path.module}/schemas/${fpath}"))
+    for fpath in local.table_schema_files : fpath => {
+      # Merge the parsed YAML with default values and validate required fields
+      config = merge(
+        {
+          description = null
+          labels     = {}
+          clustering = null
+          time_partitioning = null
+        },
+        yamldecode(file("${path.module}/schemas/${fpath}"))
+      )
+      
+      # Extract dataset name from path for depends_on configuration
+      dataset_name = split("/", fpath)[0]
+    }
+  }
+
+  # Validate all required fields are present in schemas
+  # This will fail terraform plan if any required fields are missing
+  schema_validation = [
+    for fpath, config in local.table_configs : {
+      file_path = fpath
+      validation_errors = concat(
+        !can(config.config.dataset_id_var_name) ? ["Missing dataset_id_var_name"] : [],
+        !can(config.config.table_id) ? ["Missing table_id"] : [],
+        !can(config.config.schema) ? ["Missing schema definition"] : []
+      )
+    }
+  ]
+}
+
+# Fail if any validation errors are found
+resource "null_resource" "schema_validation" {
+  count = length(flatten([for v in local.schema_validation : v.validation_errors])) > 0 ? "fail" : 0
+
+  provisioner "local-exec" {
+    command = <<EOF
+      echo "Schema validation errors found:"
+      ${join("\n", flatten([
+        for v in local.schema_validation :
+        [for err in v.validation_errors : "File ${v.file_path}: ${err}"]
+      ]))}
+      exit 1
+    EOF
   }
 }
 
 resource "google_bigquery_table" "this" {
   for_each = local.table_configs
 
-  project     = var.gcp_project_id
-  # Dynamically get the dataset_id based on the variable name specified in YAML
-  # This requires that the variable (e.g., var.sales_dataset_id) is correctly defined
-  # and its value is available (e.g., from your .tfvars files).
-  dataset_id  = var._dynamic_dataset_ids[each.value.dataset_id_var_name]
-  table_id    = each.value.table_id
-  description = try(each.value.description, null) # Optional: use try for safety
-  labels      = try(each.value.labels, {})        # Optional
+  project    = var.gcp_project_id
+  dataset_id = var._dynamic_dataset_ids[each.value.config.dataset_id_var_name]
+  table_id   = each.value.config.table_id
+  
+  description = try(each.value.config.description, null)
+  labels      = try(each.value.config.labels, {})
 
-  # The schema argument expects a JSON string.
-  # The `yamldecode` function parses YAML into Terraform data structures.
-  # `jsonencode` converts these Terraform structures into a JSON string.
-  schema = jsonencode(each.value.schema)
+  # Schema is required, so we don't use try() here
+  schema = jsonencode(each.value.config.schema)
 
-  # Optional: Add support for clustering, partitioning, etc., from YAML
   dynamic "time_partitioning" {
-    for_each = try(each.value.time_partitioning, null) != null ? [each.value.time_partitioning] : []
+    for_each = try(each.value.config.time_partitioning, null) != null ? [each.value.config.time_partitioning] : []
     content {
-      type  = time_partitioning.value.type
-      field = try(time_partitioning.value.field, null)
-      # expiration_ms = try(time_partitioning.value.expiration_ms, null) # etc.
+      type          = time_partitioning.value.type
+      field         = try(time_partitioning.value.field, null)
+      expiration_ms = try(time_partitioning.value.expiration_ms, null)
     }
   }
 
-  clustering = try(each.value.clustering, null)
+  clustering = try(each.value.config.clustering, null)
 
-  deletion_protection = false # Set to true for production tables you don't want accidentally deleted
-  
-  # This depends_on block ensures datasets are created before tables referencing them.
-  # It's a bit broad, but safer. You could make it more specific if you parse dataset IDs
-  # from YAML keys earlier and map them directly to google_bigquery_dataset resources.
+  # Set deletion_protection based on environment
+  deletion_protection = var.deployment_env == "prod" ? true : false
+
+  # Dynamic depends_on based on the dataset the table belongs to
   depends_on = [
+    null_resource.schema_validation,
     google_bigquery_dataset.my_dataset_sales,
     google_bigquery_dataset.my_dataset_marketing
-    # Add all other dataset resources defined in datasets.tf here
   ]
+
+  lifecycle {
+    # Prevent destruction of production tables unless deletion_protection is first set to false
+    prevent_destroy = var.deployment_env == "prod"
+  }
 }
