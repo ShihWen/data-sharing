@@ -1,15 +1,14 @@
 pipeline {
     agent any
     tools {
-        terraform 'Terraform-v1.11.3' // Ensure tool name matches your Jenkins Global Tool Configuration
+        terraform 'Terraform-v1.11.3'
     }
-    parameters { // Added parameters section
+    parameters {
         choice(name: 'environment',
-               choices: ['dev', 'main'], // Allowed values for the parameter
+               choices: ['dev', 'main'],
                description: 'Select the deployment environment')
     }
     environment {
-        // --- DEFINE ALL ENVIRONMENT-SPECIFIC VALUES ---
         DEV_GCP_PROJECT_ID = 'open-data-v2-cicd'
         DEV_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing'
         DEV_SA_CREDENTIAL_ID = 'gcp-sa-dev'
@@ -19,19 +18,6 @@ pipeline {
         PROD_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing-prod'
         PROD_SA_CREDENTIAL_ID = 'gcp-sa-prod'
         PROD_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-prod@open-data-v2-cicd-prod.iam.gserviceaccount.com'
-
-        //GOOGLE_APPLICATION_CREDENTIALS = credentials("${MYENV_VAR}")
-
-        // --- Dynamic Environment Variables (Set in a stage) ---
-        // These will be set in the 'Determine Environment Variables' stage
-        // TARGET_GCP_PROJECT_ID
-        // TARGET_TF_STATE_BUCKET
-        // TARGET_SA_CREDENTIAL_ID
-        // TARGET_SERVICE_ACCOUNT_EMAIL
-        // DEPLOYMENT_ENV
-
-        // GCP_REGION = 'asia-east1' // Your GCP Region (common for both environments)
-        // Note: GOOGLE_APPLICATION_CREDENTIALS variable is managed by withCredentials
     }
     stages {
         stage('Checkout Code') {
@@ -58,7 +44,6 @@ pipeline {
                         env.TARGET_TF_STATE_BUCKET = env.DEV_TF_STATE_BUCKET
                         env.TARGET_SA_CREDENTIAL_ID = env.DEV_SA_CREDENTIAL_ID
                         env.TARGET_SERVICE_ACCOUNT_EMAIL = env.DEV_SERVICE_ACCOUNT_EMAIL
-                        echo "Targeting Development Environment"
                     } else {
                         error "Invalid environment parameter: ${params.environment}. Please select 'dev' or 'main'."
                     }
@@ -75,19 +60,23 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         dir('terraform') {
+                            // Create a temporary directory with proper permissions
                             sh """
-                                echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
-                                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                                TEMP_DIR=\$(mktemp -d)
+                                cp \$GOOGLE_APPLICATION_CREDENTIALS \$TEMP_DIR/gcp_key.json
+                                export GOOGLE_APPLICATION_CREDENTIALS=\$TEMP_DIR/gcp_key.json
+                                
+                                gcloud auth activate-service-account --key-file=\$GOOGLE_APPLICATION_CREDENTIALS
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
-                                gcloud storage ls gs://${env.TARGET_TF_STATE_BUCKET}
+                                terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state
+                                
+                                rm -rf \$TEMP_DIR
                             """
-                            sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
                         }
                     }
                 }
             }
         }
-
         stage('Terraform Validate') {
             steps {
                 dir('terraform'){
@@ -100,28 +89,14 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         dir('terraform') {
-                            // Debug: Check workspace and files
                             sh """
-                                echo "Current directory:"
-                                pwd
-                                echo "\nListing terraform directory:"
-                                ls -la
-                                echo "\nListing schema directory:"
-                                ls -la bigquery_tables/schemas/
-                                echo "\nListing sales schema directory:"
-                                ls -la bigquery_tables/schemas/my_dataset_sales/
-                                echo "\nContent of orders.yaml:"
-                                cat bigquery_tables/schemas/my_dataset_sales/orders.yaml
-                                echo "\nChecking file permissions:"
-                                stat bigquery_tables/schemas/my_dataset_sales/orders.yaml
-                            """
-                            
-                            // Run terraform plan with debug output and show the outputs
-                            sh """
-                                export TF_LOG=DEBUG
+                                TEMP_DIR=\$(mktemp -d)
+                                cp \$GOOGLE_APPLICATION_CREDENTIALS \$TEMP_DIR/gcp_key.json
+                                export GOOGLE_APPLICATION_CREDENTIALS=\$TEMP_DIR/gcp_key.json
+                                
                                 terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars
-                                echo "\nTerraform Outputs:"
-                                terraform show -json tfplan | jq '.planned_values.outputs'
+                                
+                                rm -rf \$TEMP_DIR
                             """
                             archiveArtifacts artifacts: 'tfplan'
                         }
@@ -135,17 +110,22 @@ pipeline {
                     if (params.environment == 'main') {
                         echo "Manual approval required for ${env.DEPLOYMENT_ENV} environment."
                         input message: "Approve Terraform Apply to ${env.DEPLOYMENT_ENV} Environment?", ok: 'Proceed with Apply'
-                    } else {
-                        echo "Auto-applying to ${env.DEPLOYMENT_ENV} environment."
                     }
 
                     withCredentials([file(credentialsId: env.TARGET_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         dir('terraform') {
                             sh """
+                                TEMP_DIR=\$(mktemp -d)
+                                cp \$GOOGLE_APPLICATION_CREDENTIALS \$TEMP_DIR/gcp_key.json
+                                export GOOGLE_APPLICATION_CREDENTIALS=\$TEMP_DIR/gcp_key.json
+                                
                                 echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
-                                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                                gcloud auth activate-service-account --key-file=\$GOOGLE_APPLICATION_CREDENTIALS
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
                                 terraform apply tfplan
+                                
+                                # Clean up
+                                rm -rf \$TEMP_DIR
                             """
                         }
                     }
@@ -156,14 +136,12 @@ pipeline {
     post {
         failure {
             script {
-                echo "Terraform Pipeline Failed for ${DEPLOYMENT_ENV} Environment!" // Dynamic failure message
-                // TODO: Add failure notifications (e.g., email, Slack)
+                echo "Pipeline failed for ${DEPLOYMENT_ENV} environment"
             }
         }
         success {
             script {
-                echo "Terraform Pipeline Succeeded for ${DEPLOYMENT_ENV} Environment!" // Dynamic success message
-                // TODO: Add success notifications (e.g., email, Slack)
+                echo "Pipeline succeeded for ${DEPLOYMENT_ENV} environment"
             }
         }
     }
