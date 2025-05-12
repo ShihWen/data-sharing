@@ -5,15 +5,12 @@ terraform_state_bucket_name = "terraform-state-bucket-project-data-sharing" # Yo
 
 # Add values for other variables used in main.tf if needed
 # bucket_name = "test-githubdemo-bucket-dev-001" # Optional: specify a different name for dev
-# instance_type = "e2-medium"
 
-# New dataset IDs for dev
-sales_dataset_id              = "sales_data_dev"
-marketing_dataset_id          = "marketing_data_dev"
-deployment_env                = "dev"
+deployment_env = "dev"
 
+# Map of variable names to actual dataset IDs
+# The keys here must match the dataset_id_var_name values in your schema YAML files
 _dynamic_dataset_ids = {
-  "sales_dataset_id"     = "sales_data_dev"
-  "marketing_dataset_id" = "marketing_data_dev"
-  # Add any other dataset_id variable name and its value here
+  sales_dataset_id     = "sales_data_dev"      # Matches dataset_id_var_name in orders.yaml
+  marketing_dataset_id = "marketing_data_dev"   # For marketing tables
 }
