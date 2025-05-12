@@ -12,13 +12,13 @@ locals {
 
   # Debug: Print the first file content if any exists
   _debug_first_file_content = length(local.table_schema_files) > 0 ? yamldecode(file("${local._debug_schema_path}/${tolist(local.table_schema_files)[0]}")) : {
-    dataset_id_var_name = null
-    table_id = null
+    dataset_id_var_name = ""
+    table_id = ""
     schema = []
-    description = null
+    description = ""
     labels = {}
-    clustering = null
-    time_partitioning = null
+    clustering = []
+    time_partitioning = {}
   }
 
   # Create a map of table configurations from the YAML files
