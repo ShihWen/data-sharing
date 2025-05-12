@@ -67,6 +67,9 @@ locals {
 
   # Check if any tables should be created
   should_create_tables = length(local.table_configs) > 0
+  
+  # Define environment-specific settings
+  is_prod = var.deployment_env == "prod"
 }
 
 # Output debug information
@@ -135,7 +138,7 @@ resource "google_bigquery_table" "this" {
 
   clustering = try(each.value.config.clustering, null)
 
-  deletion_protection = var.deployment_env == "prod" ? true : false
+  deletion_protection = local.is_prod ? true : false
 
   depends_on = [
     null_resource.schema_validation,
@@ -144,7 +147,7 @@ resource "google_bigquery_table" "this" {
   ]
 
   lifecycle {
-    prevent_destroy = var.deployment_env == "prod"
+    prevent_destroy = local.is_prod
   }
 }
 

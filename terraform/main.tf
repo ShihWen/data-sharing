@@ -25,35 +25,6 @@ resource "google_storage_bucket" "my-bucket" {
   # Add other resource configurations here, using variables as needed
 }
 
-# Create BigQuery datasets
-resource "google_bigquery_dataset" "my_dataset_sales" {
-  dataset_id    = var.sales_dataset_id
-  friendly_name = "Sales Data"
-  description   = "Dataset for sales related information"
-  location      = var.gcp_region
-  project       = var.gcp_project_id
-
-  labels = {
-    env                        = var.deployment_env
-    team                       = "analytics"
-    goog-terraform-provisioned = "true"
-  }
-}
-
-resource "google_bigquery_dataset" "my_dataset_marketing" {
-  dataset_id    = var.marketing_dataset_id
-  friendly_name = "Marketing Data"
-  description   = "Dataset for marketing campaigns and leads"
-  location      = var.gcp_region
-  project       = var.gcp_project_id
-
-  labels = {
-    env                        = var.deployment_env
-    team                       = "marketing"
-    goog-terraform-provisioned = "true"
-  }
-}
-
 # Include the BigQuery tables module
 module "bigquery_tables" {
   source = "./bigquery_tables"
