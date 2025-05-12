@@ -64,6 +64,9 @@ pipeline {
                             sh """
                                 gcloud auth activate-service-account --key-file=tmp_sa_key.json
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
+                                export GOOGLE_APPLICATION_CREDENTIALS=\$PWD/tmp_sa_key.json
+                                export GOOGLE_CLOUD_KEYFILE_JSON=\$PWD/tmp_sa_key.json
+                                export GOOGLE_CREDENTIALS=\$(cat \$PWD/tmp_sa_key.json)
                                 terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state
                             """
                             sh 'rm -f tmp_sa_key.json'
