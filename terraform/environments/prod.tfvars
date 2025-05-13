@@ -2,6 +2,7 @@
 
 gcp_project_id          = "open-data-v2-cicd-prod" # Your PROD GCP Project ID
 terraform_state_bucket_name = "terraform-state-bucket-project-data-sharing-prod" # Your PROD GCS bucket for Terraform state
+deployment_env = "prod"
 
 # Add values for other variables used in main.tf if needed
 # bucket_name = "test-githubdemo-bucket-prod-001" # Optional: specify a different name for prod
