@@ -11,7 +11,7 @@ pipeline {
     environment {
         // --- DEFINE ALL ENVIRONMENT-SPECIFIC VALUES ---
         DEV_GCP_PROJECT_ID = 'open-data-v2-cicd'
-        DEV_TF_STATE_BUCKET = 'terraform-state-bucket-project-data-sharing'
+        DEV_TF_STATE_BUCKET = 'terraform-state-data-sharing-dev-new'
         DEV_SA_CREDENTIAL_ID = 'gcp-sa-dev'
         DEV_SERVICE_ACCOUNT_EMAIL = 'jenkins-tf-dev@open-data-v2-cicd.iam.gserviceaccount.com'
 
