@@ -62,11 +62,7 @@ pipeline {
                         dir('terraform') {
                             writeFile file: 'tmp_sa_key.json', text: readFile(SA_KEY_FILE)
                             sh """
-                                # Ensure we're in the terraform directory
-                                cd terraform
-                                
                                 # Write and secure the credentials file
-                                cp ../tmp_sa_key.json ./tmp_sa_key.json
                                 chmod 600 tmp_sa_key.json
                                 
                                 gcloud auth activate-service-account --key-file=tmp_sa_key.json
