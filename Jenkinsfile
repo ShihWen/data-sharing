@@ -75,12 +75,13 @@ pipeline {
                                 echo "Testing bucket access..."
                                 gcloud storage ls gs://${TARGET_TF_STATE_BUCKET}/ || true
                                 
-                                # Initialize Terraform with debug output
+                                # Initialize Terraform with debug output and force-copy for non-interactive migration
                                 echo "Running Terraform init..."
                                 GOOGLE_OAUTH_ACCESS_TOKEN=\$ACCESS_TOKEN TF_LOG=DEBUG terraform init \\
                                   -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" \\
                                   -backend-config="access_token=\$ACCESS_TOKEN" \\
-                                  -migrate-state
+                                  -migrate-state \\
+                                  -force-copy
                                 
                                 # Clean up
                                 rm -f tmp_sa_key.json
