@@ -106,7 +106,7 @@ pipeline {
                             writeFile file: 'tmp_sa_key.json', text: readFile(SA_KEY_FILE)
                             sh """
                                 export GOOGLE_APPLICATION_CREDENTIALS=\$PWD/tmp_sa_key.json
-                                terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars
+                                terraform plan -out=tfplan -var-file=environments/${env.DEPLOYMENT_ENV}.tfvars -var="deployment_env=${env.DEPLOYMENT_ENV}"
                             """
                             sh 'rm -f tmp_sa_key.json'
                             archiveArtifacts artifacts: 'tfplan'
