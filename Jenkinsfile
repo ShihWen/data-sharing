@@ -79,9 +79,22 @@ pipeline {
                                 echo "Authenticating with service account: ${env.TARGET_SERVICE_ACCOUNT_EMAIL}"
                                 gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
+                                
+                                # Get access token for Terraform backend authentication
+                                ACCESS_TOKEN=\$(gcloud auth print-access-token)
+                                
+                                # Test bucket access
                                 gcloud storage ls gs://${env.TARGET_TF_STATE_BUCKET}
                             """
-                            sh 'terraform init -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" -migrate-state'
+                            
+                            // Initialize Terraform with access token
+                            sh """
+                                GOOGLE_OAUTH_ACCESS_TOKEN=\$(gcloud auth print-access-token) terraform init \\
+                                  -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" \\
+                                  -backend-config="prefix=terraform/state" \\
+                                  -backend-config="access_token=\$(gcloud auth print-access-token)" \\
+                                  -migrate-state
+                            """
                         }
                     }
                 }
