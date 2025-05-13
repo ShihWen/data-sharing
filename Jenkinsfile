@@ -62,6 +62,9 @@ pipeline {
                         dir('terraform') {
                             writeFile file: 'tmp_sa_key.json', text: readFile(SA_KEY_FILE)
                             sh """
+                                # Write and secure the credentials file
+                                chmod 600 tmp_sa_key.json
+                                
                                 gcloud auth activate-service-account --key-file=tmp_sa_key.json
                                 gcloud config set project ${env.TARGET_GCP_PROJECT_ID}
                                 
@@ -78,8 +81,10 @@ pipeline {
                                 TF_LOG=DEBUG terraform init \\
                                   -backend-config="bucket=${TARGET_TF_STATE_BUCKET}" \\
                                   -migrate-state
+                                
+                                # Clean up
+                                rm -f tmp_sa_key.json
                             """
-                            sh 'rm -f tmp_sa_key.json'
                         }
                     }
                 }

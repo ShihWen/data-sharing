@@ -6,5 +6,6 @@ terraform {
 
     prefix = "terraform/state" # Shared path inside the bucket
     region = "asia-east1" # Set region here if it's the same for all environments
+    credentials = "tmp_sa_key.json"
   }
 }
