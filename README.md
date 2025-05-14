@@ -85,11 +85,32 @@ The Jenkins pipeline:
          special_group: "projectReaders"
    ```
 
-2. **Deploy the changes**:
+2. **Update the `dataset_ids` Mapping**:
+   - Edit `terraform/bigquery_tables/main.tf`.
+   - Add a new entry to the `dataset_ids` map in the `locals` block for the new dataset.
+
+   Example:
+   ```hcl
+   locals {
+     dataset_ids = {
+       "data_sharing_dataset_id" = var.data_sharing_dataset_id
+       "analytics_dataset_id"    = var.analytics_dataset_id
+       "new_dataset_id"          = var.new_dataset_id  # Add this line
+     }
+   }
+   ```
+
+3. **Declare the New Variable**:
+   - Ensure the new dataset ID variable is declared in `variables.tf` within the `bigquery_tables` module.
+
+4. **Pass the Variable**:
+   - Update the root `main.tf` to pass the new dataset ID to the `bigquery_tables` module.
+
+5. **Deploy the Changes**:
    - Run `terraform plan` and `terraform apply` to deploy the new dataset.
 
 ### Adding a New Table
-1. **Create a YAML configuration file**:
+1. **Create a YAML Configuration File**:
    - Navigate to `terraform/bigquery_tables/<dataset_name>/`.
    - Create a new YAML file for the table with the following fields:
      - `dataset_id_var_name`: The variable name for the dataset ID.
@@ -102,7 +123,7 @@ The Jenkins pipeline:
 
    Example:
    ```yaml
-   dataset_id_var_name: "new_dataset_id"
+   dataset_id_var_name: "data_sharing_dataset_id"
    table_id: "new_table"
    description: "Description of the new table"
    schema:
@@ -118,7 +139,11 @@ The Jenkins pipeline:
      purpose: "new_purpose"
    ```
 
-2. **Deploy the changes**:
-   - Run `terraform plan` and `terraform apply` to deploy the new table.
+2. **Ensure the Dataset ID Variable is Declared**:
+   - Make sure the dataset ID variable referenced in `dataset_id_var_name` is declared in `variables.tf`.
+
+3. **Deploy the Changes**:
+   - Run `terraform plan` to ensure the configuration is correct and no errors occur.
+   - Run `terraform apply` to deploy the new table.
 
 These steps ensure that new datasets and tables are added following the infrastructure-as-code best practices, allowing for easy management and scalability.
