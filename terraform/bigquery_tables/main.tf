@@ -42,12 +42,8 @@ resource "google_bigquery_table" "tables" {
     }
   }
 
-  dynamic "clustering" {
-    for_each = lookup(each.value, "clustering", []) != null ? [each.value.clustering] : []
-    content {
-      fields = clustering.value
-    }
-  }
+  # Directly assign clustering if it exists
+  clustering = lookup(each.value, "clustering", null)
 
   schema = jsonencode([
     for field in each.value.schema : {
