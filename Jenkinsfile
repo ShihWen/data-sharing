@@ -1,8 +1,10 @@
 pipeline {
     agent any
     
-    parameters {
-        choice(name: 'BRANCH', choices: ['dev', 'main'], description: 'Select branch to build (dev or main)')
+    parameters { // Added parameters section
+        choice(name: 'environment',
+               choices: ['dev', 'main'], // Allowed values for the parameter
+               description: 'Select the deployment environment')
     }
     
     tools {
@@ -17,17 +19,9 @@ pipeline {
     }
     
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                script {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "refs/heads/${params.BRANCH}"]],
-                        userRemoteConfigs: [[
-                            url: 'https://github.com/unhumanwu/data-sharing.git'
-                        ]]
-                    ])
-                }
+                checkout scm
             }
         }
         
