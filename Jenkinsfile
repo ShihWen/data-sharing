@@ -76,7 +76,11 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    sh 'terraform plan -out=tfplan'
+                    sh '''
+                        terraform plan \
+                            -var="project_id=${DEV_GCP_PROJECT_ID}" \
+                            -out=tfplan
+                    '''
                     archiveArtifacts artifacts: 'tfplan'
                 }
             }
@@ -85,7 +89,9 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
-                    sh 'terraform apply tfplan'
+                    sh '''
+                        terraform apply tfplan
+                    '''
                 }
             }
         }
