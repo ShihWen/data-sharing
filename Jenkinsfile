@@ -29,7 +29,7 @@ pipeline {
                             gcloud config set project ${env.DEV_GCP_PROJECT_ID}
                             
                             echo "Running Terraform init..."
-                            terraform init -backend-config="bucket=${env.DEV_TF_STATE_BUCKET}"
+                            terraform init -backend-config="bucket=${env.DEV_TF_STATE_BUCKET}" -migrate-state
                         """
                     }
                 }
