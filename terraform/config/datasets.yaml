@@ -25,3 +25,15 @@ datasets:
         special_group: "projectOwners"
       - role: "READER"
         special_group: "projectReaders" 
+
+    - id: "brone_zone"
+    friendly_name: "Landing Dataset"
+    description: "Dataset for raw data"
+    labels:
+      environment: "development"
+      purpose: "raw_data"
+    access_rules:
+      - role: "OWNER"
+        special_group: "projectOwners"
+      - role: "READER"
+        special_group: "projectReaders" 
