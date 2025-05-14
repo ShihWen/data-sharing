@@ -1,4 +1,4 @@
- variable "project_id" {
+variable "project_id" {
   description = "The ID of the project where this dataset will be created"
   type        = string
 }

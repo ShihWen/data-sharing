@@ -3,35 +3,22 @@ provider "google" {
   region  = var.region
 }
 
-# Example dataset for data sharing
-module "sharing_dataset" {
-  source = "./bigquery_datasets"
+locals {
+  datasets = yamldecode(file("${path.module}/config/datasets.yaml")).datasets
+}
+
+module "bigquery_datasets" {
+  source   = "./bigquery_datasets"
+  for_each = { for ds in local.datasets : ds.id => ds }
 
   project_id  = var.project_id
-  dataset_id  = "data_sharing_dataset"
-  friendly_name = "Data Sharing Dataset"
-  description  = "Dataset for sharing data between different parties"
+  dataset_id  = each.value.id
+  friendly_name = each.value.friendly_name
+  description  = each.value.description
   location     = var.region
 
-  labels = {
-    environment = "development"
-    purpose     = "data_sharing"
-  }
-
-  access_rules = [
-    {
-      role          = "OWNER"
-      special_group = "projectOwners"
-    },
-    {
-      role          = "READER"
-      special_group = "projectReaders"
-    },
-    {
-      role          = "WRITER"
-      special_group = "projectWriters"
-    }
-  ]
+  labels = each.value.labels
+  access_rules = each.value.access_rules
 }
 
 # Just a test resource to verify our setup
