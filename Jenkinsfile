@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    parameters {
+        choice(name: 'environment', choices: ['main', 'dev'], description: 'Select the environment branch to build')
+    }
+    
     tools {
         terraform 'Terraform-v1.11.3'  // Make sure this matches your Jenkins tool configuration
     }
@@ -15,7 +19,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${params.environment}"]],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/unhumanwu/data-sharing.git'
+                    ]]
+                ])
             }
         }
         
