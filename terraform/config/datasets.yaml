@@ -26,7 +26,7 @@ datasets:
       - role: "READER"
         special_group: "projectReaders" 
 
-    - id: "brone_zone"
+  - id: "brone_zone"
     friendly_name: "Landing Dataset"
     description: "Dataset for raw data"
     labels:
