@@ -1,7 +1,6 @@
 terraform {
   backend "gcs" {
     prefix = "terraform/state"
-    region = "asia-east1"
   }
 
   required_providers {

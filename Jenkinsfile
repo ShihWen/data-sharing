@@ -37,6 +37,18 @@ pipeline {
                             gcloud config set project ${DEV_GCP_PROJECT_ID}
                         '''
                         
+                        // Create GCS bucket if it doesn't exist
+                        sh '''
+                            echo "Checking if GCS bucket exists..."
+                            if ! gsutil ls -b gs://${DEV_TF_STATE_BUCKET} > /dev/null 2>&1; then
+                                echo "Creating GCS bucket for Terraform state..."
+                                gsutil mb -p ${DEV_GCP_PROJECT_ID} -l us-central1 gs://${DEV_TF_STATE_BUCKET}
+                                gsutil versioning set on gs://${DEV_TF_STATE_BUCKET}
+                            else
+                                echo "GCS bucket already exists"
+                            fi
+                        '''
+                        
                         // List current auth and config for debugging
                         sh '''
                             echo "Current GCP Authentication:"
@@ -55,7 +67,7 @@ pipeline {
                     // Run terraform init with reconfigure flag
                     sh '''
                         echo "Running Terraform init..."
-                        terraform init -reconfigure -backend-config="bucket=${DEV_TF_STATE_BUCKET} -migrate-state"
+                        terraform init -reconfigure -backend-config="bucket=${DEV_TF_STATE_BUCKET}"
                     '''
                 }
             }
