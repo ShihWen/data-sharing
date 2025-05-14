@@ -43,24 +43,6 @@ Each environment:
 5. Create PR from `dev` to `main` for production deployment
 6. Production deployment requires manual approval
 
-## Local Development
-
-1. Set up GCP credentials:
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
-```
-
-2. Initialize Terraform:
-```bash
-cd terraform
-terraform init
-```
-
-3. Plan changes:
-```bash
-terraform plan -var-file=environments/dev.tfvars
-```
-
 ## CI/CD Pipeline
 
 The Jenkins pipeline:
