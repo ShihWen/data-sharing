@@ -36,9 +36,13 @@ pipeline {
         
         stage('Terraform Plan') {
             steps {
-                dir('terraform') {
-                        sh 'terraform plan'
-                }
+                sh 'terraform plan -out=tfplan'
+                archiveArtifacts artifacts: 'tfplan'
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                sh 'terraform apply tfplan'
             }
         }
     }
