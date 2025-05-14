@@ -21,9 +21,12 @@ module "bigquery_datasets" {
   access_rules = each.value.access_rules
 }
 
-# Just a test resource to verify our setup
-resource "google_storage_bucket" "test_bucket" {
-  name          = "test-bucket-${var.project_id}"
-  location      = var.region
-  force_destroy = true
+module "bigquery_tables" {
+  source = "./bigquery_tables"
+  
+  project_id = var.project_id
+  data_sharing_dataset_id = module.bigquery_datasets["data_sharing_dataset"].dataset_id
+  analytics_dataset_id = module.bigquery_datasets["analytics_dataset"].dataset_id
+
+  depends_on = [module.bigquery_datasets]
 } 
