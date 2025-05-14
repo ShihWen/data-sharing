@@ -1,0 +1,23 @@
+dataset_id_var_name: "brone_zone_id"
+table_id: "raw_table"
+description: "for testing"
+
+schema:
+  - {name: "user_id", type: "STRING", mode: "REQUIRED", description: "Unique identifier for the user"}
+  - {name: "email", type: "STRING", mode: "NULLABLE", description: "User's email address"}
+  - {name: "email2", type: "STRING", mode: "NULLABLE", description: "User's email address"}
+  - {name: "created_at", type: "TIMESTAMP", mode: "REQUIRED", description: "Timestamp when the user was created"}
+  - {name: "last_updated", type: "TIMESTAMP", mode: "NULLABLE", description: "Timestamp of the last update"}
+  - {name: "data_source", type: "STRING", mode: "REQUIRED", description: "Source system of the user data"}
+
+clustering:
+  - "data_source"
+
+time_partitioning:
+  type: "DAY"
+  field: "created_at"
+
+labels:
+  data_sensitivity: "low"
+  purpose: "test_pipeline"
+  environment: "development" 
