@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     parameters {
-        choice(name: 'environment', choices: ['main', 'dev'], description: 'Select the environment branch to build')
+        choice(name: 'BRANCH', choices: ['dev', 'main'], description: 'Select branch to build (dev or main)')
     }
     
     tools {
@@ -19,13 +19,15 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${params.environment}"]],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/unhumanwu/data-sharing.git'
-                    ]]
-                ])
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "refs/heads/${params.BRANCH}"]],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/unhumanwu/data-sharing.git'
+                        ]]
+                    ])
+                }
             }
         }
         
