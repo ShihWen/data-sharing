@@ -1,7 +1,8 @@
 locals {
-  table_files = fileset(path.module, "*/*/*.yaml")
+  # Update the file pattern to be more specific
+  table_files = fileset(path.module, "**/*.yaml")
   table_configs = {
-    for file in local.table_files : file => yamldecode(file(file))
+    for file in local.table_files : basename(file) => yamldecode(file("${path.module}/${file}"))
   }
   
   # Map dataset variable names to their values
@@ -9,6 +10,17 @@ locals {
     "data_sharing_dataset_id" = var.data_sharing_dataset_id
     "analytics_dataset_id"    = var.analytics_dataset_id
   }
+}
+
+# Add output for debugging
+output "found_table_files" {
+  value = local.table_files
+  description = "List of table YAML files found"
+}
+
+output "table_configs" {
+  value = local.table_configs
+  description = "Parsed table configurations"
 }
 
 resource "google_bigquery_table" "tables" {
