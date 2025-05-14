@@ -16,6 +16,7 @@ pipeline {
         DEV_GCP_PROJECT_ID = 'open-data-v2-cicd'
         DEV_TF_STATE_BUCKET = 'terraform-state-data-sharing-dev-new'
         DEV_SA_CREDENTIAL_ID = 'gcp-sa-dev'  // This will be configured in Jenkins credentials
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
     }
     
     stages {
@@ -27,27 +28,16 @@ pipeline {
         
         stage('Terraform Init') {
             steps {
-                dir('terraform') {
-                    withCredentials([file(credentialsId: env.DEV_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                        sh """
-                            echo "Authenticating with GCP..."
-                            gcloud auth activate-service-account --key-file=\$GOOGLE_APPLICATION_CREDENTIALS
-                            gcloud config set project ${env.DEV_GCP_PROJECT_ID}
-                            
-                            echo "Running Terraform init..."
-                            terraform init -backend-config="bucket=${env.DEV_TF_STATE_BUCKET}" -migrate-state
-                        """
-                    }
-                }
+                sh 'gcloud auth list'
+                sh 'gcloud config list'
+                sh 'terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -migrate-state'
             }
         }
         
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    withCredentials([file(credentialsId: env.DEV_SA_CREDENTIAL_ID, variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         sh 'terraform plan'
-                    }
                 }
             }
         }
