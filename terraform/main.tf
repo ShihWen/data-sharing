@@ -27,6 +27,6 @@ module "bigquery_tables" {
   project_id = var.project_id
   data_sharing_dataset_id = module.bigquery_datasets["data_sharing_dataset"].dataset_id
   analytics_dataset_id = module.bigquery_datasets["analytics_dataset"].dataset_id
-
+  brone_zone_id = module.bigquery_datasets["brone_zone"].dataset_id
   depends_on = [module.bigquery_datasets]
 } 

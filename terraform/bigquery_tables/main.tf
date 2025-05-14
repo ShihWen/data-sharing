@@ -9,6 +9,7 @@ locals {
   dataset_ids = {
     "data_sharing_dataset_id" = var.data_sharing_dataset_id
     "analytics_dataset_id"    = var.analytics_dataset_id
+    "brone_zone_id"   = var.brone_zone_id
   }
 }
 
