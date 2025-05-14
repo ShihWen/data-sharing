@@ -35,15 +35,19 @@ resource "google_bigquery_table" "tables" {
   labels = each.value.labels
 
   dynamic "time_partitioning" {
-    for_each = each.value.time_partitioning != null ? [each.value.time_partitioning] : []
+    for_each = lookup(each.value, "time_partitioning", []) != null ? [each.value.time_partitioning] : []
     content {
       type  = time_partitioning.value.type
       field = time_partitioning.value.field
     }
   }
 
-  # Direct clustering configuration
-  clustering = each.value.clustering
+  dynamic "clustering" {
+    for_each = lookup(each.value, "clustering", []) != null ? [each.value.clustering] : []
+    content {
+      fields = clustering.value
+    }
+  }
 
   schema = jsonencode([
     for field in each.value.schema : {
