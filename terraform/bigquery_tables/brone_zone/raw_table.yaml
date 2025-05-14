@@ -5,6 +5,7 @@ description: "for testing"
 schema:
   - {name: "user_id", type: "STRING", mode: "REQUIRED", description: "Unique identifier for the user"}
   - {name: "email", type: "STRING", mode: "NULLABLE", description: "User's email address"}
+  - {name: "email2", type: "STRING", mode: "NULLABLE", description: "User's email address"}
   - {name: "created_at", type: "TIMESTAMP", mode: "REQUIRED", description: "Timestamp when the user was created"}
   - {name: "last_updated", type: "TIMESTAMP", mode: "NULLABLE", description: "Timestamp of the last update"}
   - {name: "data_source", type: "STRING", mode: "REQUIRED", description: "Source system of the user data"}
