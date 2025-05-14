@@ -1,12 +1,6 @@
 pipeline {
     agent any
     
-    parameters { // Added parameters section
-        choice(name: 'environment',
-               choices: ['dev', 'main'], // Allowed values for the parameter
-               description: 'Select the deployment environment')
-    }
-    
     tools {
         terraform 'Terraform-v1.11.3'  // Make sure this matches your Jenkins tool configuration
     }
