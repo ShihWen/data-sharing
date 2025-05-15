@@ -37,6 +37,7 @@ terraform.rc
 *.tmp
 *.bak
 *.swp
+tfplan
 
 # credentials
 sa-key-1.json
