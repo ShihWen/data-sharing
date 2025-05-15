@@ -12,8 +12,3 @@ variable "analytics_dataset_id" {
   description = "The ID of the analytics dataset"
   type        = string
 }
-
-variable "brone_zone_id" {
-  description = "The ID of the brone zone dataset"
-  type        = string
-}
