@@ -4,11 +4,11 @@ locals {
   table_configs = {
     for file in local.table_files : basename(file) => yamldecode(file("${path.module}/${file}"))
   }
-  
+
   # Map dataset variable names to their values
   dataset_ids = {
-    "data_sharing_dataset_id" = var.data_sharing_dataset_id
-    "analytics_dataset_id"    = var.analytics_dataset_id
+    "data_sharing_dataset_id"   = var.data_sharing_dataset_id
+    "analytics_dataset_id"      = var.analytics_dataset_id
     "tpe_mrt_bronze_dataset_id" = var.tpe_mrt_bronze_dataset_id
     "tpe_mrt_silver_dataset_id" = var.tpe_mrt_silver_dataset_id
     "tpe_mrt_gold_dataset_id"   = var.tpe_mrt_gold_dataset_id
@@ -17,21 +17,21 @@ locals {
 
 # Add output for debugging
 output "found_table_files" {
-  value = local.table_files
+  value       = local.table_files
   description = "List of table YAML files found"
 }
 
 output "table_configs" {
-  value = local.table_configs
+  value       = local.table_configs
   description = "Parsed table configurations"
 }
 
 resource "google_bigquery_table" "tables" {
   for_each = local.table_configs
 
-  dataset_id = local.dataset_ids[each.value.dataset_id_var_name]
-  table_id   = each.value.table_id
-  project    = var.project_id
+  dataset_id  = local.dataset_ids[each.value.dataset_id_var_name]
+  table_id    = each.value.table_id
+  project     = var.project_id
   description = each.value.description
 
   labels = each.value.labels
