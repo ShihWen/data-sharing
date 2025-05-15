@@ -33,6 +33,8 @@ resource "google_bigquery_table" "tables" {
 
   labels = each.value.labels
 
+  deletion_protection = false
+
   dynamic "time_partitioning" {
     for_each = contains(keys(each.value), "time_partitioning") ? [each.value.time_partitioning] : []
     content {
