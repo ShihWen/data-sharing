@@ -12,3 +12,18 @@ variable "analytics_dataset_id" {
   description = "The ID of the analytics dataset"
   type        = string
 }
+
+variable "tpe_mrt_bronze_dataset_id" {
+  description = "The ID of the Taipei MRT bronze dataset"
+  type        = string
+}
+
+variable "tpe_mrt_silver_dataset_id" {
+  description = "The ID of the Taipei MRT silver dataset"
+  type        = string
+}
+
+variable "tpe_mrt_gold_dataset_id" {
+  description = "The ID of the Taipei MRT gold dataset"
+  type        = string
+}
