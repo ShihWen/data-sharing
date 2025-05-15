@@ -28,14 +28,17 @@ datasets:
 
 
   - id: "tpe_mrt_bronze"
-    friendly_name: "Taipei MRT traffic data (bronze)"
-    description: "Raw data from Taipei MRT traffic "
+    friendly_name: "Taipei MRT Bronze"
+    description: "Raw data from Taipei MRT including traffic, station, and exit information"
     labels:
       environment: "development"
+      domain: "tpe_mrt"
+      data_tier: "bronze"
+      owner: "data_engineering"
     access_rules:
       # Data Engineers - Full access for pipeline management
       - role: "WRITER"
-        group_email: "tpe-mrt-engineers@company.com"
+        group_by_email: "tpe-mrt-engineers@company.com"
       
       # Service Account for data ingestion
       - role: "WRITER"
@@ -47,18 +50,21 @@ datasets:
 
 
   - id: "tpe_mrt_silver"
-    friendly_name: "Taipei MRT traffic data (silver)"
-    description: "Processed data from Taipei MRT traffic (silver)"
+    friendly_name: "Taipei MRT Silver"
+    description: "Cleaned and validated Taipei MRT data"
     labels:
       environment: "development"
+      domain: "tpe_mrt"
+      data_tier: "silver"
+      owner: "data_engineering"
     access_rules:
       # Data Engineers - Full access for data cleaning
       - role: "WRITER"
-        group_email: "tpe-mrt-engineers@company.com"
+        group_by_email: "tpe-mrt-engineers@company.com"
       
       # Data Scientists - Read access for feature engineering
       - role: "READER"
-        group_email: "tpe-mrt-scientists@company.com"
+        group_by_email: "tpe-mrt-scientists@company.com"
       
       # Project owners
       - role: "OWNER"
@@ -66,26 +72,29 @@ datasets:
 
 
   - id: "tpe_mrt_gold"
-    friendly_name: "Taipei MRT traffic data (gold)"
-    description: "Aggregated data from Taipei MRT traffic (gold)"
+    friendly_name: "Taipei MRT Gold"
+    description: "Analytics-ready Taipei MRT data for business consumption"
     labels:
       environment: "development"
+      domain: "tpe_mrt"
+      data_tier: "gold"
+      owner: "data_engineering"
     access_rules:
       # Data Engineers - Maintain aggregations
       - role: "WRITER"
-        group_email: "tpe-mrt-engineers@company.com"
+        group_by_email: "tpe-mrt-engineers@company.com"
       
       # Data Scientists - Read for analysis
       - role: "READER"
-        group_email: "tpe-mrt-scientists@company.com"
+        group_by_email: "tpe-mrt-scientists@company.com"
       
       # Analysts - Read for reporting
       - role: "READER"
-        group_email: "tpe-mrt-analysts@company.com"
+        group_by_email: "tpe-mrt-analysts@company.com"
       
       # Business Users - Read for insights
       - role: "READER"
-        group_email: "tpe-mrt-business@company.com"
+        group_by_email: "tpe-mrt-business@company.com"
       
       # Dashboard Service Account
       - role: "READER"

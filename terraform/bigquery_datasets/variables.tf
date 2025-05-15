@@ -39,23 +39,16 @@ variable "labels" {
 variable "access_rules" {
   description = "An array of access rules for the dataset"
   type = list(object({
-    role           = string
-    user_by_email  = optional(string)
-    group_by_email = optional(string)
-    special_group  = optional(string)
+    role                  = string
+    user_by_email         = optional(string)
+    group_by_email        = optional(string)
+    special_group         = optional(string)
+    service_account_email = optional(string)
   }))
   default = [
     {
       role          = "OWNER"
       special_group = "projectOwners"
-    },
-    {
-      role          = "READER"
-      special_group = "projectReaders"
-    },
-    {
-      role          = "WRITER"
-      special_group = "projectWriters"
     }
   ]
 }
