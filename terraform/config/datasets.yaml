@@ -36,17 +36,17 @@ datasets:
       data_tier: "bronze"
       owner: "data_engineering"
     access_rules:
-      # Data Engineers - Full access for pipeline management
-      - role: "WRITER"
-        group_by_email: "tpe-mrt-engineers@company.com"
-      
-      # Service Account for data ingestion
-      - role: "WRITER"
-        service_account_email: "tpe-mrt-ingestion-sa@project.iam.gserviceaccount.com"
-      
       # Project owners always have access
       - role: "OWNER"
         special_group: "projectOwners"
+      
+      # Project writers have write access
+      - role: "WRITER"
+        special_group: "projectWriters"
+      
+      # Project readers have read access
+      - role: "READER"
+        special_group: "projectReaders"
 
 
   - id: "tpe_mrt_silver"
@@ -58,17 +58,12 @@ datasets:
       data_tier: "silver"
       owner: "data_engineering"
     access_rules:
-      # Data Engineers - Full access for data cleaning
-      - role: "WRITER"
-        group_by_email: "tpe-mrt-engineers@company.com"
-      
-      # Data Scientists - Read access for feature engineering
-      - role: "READER"
-        group_by_email: "tpe-mrt-scientists@company.com"
-      
-      # Project owners
       - role: "OWNER"
         special_group: "projectOwners"
+      - role: "WRITER"
+        special_group: "projectWriters"
+      - role: "READER"
+        special_group: "projectReaders"
 
 
   - id: "tpe_mrt_gold"
@@ -80,27 +75,10 @@ datasets:
       data_tier: "gold"
       owner: "data_engineering"
     access_rules:
-      # Data Engineers - Maintain aggregations
-      - role: "WRITER"
-        group_by_email: "tpe-mrt-engineers@company.com"
-      
-      # Data Scientists - Read for analysis
-      - role: "READER"
-        group_by_email: "tpe-mrt-scientists@company.com"
-      
-      # Analysts - Read for reporting
-      - role: "READER"
-        group_by_email: "tpe-mrt-analysts@company.com"
-      
-      # Business Users - Read for insights
-      - role: "READER"
-        group_by_email: "tpe-mrt-business@company.com"
-      
-      # Dashboard Service Account
-      - role: "READER"
-        service_account_email: "tpe-mrt-dashboard-sa@project.iam.gserviceaccount.com"
-      
-      # Project owners
       - role: "OWNER"
         special_group: "projectOwners"
+      - role: "WRITER"
+        special_group: "projectWriters"
+      - role: "READER"
+        special_group: "projectReaders"
 
