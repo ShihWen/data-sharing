@@ -10,6 +10,8 @@ pipeline {
         DEV_TF_STATE_BUCKET = 'terraform-state-data-sharing-dev-new'
         DEV_SA_CREDENTIAL_ID = 'gcp-sa-dev'  // This will be configured in Jenkins credentials
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
+        AWS_CREDENTIALS = credentials('aws-s3-credentials')  // Add this credential in Jenkins
+        S3_BUCKET = 'online-data-lake-thirty-three'  // You might want to make this configurable per environment
     }
     
     stages {
@@ -73,6 +75,9 @@ pipeline {
                     sh '''
                         terraform plan \
                             -var="project_id=${DEV_GCP_PROJECT_ID}" \
+                            -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
+                            -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
+                            -var="s3_bucket=${S3_BUCKET}" \
                             -out=tfplan
                     '''
                     archiveArtifacts artifacts: 'tfplan'
