@@ -1,0 +1,23 @@
+table_id: "mrt_traffic"
+dataset_id_var_name: "tpe_mrt_bronze_dataset_id"
+description: "Raw MRT traffic data from S3"
+labels:
+  data_source: "s3"
+  data_type: "traffic"
+  tier: "bronze"
+
+# Partition by date for better query performance
+time_partitioning:
+  type: "DAY"
+  field: "dt"
+
+# Clustering helps with query performance
+# clustering:
+#   - "data_source"
+
+schema:  
+  - {name: "dt",       type: "DATE",    mode: "NULLABLE", description:"日期"}
+  - {name: "hour",     type: "INTEGER", mode: "NULLABLE", description:"小時"}
+  - {name: "entrance", type: "STRING",  mode: "NULLABLE", description:"進站站點代號"}
+  - {name: "exit",     type: "STRING",  mode: "NULLABLE", description:"出站站點代號"}
+  - {name: "traffic",  type: "INTEGER", mode: "NULLABLE", description:"人流"}

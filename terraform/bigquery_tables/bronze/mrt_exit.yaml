@@ -1,0 +1,25 @@
+table_id: "mrt_exit"
+dataset_id_var_name: "tpe_mrt_bronze_dataset_id"
+description: "Raw MRT station exit information from S3"
+labels:
+  data_source: "s3"
+  data_type: "exit"
+  tier: "bronze"
+
+schema:
+  - {name: "StationID",                  type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "ExitID",                     type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "LocationDescription",        type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "Stair",                      type: "BOOLEAN", mode: "NULLABLE", description: ""}
+  - {name: "Escalator",                  type: "INTEGER", mode: "NULLABLE", description: ""}
+  - {name: "Elevator",                   type: "BOOLEAN", mode: "NULLABLE", description: ""}
+  - {name: "SrcUpdateTime",              type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "UpdateTime",                 type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "VersionID",                  type: "INTEGER", mode: "NULLABLE", description: ""}
+  - {name: "StationName_Zh_tw",          type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationName_En",             type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "ExitName_Zh_tw",             type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "ExitName_En",                type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "ExitPosition_PositionLon",   type: "FLOAT",   mode: "NULLABLE", description: ""}
+  - {name: "ExitPosition_PositionLat",   type: "FLOAT",   mode: "NULLABLE", description: ""}
+  - {name: "ExitPosition_GeoHash",       type: "STRING",  mode: "NULLABLE", description: ""}

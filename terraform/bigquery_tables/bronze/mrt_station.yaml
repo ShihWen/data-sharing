@@ -1,0 +1,26 @@
+table_id: "mrt_station"
+dataset_id_var_name: "tpe_mrt_bronze_dataset_id"
+description: "Raw MRT station information from S3"
+labels:
+  data_source: "s3"
+  data_type: "station"
+  tier: "bronze"
+
+schema:
+  - {name: "StationUID",                   type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationID",                    type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationAddress",               type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "BikeAllowOnHoliday",           type: "BOOLEAN", mode: "NULLABLE", description: ""}
+  - {name: "SrcUpdateTime",                type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "UpdateTime",                   type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "VersionID",                    type: "INTEGER", mode: "NULLABLE", description: ""}
+  - {name: "LocationCity",                 type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "LocationCityCode",             type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "LocationTown",                 type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "LocationTownCode",             type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationName_Zh_tw",            type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationName_En",               type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationPosition_PositionLon",  type: "FLOAT",   mode: "NULLABLE", description: ""}
+  - {name: "StationPosition_PositionLat",  type: "FLOAT",   mode: "NULLABLE", description: ""}
+  - {name: "StationPosition_GeoHash",      type: "STRING",  mode: "NULLABLE", description: ""}
+
