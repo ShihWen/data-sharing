@@ -49,10 +49,11 @@ resource "google_bigquery_table" "tables" {
 
   schema = jsonencode([
     for field in each.value.schema : {
-      name        = field.name
-      type        = field.type
-      mode        = field.mode
-      description = field.description
+      name = field.name
+      type = field.type
+      mode = field.mode
+      # Only include description if it exists and is not empty
+      description = lookup(field, "description", "")
     }
   ])
 } 
