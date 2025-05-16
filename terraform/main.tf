@@ -33,8 +33,6 @@ module "bigquery_tables" {
   source = "./bigquery_tables"
 
   project_id                = var.project_id
-  data_sharing_dataset_id   = module.bigquery_datasets["data_sharing_dataset"].dataset_id
-  analytics_dataset_id      = module.bigquery_datasets["analytics_dataset"].dataset_id
   tpe_mrt_bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
   tpe_mrt_silver_dataset_id = module.bigquery_datasets["tpe_mrt_silver"].dataset_id
   tpe_mrt_gold_dataset_id   = module.bigquery_datasets["tpe_mrt_gold"].dataset_id
