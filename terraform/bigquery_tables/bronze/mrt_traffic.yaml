@@ -16,8 +16,8 @@ time_partitioning:
 #   - "data_source"
 
 schema:  
-  - {name: "dt",       type: "DATE",    mode: "NULLABLE", description:"日期"}
-  - {name: "hour",     type: "INTEGER", mode: "NULLABLE", description:"小時"}
-  - {name: "entrance", type: "STRING",  mode: "NULLABLE", description:"進站站點代號"}
-  - {name: "exit",     type: "STRING",  mode: "NULLABLE", description:"出站站點代號"}
-  - {name: "traffic",  type: "INTEGER", mode: "NULLABLE", description:"人流"}
+  - {name: "dt",       type: "DATE",    mode: "NULLABLE", description: "Date of the record (日期)"}
+  - {name: "hour",     type: "INTEGER", mode: "NULLABLE", description: "Hour of the day 0-23 (小時)"}
+  - {name: "entrance", type: "STRING",  mode: "NULLABLE", description: "Entry station code (進站站點代號)"}
+  - {name: "exit",     type: "STRING",  mode: "NULLABLE", description: "Exit station code (出站站點代號)"}
+  - {name: "traffic",  type: "INTEGER", mode: "NULLABLE", description: "Passenger count (人流)"}

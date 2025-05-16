@@ -7,19 +7,19 @@ labels:
   tier: "bronze"
 
 schema:
-  - {name: "StationID",                  type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "ExitID",                     type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "LocationDescription",        type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "Stair",                      type: "BOOLEAN", mode: "NULLABLE", description: ""}
-  - {name: "Escalator",                  type: "INTEGER", mode: "NULLABLE", description: ""}
-  - {name: "Elevator",                   type: "BOOLEAN", mode: "NULLABLE", description: ""}
-  - {name: "SrcUpdateTime",              type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "UpdateTime",                 type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "VersionID",                  type: "INTEGER", mode: "NULLABLE", description: ""}
-  - {name: "StationName_Zh_tw",          type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "StationName_En",             type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "ExitName_Zh_tw",             type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "ExitName_En",                type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "ExitPosition_PositionLon",   type: "FLOAT",   mode: "NULLABLE", description: ""}
-  - {name: "ExitPosition_PositionLat",   type: "FLOAT",   mode: "NULLABLE", description: ""}
-  - {name: "ExitPosition_GeoHash",       type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationID",                  type: "STRING",  mode: "NULLABLE", description: "Station code that this exit belongs to"}
+  - {name: "ExitID",                     type: "STRING",  mode: "NULLABLE", description: "Unique identifier for the exit"}
+  - {name: "LocationDescription",        type: "STRING",  mode: "NULLABLE", description: "Description of the exit location and nearby landmarks"}
+  - {name: "Stair",                      type: "BOOLEAN", mode: "NULLABLE", description: "Whether this exit has stairs"}
+  - {name: "Escalator",                  type: "INTEGER", mode: "NULLABLE", description: "Number of escalators at this exit"}
+  - {name: "Elevator",                   type: "BOOLEAN", mode: "NULLABLE", description: "Whether this exit has elevator access"}
+  - {name: "SrcUpdateTime",              type: "STRING",  mode: "NULLABLE", description: "Last update time from source system"}
+  - {name: "UpdateTime",                 type: "STRING",  mode: "NULLABLE", description: "Last update time in current system"}
+  - {name: "VersionID",                  type: "INTEGER", mode: "NULLABLE", description: "Version number of the record"}
+  - {name: "StationName_Zh_tw",          type: "STRING",  mode: "NULLABLE", description: "Station name in Traditional Chinese"}
+  - {name: "StationName_En",             type: "STRING",  mode: "NULLABLE", description: "Station name in English"}
+  - {name: "ExitName_Zh_tw",             type: "STRING",  mode: "NULLABLE", description: "Exit name/number in Traditional Chinese"}
+  - {name: "ExitName_En",                type: "STRING",  mode: "NULLABLE", description: "Exit name/number in English"}
+  - {name: "ExitPosition_PositionLon",   type: "FLOAT",   mode: "NULLABLE", description: "Exit longitude coordinate"}
+  - {name: "ExitPosition_PositionLat",   type: "FLOAT",   mode: "NULLABLE", description: "Exit latitude coordinate"}
+  - {name: "ExitPosition_GeoHash",       type: "STRING",  mode: "NULLABLE", description: "Geohash encoding of exit location"}

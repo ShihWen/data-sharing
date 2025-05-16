@@ -7,20 +7,20 @@ labels:
   tier: "bronze"
 
 schema:
-  - {name: "StationUID",                   type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "StationID",                    type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "StationAddress",               type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "BikeAllowOnHoliday",           type: "BOOLEAN", mode: "NULLABLE", description: ""}
-  - {name: "SrcUpdateTime",                type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "UpdateTime",                   type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "VersionID",                    type: "INTEGER", mode: "NULLABLE", description: ""}
-  - {name: "LocationCity",                 type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "LocationCityCode",             type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "LocationTown",                 type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "LocationTownCode",             type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "StationName_Zh_tw",            type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "StationName_En",               type: "STRING",  mode: "NULLABLE", description: ""}
-  - {name: "StationPosition_PositionLon",  type: "FLOAT",   mode: "NULLABLE", description: ""}
-  - {name: "StationPosition_PositionLat",  type: "FLOAT",   mode: "NULLABLE", description: ""}
-  - {name: "StationPosition_GeoHash",      type: "STRING",  mode: "NULLABLE", description: ""}
+  - {name: "StationUID",                   type: "STRING",  mode: "NULLABLE", description: "Unique identifier for the station"}
+  - {name: "StationID",                    type: "STRING",  mode: "NULLABLE", description: "Station code used in the MRT system"}
+  - {name: "StationAddress",               type: "STRING",  mode: "NULLABLE", description: "Physical address of the station"}
+  - {name: "BikeAllowOnHoliday",           type: "BOOLEAN", mode: "NULLABLE", description: "Whether bikes are allowed on holidays"}
+  - {name: "SrcUpdateTime",                type: "STRING",  mode: "NULLABLE", description: "Last update time from source system"}
+  - {name: "UpdateTime",                   type: "STRING",  mode: "NULLABLE", description: "Last update time in current system"}
+  - {name: "VersionID",                    type: "INTEGER", mode: "NULLABLE", description: "Version number of the record"}
+  - {name: "LocationCity",                 type: "STRING",  mode: "NULLABLE", description: "City where the station is located"}
+  - {name: "LocationCityCode",             type: "STRING",  mode: "NULLABLE", description: "City code for the station location"}
+  - {name: "LocationTown",                 type: "STRING",  mode: "NULLABLE", description: "Town/District where the station is located"}
+  - {name: "LocationTownCode",             type: "STRING",  mode: "NULLABLE", description: "Town/District code for the station location"}
+  - {name: "StationName_Zh_tw",            type: "STRING",  mode: "NULLABLE", description: "Station name in Traditional Chinese"}
+  - {name: "StationName_En",               type: "STRING",  mode: "NULLABLE", description: "Station name in English"}
+  - {name: "StationPosition_PositionLon",  type: "FLOAT",   mode: "NULLABLE", description: "Station longitude coordinate"}
+  - {name: "StationPosition_PositionLat",  type: "FLOAT",   mode: "NULLABLE", description: "Station latitude coordinate"}
+  - {name: "StationPosition_GeoHash",      type: "STRING",  mode: "NULLABLE", description: "Geohash encoding of station location"}
 
