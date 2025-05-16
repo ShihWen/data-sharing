@@ -24,7 +24,7 @@ variable "bronze_dataset_id" {
 }
 
 variable "schedule" {
-  description = "Schedule for the transfer job in cron format"
+  description = "Schedule for the transfer job (in UTC). Format: 'every DAYOFWEEK HH:MM' or 'every N hours' or 'every day HH:MM'"
   type        = string
-  default     = "0 0 * * 0"  # Weekly on Sunday at midnight
+  default     = "every saturday 00:30"  # Runs at 00:30 UTC every Saturday
 } 

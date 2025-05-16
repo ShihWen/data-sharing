@@ -15,7 +15,7 @@ resource "google_secret_manager_secret" "aws_credentials" {
   project   = var.project_id
 
   replication {
-    automatic = true
+    auto {}  # Use auto instead of automatic = true
   }
 
   depends_on = [google_project_service.enable_secretmanager]
@@ -40,7 +40,7 @@ resource "google_bigquery_data_transfer_config" "mrt_traffic_transfer" {
   data_source_id        = "amazon_s3"
   schedule              = var.schedule
   destination_dataset_id = var.bronze_dataset_id
-  disabled              = false  # Ensure transfer is enabled
+  disabled              = false
 
   params = {
     destination_table_name_template = "mrt_traffic"
@@ -49,10 +49,8 @@ resource "google_bigquery_data_transfer_config" "mrt_traffic_transfer" {
     secret_access_key              = var.aws_secret_key
     file_format                    = "PARQUET"
     max_bad_records               = 0
-    write_disposition             = "WRITE_APPEND"  # Append new data
+    write_disposition             = "WRITE_APPEND"
   }
-
-  notification_pubsub_topic = null  # Optional: Add a Pub/Sub topic for notifications
 }
 
 # Transfer job for MRT Station data
