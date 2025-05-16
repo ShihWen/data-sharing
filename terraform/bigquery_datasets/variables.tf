@@ -1,5 +1,10 @@
 variable "project_id" {
-  description = "The ID of the project where this dataset will be created"
+  description = "The GCP project ID"
+  type        = string
+}
+
+variable "project_number" {
+  description = "The GCP project number"
   type        = string
 }
 

@@ -17,4 +17,10 @@ resource "google_bigquery_dataset" "main" {
       special_group  = lookup(access.value, "special_group", null)
     }
   }
+
+  # Add explicit access for BigQuery Data Transfer Service account
+  access {
+    role          = "WRITER"
+    user_by_email = "service-${var.project_number}@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com"
+  }
 } 

@@ -3,6 +3,11 @@ provider "google" {
   region  = var.region
 }
 
+# Get project information
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
 locals {
   datasets = yamldecode(file("${path.module}/config/datasets.yaml")).datasets
 }
@@ -11,12 +16,13 @@ module "bigquery_datasets" {
   source   = "./bigquery_datasets"
   for_each = { for ds in local.datasets : ds.id => ds }
 
-  project_id    = var.project_id
-  dataset_id    = each.value.id
-  friendly_name = each.value.friendly_name
-  description   = each.value.description
-  location      = var.region
-  labels        = each.value.labels
+  project_id      = var.project_id
+  project_number  = data.google_project.current.number
+  dataset_id      = each.value.id
+  friendly_name   = each.value.friendly_name
+  description     = each.value.description
+  location        = var.region
+  labels          = each.value.labels
 
   access_rules = [
     for rule in each.value.access_rules : {
@@ -47,5 +53,5 @@ module "transfer_jobs" {
   aws_secret_key    = var.aws_secret_key
   s3_bucket         = var.s3_bucket
   bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
-  depends_on        = [module.bigquery_datasets]
+  depends_on        = [module.bigquery_datasets, module.bigquery_tables]
 }
