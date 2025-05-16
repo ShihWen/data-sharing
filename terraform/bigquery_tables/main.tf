@@ -7,8 +7,6 @@ locals {
 
   # Map dataset variable names to their values
   dataset_ids = {
-    "data_sharing_dataset_id"   = var.data_sharing_dataset_id
-    "analytics_dataset_id"      = var.analytics_dataset_id
     "tpe_mrt_bronze_dataset_id" = var.tpe_mrt_bronze_dataset_id
     "tpe_mrt_silver_dataset_id" = var.tpe_mrt_silver_dataset_id
     "tpe_mrt_gold_dataset_id"   = var.tpe_mrt_gold_dataset_id

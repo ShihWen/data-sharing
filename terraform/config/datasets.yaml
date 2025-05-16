@@ -1,30 +1,17 @@
 datasets:
-  - id: "data_sharing_dataset"
-    friendly_name: "Data Sharing Dataset"
-    description: "Dataset for sharing data between different parties"
-    labels:
-      environment: "development"
-      purpose: "data_sharing"
-    access_rules:
-      - role: "OWNER"
-        special_group: "projectOwners"
-      - role: "READER"
-        special_group: "projectReaders"
-      - role: "WRITER"
-        special_group: "projectWriters"
-
-  # Example of how to add more datasets
-  - id: "analytics_dataset"
-    friendly_name: "Analytics Dataset"
-    description: "Dataset for analytics data"
-    labels:
-      environment: "development"
-      purpose: "analytics"
-    access_rules:
-      - role: "OWNER"
-        special_group: "projectOwners"
-      - role: "READER"
-        special_group: "projectReaders" 
+  # - id: "data_sharing_dataset"
+  #   friendly_name: "Data Sharing Dataset"
+  #   description: "Dataset for sharing data between different parties"
+  #   labels:
+  #     environment: "development"
+  #     purpose: "data_sharing"
+  #   access_rules:
+  #     - role: "OWNER"
+  #       special_group: "projectOwners"
+  #     - role: "READER"
+  #       special_group: "projectReaders"
+  #     - role: "WRITER"
+  #       special_group: "projectWriters"
 
 
   - id: "tpe_mrt_bronze"
