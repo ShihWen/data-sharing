@@ -9,7 +9,7 @@ data "google_project" "current" {
 }
 
 locals {
-  datasets = yamldecode(file("${path.module}/config/datasets.yaml")).datasets
+  datasets = yamldecode(file("${path.module}/bigquery_datasets/config/datasets.yaml")).datasets
 }
 
 module "bigquery_datasets" {

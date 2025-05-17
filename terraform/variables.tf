@@ -7,7 +7,7 @@ variable "region" {
   description = "The GCP region for resources"
   type        = string
   default     = "asia-east1"
-}
+} 
 
 variable "aws_access_key" {
   description = "AWS access key for S3 access"
