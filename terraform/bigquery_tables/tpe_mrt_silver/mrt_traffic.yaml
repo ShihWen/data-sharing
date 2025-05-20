@@ -1,0 +1,29 @@
+table_id: "mrt_traffic"
+dataset_id_var_name: "tpe_mrt_silver_dataset_id"
+description: "Add basic transformed MRT traffic data from S3"
+labels:
+  data_source: "bronze"
+  data_type: "traffic"
+  tier: "silver"
+
+# Partition by date for better query performance
+time_partitioning:
+  type: "DAY"
+  field: "dt"
+
+# Clustering helps with query performance
+# clustering:
+#   - "data_source"
+
+schema:  
+  - {name: "dt",               type: "DATE",      mode: "NULLABLE", description: "Date of the record (日期)"}
+  - {name: "hour",             type: "INTEGER",   mode: "NULLABLE", description: "Hour of the day 0-23 (小時)"}
+  - {name: "entrance",         type: "STRING",    mode: "NULLABLE", description: "Entry station code (進站站名)"}
+  - {name: "exit",             type: "STRING",    mode: "NULLABLE", description: "Exit station code (出站站名)"}
+  - {name: "traffic",          type: "INTEGER",   mode: "NULLABLE", description: "Passenger count (人流)"}
+  - {name: "is_valid_traffic", type: "BOOLEAN",   mode: "NULLABLE", description: "人流是否有效"}
+  - {name: "day_of_week",      type: "INTEGER",   mode: "NULLABLE", description: "星期幾"}
+  - {name: "day_type",         type: "STRING",    mode: "NULLABLE", description: "日期類型"}
+  - {name: "peak_period",      type: "STRING",    mode: "NULLABLE", description: "尖峰時段"}
+  - {name: "processed_at",     type: "TIMESTAMP", mode: "NULLABLE", description: "資料處理時間"}
+
