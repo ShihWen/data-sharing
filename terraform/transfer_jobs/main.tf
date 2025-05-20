@@ -67,7 +67,7 @@ resource "google_bigquery_data_transfer_config" "mrt_station_transfer" {
 
   params = {
     destination_table_name_template = "mrt_station"
-    data_path                      = "s3://${var.s3_bucket}/mrt-station/mrt_station*.parquet"
+    data_path                      = "s3://${var.s3_bucket}/mrt-station/mrt_station*"
     access_key_id                  = var.aws_access_key
     secret_access_key              = var.aws_secret_key
     file_format                    = "PARQUET"
@@ -90,7 +90,7 @@ resource "google_bigquery_data_transfer_config" "mrt_exit_transfer" {
 
   params = {
     destination_table_name_template = "mrt_exit"
-    data_path                      = "s3://${var.s3_bucket}/mrt-station/mrt_exit*.parquet"
+    data_path                      = "s3://${var.s3_bucket}/mrt-station/mrt_exit*"
     access_key_id                  = var.aws_access_key
     secret_access_key              = var.aws_secret_key
     file_format                    = "PARQUET"
