@@ -45,13 +45,13 @@ module "bigquery_tables" {
   depends_on                = [module.bigquery_datasets]
 }
 
-module "transfer_jobs" {
-  source = "./transfer_jobs"
+# module "transfer_jobs" {
+#   source = "./transfer_jobs"
 
-  project_id        = var.project_id
-  aws_access_key    = var.aws_access_key
-  aws_secret_key    = var.aws_secret_key
-  s3_bucket         = var.s3_bucket
-  bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
-  depends_on        = [module.bigquery_datasets, module.bigquery_tables]
-}
+#   project_id        = var.project_id
+#   aws_access_key    = var.aws_access_key
+#   aws_secret_key    = var.aws_secret_key
+#   s3_bucket         = var.s3_bucket
+#   bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
+#   depends_on        = [module.bigquery_datasets, module.bigquery_tables]
+# }
