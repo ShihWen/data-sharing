@@ -104,15 +104,56 @@ resource "google_compute_instance" "airflow" {
     curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
 
-    # Create Airflow directories
+    # Create Airflow directories with proper permissions
     mkdir -p /opt/airflow/{dags,logs,config,plugins}
+    AIRFLOW_UID=$(id -u)
+    AIRFLOW_GID=$(id -g)
+    chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow
 
     # Pull Airflow configurations from GCS
-    gsutil -m cp -r gs://${google_storage_bucket.airflow_bucket.name}/docker/* /opt/airflow/
+    cd /opt/airflow
+    gsutil -m cp -r gs://${google_storage_bucket.airflow_bucket.name}/docker/* .
+    
+    # Set proper permissions for config files
+    chmod 600 config/airflow.cfg
+    chmod 600 config/service-account.json
+    chown -R $AIRFLOW_UID:$AIRFLOW_GID config/
+
+    # Create environment file
+    cat > .env <<EOL
+    AIRFLOW_UID=$AIRFLOW_UID
+    AIRFLOW_GID=$AIRFLOW_GID
+    AIRFLOW_DB_CONNECTION=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW_DB_PASSWORD=airflow
+    AIRFLOW_FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    AIRFLOW_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(16))")
+    AIRFLOW_GCS_BUCKET=${google_storage_bucket.airflow_bucket.name}
+    AIRFLOW_ADMIN_USER=admin
+    AIRFLOW_ADMIN_PASSWORD=admin
+    AIRFLOW_ADMIN_FIRSTNAME=Admin
+    AIRFLOW_ADMIN_LASTNAME=User
+    AIRFLOW_ADMIN_EMAIL=admin@example.com
+    EOL
+
+    # Set proper permissions for .env file
+    chmod 600 .env
+    chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
     # Start Airflow services
-    cd /opt/airflow
     docker-compose up -d
+
+    # Wait for services to be ready
+    sleep 30
+
+    # Initialize Airflow DB and create admin user
+    docker-compose exec -T airflow airflow db init
+    docker-compose exec -T airflow airflow users create \
+      --username $AIRFLOW_ADMIN_USER \
+      --password $AIRFLOW_ADMIN_PASSWORD \
+      --firstname $AIRFLOW_ADMIN_FIRSTNAME \
+      --lastname $AIRFLOW_ADMIN_LASTNAME \
+      --role Admin \
+      --email $AIRFLOW_ADMIN_EMAIL
   EOF
 
   # Attach the service account to the VM
