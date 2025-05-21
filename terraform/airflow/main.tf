@@ -52,6 +52,20 @@ resource "google_compute_instance" "airflow" {
   tags = ["airflow"]
 }
 
+# Create firewall rule for Airflow webserver
+resource "google_compute_firewall" "airflow_webserver" {
+  name    = "allow-airflow-webserver"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8081"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["airflow"]
+}
+
 # Create GCS bucket for Airflow logs and DAGs
 resource "google_storage_bucket" "airflow_bucket" {
   name          = "${var.project_id}-airflow-storage"

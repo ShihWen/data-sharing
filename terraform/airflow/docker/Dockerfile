@@ -26,4 +26,4 @@ RUN pip install --no-cache-dir -r /requirements.txt
 # Create required directories
 RUN mkdir -p ${AIRFLOW_HOME}/dags ${AIRFLOW_HOME}/logs ${AIRFLOW_HOME}/config
 
-EXPOSE 8080 
+EXPOSE 8081 
