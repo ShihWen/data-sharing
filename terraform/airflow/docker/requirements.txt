@@ -1,0 +1,11 @@
+apache-airflow-providers-google>=10.1.0
+apache-airflow-providers-postgres>=5.6.0
+apache-airflow-providers-http>=4.6.0
+google-cloud-storage>=2.10.0
+google-cloud-bigquery>=3.11.4
+google-cloud-bigquery-storage>=2.22.0
+pandas>=2.0.0
+pandas-gbq>=0.19.2
+pyarrow>=14.0.1
+requests>=2.31.0
+python-dotenv>=1.0.0 
