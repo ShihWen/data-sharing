@@ -5,6 +5,33 @@ resource "google_service_account" "airflow_sa" {
   description  = "Service account for Airflow operations"
 }
 
+# Create Secret Manager secret for service account key
+resource "google_secret_manager_secret" "airflow_sa_key" {
+  secret_id = "airflow-service-account-key"
+  
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  }
+}
+
+# Grant access to Secret Manager secret
+resource "google_secret_manager_secret_iam_member" "secret_access" {
+  secret_id = google_secret_manager_secret.airflow_sa_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.airflow_sa.email}"
+}
+
+# Add Secret Manager access role to service account
+resource "google_project_iam_member" "airflow_sa_secretmanager" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.airflow_sa.email}"
+}
+
 # Grant necessary roles to the service account
 resource "google_project_iam_member" "airflow_sa_roles" {
   for_each = toset([
@@ -115,6 +142,11 @@ resource "google_compute_instance" "airflow" {
     echo "Pulling configurations from GCS..."
     cd /opt/airflow
     gsutil -m cp -r gs://${google_storage_bucket.airflow_bucket.name}/docker/* .
+    
+    # Fetch service account key from Secret Manager
+    echo "Fetching service account key from Secret Manager..."
+    mkdir -p /opt/airflow/config
+    gcloud secrets versions access latest --secret="airflow-service-account-key" > /opt/airflow/config/service-account.json
     
     # Ensure all required directories exist with proper permissions
     mkdir -p /opt/airflow/logs/scheduler/$(date +%Y-%m-%d)
