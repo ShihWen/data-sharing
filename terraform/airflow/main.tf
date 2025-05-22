@@ -89,10 +89,13 @@ resource "google_compute_instance" "airflow" {
   # Add startup script
   metadata_startup_script = <<-EOF
     #!/bin/bash
-    
+    set -e  # Exit on error
+
+    echo "Starting Airflow setup..."
+
     # Install Docker
     apt-get update
-    apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+    apt-get install -y apt-transport-https ca-certificates curl software-properties-common python3-pip
     curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
     add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
     apt-get update
@@ -103,21 +106,32 @@ resource "google_compute_instance" "airflow" {
     chmod +x /usr/local/bin/docker-compose
 
     # Create Airflow directories with proper permissions
+    echo "Creating Airflow directories..."
     mkdir -p /opt/airflow/{dags,logs,config,plugins}
     AIRFLOW_UID=$(id -u)
     AIRFLOW_GID=$(id -g)
-    chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow
 
     # Pull Airflow configurations from GCS
+    echo "Pulling configurations from GCS..."
     cd /opt/airflow
     gsutil -m cp -r gs://${google_storage_bucket.airflow_bucket.name}/docker/* .
     
-    # Set proper permissions for config files
-    chmod 600 config/airflow.cfg
-    chmod 600 config/service-account.json
-    chown -R $AIRFLOW_UID:$AIRFLOW_GID config/
+    # Ensure all required directories exist with proper permissions
+    mkdir -p /opt/airflow/logs/scheduler/$(date +%Y-%m-%d)
+    mkdir -p /opt/airflow/logs/web/$(date +%Y-%m-%d)
+    mkdir -p /opt/airflow/logs/worker/$(date +%Y-%m-%d)
+    
+    # Set proper permissions for all directories
+    echo "Setting permissions..."
+    chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow
+    chmod -R 755 /opt/airflow/dags
+    chmod -R 755 /opt/airflow/logs
+    chmod -R 755 /opt/airflow/plugins
+    chmod 600 /opt/airflow/config/airflow.cfg
+    chmod 600 /opt/airflow/config/service-account.json
 
     # Create environment file
+    echo "Creating environment file..."
     cat > .env <<EOL
     AIRFLOW_UID=$AIRFLOW_UID
     AIRFLOW_GID=$AIRFLOW_GID
@@ -137,12 +151,15 @@ resource "google_compute_instance" "airflow" {
     chmod 600 .env
     chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
+    echo "Starting Docker services..."
     # Start Airflow services
     docker-compose up -d
 
     # Wait for services to be ready
-    sleep 30
+    echo "Waiting for services to be ready..."
+    sleep 60
 
+    echo "Initializing Airflow..."
     # Initialize Airflow DB and create admin user
     docker-compose exec -T airflow airflow db init
     docker-compose exec -T airflow airflow users create \
@@ -152,6 +169,8 @@ resource "google_compute_instance" "airflow" {
       --lastname $AIRFLOW_ADMIN_LASTNAME \
       --role Admin \
       --email $AIRFLOW_ADMIN_EMAIL
+
+    echo "Airflow setup complete!"
   EOF
 
   # Attach the service account to the VM
