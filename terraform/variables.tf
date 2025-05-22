@@ -12,7 +12,7 @@ variable "region" {
 variable "zone" {
   description = "The GCP zone for VM instances"
   type        = string
-  default     = "asia-east1-a"
+  default     = "asia-east1-b"
 }
 
 variable "aws_access_key" {
