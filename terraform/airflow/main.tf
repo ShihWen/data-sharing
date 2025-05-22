@@ -142,11 +142,22 @@ resource "google_compute_instance" "airflow" {
     echo "Pulling configurations from GCS..."
     cd /opt/airflow
     gsutil -m cp -r gs://${google_storage_bucket.airflow_bucket.name}/docker/* .
-    
+
     # Fetch service account key from Secret Manager
     echo "Fetching service account key from Secret Manager..."
     mkdir -p /opt/airflow/config
-    gcloud secrets versions access latest --secret="airflow-service-account-key" > /opt/airflow/config/service-account.json
+    if ! gcloud secrets versions access latest --secret="airflow-service-account-key" > /opt/airflow/config/service-account.json; then
+        echo "Failed to fetch service account key from Secret Manager"
+        exit 1
+    fi
+    
+    # Verify service account key
+    echo "Verifying service account key..."
+    if [ ! -s /opt/airflow/config/service-account.json ]; then
+        echo "Service account key file is empty or missing"
+        exit 1
+    fi
+    echo "Service account key fetched successfully"
     
     # Ensure all required directories exist with proper permissions
     mkdir -p /opt/airflow/logs/scheduler/$(date +%Y-%m-%d)
@@ -184,26 +195,67 @@ resource "google_compute_instance" "airflow" {
     chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
     echo "Starting Docker services..."
-    # Start Airflow services
-    docker-compose up -d
+    # Check Docker status
+    echo "Docker status:"
+    docker info
+    docker ps -a
+
+    # Check if docker-compose.yml exists
+    echo "Checking docker-compose.yml:"
+    ls -la docker-compose.yml
+
+    # Check configurations
+    echo "Checking configurations:"
+    ls -la config/
+    ls -la /opt/airflow/config/
+
+    # Start Airflow services with logging
+    echo "Starting docker-compose..."
+    docker-compose up -d || {
+        echo "Docker-compose failed. Checking logs:"
+        docker-compose logs
+        exit 1
+    }
+
+    # Check container status
+    echo "Checking container status:"
+    docker ps -a
+    docker-compose ps
 
     # Wait for services to be ready
     echo "Waiting for services to be ready..."
     sleep 60
 
+    echo "Checking service logs:"
+    docker-compose logs
+
     echo "Initializing Airflow..."
     # Initialize Airflow DB and create admin user
-    docker-compose exec -T airflow airflow db init
+    docker-compose exec -T airflow airflow db init || {
+        echo "Database initialization failed. Checking logs:"
+        docker-compose logs airflow
+        exit 1
+    }
+
+    echo "Creating admin user..."
     docker-compose exec -T airflow airflow users create \
       --username $AIRFLOW_ADMIN_USER \
       --password $AIRFLOW_ADMIN_PASSWORD \
       --firstname $AIRFLOW_ADMIN_FIRSTNAME \
       --lastname $AIRFLOW_ADMIN_LASTNAME \
       --role Admin \
-      --email $AIRFLOW_ADMIN_EMAIL
+      --email $AIRFLOW_ADMIN_EMAIL || {
+        echo "User creation failed. Checking logs:"
+        docker-compose logs airflow
+        exit 1
+    }
+
+    echo "Final container status:"
+    docker ps -a
+    docker-compose ps
 
     echo "Airflow setup complete!"
-  EOF
+    EOF
 
   # Attach the service account to the VM
   service_account {
