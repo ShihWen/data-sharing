@@ -55,3 +55,17 @@ module "transfer_jobs" {
   bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
   depends_on        = [module.bigquery_datasets, module.bigquery_tables]
 }
+
+# Add Airflow module
+module "airflow" {
+  source = "./airflow"
+
+  project_id = var.project_id
+  region     = var.region
+  zone       = var.zone
+
+  depends_on = [
+    module.bigquery_datasets,
+    module.bigquery_tables
+  ]
+}
