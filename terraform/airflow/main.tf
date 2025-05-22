@@ -34,6 +34,7 @@ resource "google_project_iam_member" "scheduler_sa_roles" {
   project = var.project_id
   role    = each.key
   member  = "serviceAccount:${google_service_account.scheduler_sa.email}"
+  depends_on = [google_service_account.scheduler_sa]
 }
 
 # Create Cloud Scheduler job for starting Airflow VM
@@ -43,6 +44,7 @@ resource "google_cloud_scheduler_job" "start_airflow" {
   schedule    = "0 8 * * 6"  # Every Saturday at 8:00 AM
   time_zone   = "Asia/Taipei"
   region      = var.region
+  depends_on  = [google_service_account.scheduler_sa, google_project_iam_member.scheduler_sa_roles]
 
   http_target {
     http_method = "POST"
@@ -60,6 +62,7 @@ resource "google_cloud_scheduler_job" "stop_airflow" {
   schedule    = "0 0 * * 0"  # Every Sunday at 00:00
   time_zone   = "Asia/Taipei"
   region      = var.region
+  depends_on  = [google_service_account.scheduler_sa, google_project_iam_member.scheduler_sa_roles]
 
   http_target {
     http_method = "POST"
