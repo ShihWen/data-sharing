@@ -82,7 +82,13 @@ pipeline {
                                 # Check if service account is in Terraform state
                                 if ! terraform state list | grep -q 'module.airflow.google_service_account.scheduler_sa'; then
                                     echo "Service account not in Terraform state, importing..."
-                                    terraform import module.airflow.google_service_account.scheduler_sa "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/airflow-scheduler-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
+                                    terraform import \
+                                        -var="project_id=${DEV_GCP_PROJECT_ID}" \
+                                        -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
+                                        -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
+                                        -var="s3_bucket=${S3_BUCKET}" \
+                                        module.airflow.google_service_account.scheduler_sa \
+                                        "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/airflow-scheduler-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
                                 else
                                     echo "Service account already in Terraform state"
                                 fi
