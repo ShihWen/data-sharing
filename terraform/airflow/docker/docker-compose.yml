@@ -1,53 +1,33 @@
 version: '3'
 
-x-airflow-common: &airflow-common
-  build: .
-  environment: &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: ${AIRFLOW_DB_CONNECTION}
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
-    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
-    AIRFLOW__LOGGING__REMOTE_LOGGING: 'true'
-    AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: gs://${AIRFLOW_GCS_BUCKET}/logs
-    AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: google_cloud_default
-    AIRFLOW__WEBSERVER__WEB_SERVER_PORT: '8081'
-    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/config/service-account.json
-  volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./config:/opt/airflow/config
-    - ./plugins:/opt/airflow/plugins
-  user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    &airflow-common-depends-on
-    postgres:
-      condition: service_healthy
-
 services:
   postgres:
     image: postgres:13
     environment:
-      - POSTGRES_USER=airflow
-      - POSTGRES_PASSWORD=airflow
-      - POSTGRES_DB=airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
-      interval: 5s
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: always
 
-  airflow:
+  airflow-webserver:
     image: apache/airflow:2.7.1
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW_DB_CONNECTION}
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
       - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__CORE__LOGGING_LEVEL=INFO
+      - AIRFLOW__LOGGING__LOGGING_LEVEL=INFO
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
       - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
       - AIRFLOW__WEBSERVER__BASE_URL=http://localhost:8081
@@ -62,11 +42,66 @@ services:
     ports:
       - "8081:8081"
     healthcheck:
-      test: ["CMD-SHELL", "[ -f /opt/airflow/airflow-webserver.pid ]"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8081/health"]
       interval: 30s
       timeout: 30s
-      retries: 3
+      retries: 5
     command: webserver
+    restart: always
+
+  airflow-scheduler:
+    image: apache/airflow:2.7.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__LOGGING__LOGGING_LEVEL=INFO
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./config:/opt/airflow/config
+      - ./plugins:/opt/airflow/plugins
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname $(hostname)"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+    restart: always
+
+  airflow-init:
+    image: apache/airflow:2.7.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./config:/opt/airflow/config
+      - ./plugins:/opt/airflow/plugins
+    command: version
+    entrypoint: >
+      /bin/bash -c "
+      airflow db init &&
+      airflow users create
+        --username ${AIRFLOW_ADMIN_USER}
+        --password ${AIRFLOW_ADMIN_PASSWORD}
+        --firstname ${AIRFLOW_ADMIN_FIRSTNAME}
+        --lastname ${AIRFLOW_ADMIN_LASTNAME}
+        --role Admin
+        --email ${AIRFLOW_ADMIN_EMAIL}
+      "
 
 volumes:
   postgres-db-volume: 

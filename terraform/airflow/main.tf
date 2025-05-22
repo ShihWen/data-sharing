@@ -178,8 +178,6 @@ resource "google_compute_instance" "airflow" {
     cat > .env <<EOL
     AIRFLOW_UID=$AIRFLOW_UID
     AIRFLOW_GID=$AIRFLOW_GID
-    AIRFLOW_DB_CONNECTION=postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW_DB_PASSWORD=airflow
     AIRFLOW_FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
     AIRFLOW_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(16))")
     AIRFLOW_GCS_BUCKET=${google_storage_bucket.airflow_bucket.name}
@@ -209,49 +207,44 @@ resource "google_compute_instance" "airflow" {
     ls -la config/
     ls -la /opt/airflow/config/
 
-    # Start Airflow services with logging
-    echo "Starting docker-compose..."
-    docker-compose up -d || {
-        echo "Docker-compose failed. Checking logs:"
+    # Start initialization service first
+    echo "Running Airflow initialization..."
+    docker-compose up airflow-init || {
+        echo "Airflow initialization failed. Checking logs:"
+        docker-compose logs airflow-init
+        exit 1
+    }
+
+    # Start core services
+    echo "Starting core Airflow services..."
+    docker-compose up -d postgres airflow-webserver airflow-scheduler || {
+        echo "Failed to start Airflow services. Checking logs:"
         docker-compose logs
         exit 1
     }
 
-    # Check container status
-    echo "Checking container status:"
-    docker ps -a
-    docker-compose ps
+    # Wait for services to be healthy
+    echo "Waiting for services to be healthy..."
+    for service in postgres airflow-webserver airflow-scheduler; do
+        timeout=300
+        echo "Waiting for $service to be healthy..."
+        while [ $timeout -gt 0 ]; do
+            if docker-compose ps $service | grep -q "Up (healthy)"; then
+                echo "$service is healthy!"
+                break
+            fi
+            echo "Waiting for $service... $(($timeout / 5)) seconds remaining"
+            sleep 5
+            timeout=$((timeout - 5))
+            if [ $timeout -eq 0 ]; then
+                echo "$service failed to become healthy"
+                docker-compose logs $service
+                exit 1
+            fi
+        done
+    done
 
-    # Wait for services to be ready
-    echo "Waiting for services to be ready..."
-    sleep 60
-
-    echo "Checking service logs:"
-    docker-compose logs
-
-    echo "Initializing Airflow..."
-    # Initialize Airflow DB and create admin user
-    docker-compose exec -T airflow airflow db init || {
-        echo "Database initialization failed. Checking logs:"
-        docker-compose logs airflow
-        exit 1
-    }
-
-    echo "Creating admin user..."
-    docker-compose exec -T airflow airflow users create \
-      --username $AIRFLOW_ADMIN_USER \
-      --password $AIRFLOW_ADMIN_PASSWORD \
-      --firstname $AIRFLOW_ADMIN_FIRSTNAME \
-      --lastname $AIRFLOW_ADMIN_LASTNAME \
-      --role Admin \
-      --email $AIRFLOW_ADMIN_EMAIL || {
-        echo "User creation failed. Checking logs:"
-        docker-compose logs airflow
-        exit 1
-    }
-
-    echo "Final container status:"
-    docker ps -a
+    echo "All services are running and healthy!"
     docker-compose ps
 
     echo "Airflow setup complete!"
