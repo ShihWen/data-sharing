@@ -152,20 +152,13 @@ resource "google_compute_instance" "airflow" {
     fi
     
     # Verify service account key
-    echo "Verifying service account key..."
     if [ ! -s /opt/airflow/config/service-account.json ]; then
         echo "Service account key file is empty or missing"
         exit 1
     fi
     echo "Service account key fetched successfully"
     
-    # Ensure all required directories exist with proper permissions
-    mkdir -p /opt/airflow/logs/scheduler/$(date +%Y-%m-%d)
-    mkdir -p /opt/airflow/logs/web/$(date +%Y-%m-%d)
-    mkdir -p /opt/airflow/logs/worker/$(date +%Y-%m-%d)
-    
-    # Set proper permissions for all directories
-    echo "Setting permissions..."
+    # Set proper permissions
     chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow
     chmod -R 755 /opt/airflow/dags
     chmod -R 755 /opt/airflow/logs
@@ -174,7 +167,6 @@ resource "google_compute_instance" "airflow" {
     chmod 600 /opt/airflow/config/service-account.json
 
     # Create environment file
-    echo "Creating environment file..."
     cat > .env <<EOL
     AIRFLOW_UID=$AIRFLOW_UID
     AIRFLOW_GID=$AIRFLOW_GID
@@ -188,44 +180,45 @@ resource "google_compute_instance" "airflow" {
     AIRFLOW_ADMIN_EMAIL=admin@example.com
     EOL
 
-    # Set proper permissions for .env file
     chmod 600 .env
     chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
-    echo "Starting Docker services..."
-    # Check Docker status
-    echo "Docker status:"
-    docker info
-    docker ps -a
+    # Start services with proper order and health checks
+    echo "Starting services..."
+    
+    # Start Postgres first
+    docker-compose up -d postgres
+    echo "Waiting for Postgres to be healthy..."
+    timeout=120
+    while [ $timeout -gt 0 ]; do
+        if docker-compose ps postgres | grep -q "Up (healthy)"; then
+            echo "Postgres is healthy!"
+            break
+        fi
+        echo "Waiting for Postgres... $(($timeout / 5)) seconds remaining"
+        sleep 5
+        timeout=$((timeout - 5))
+        if [ $timeout -eq 0 ]; then
+            echo "Postgres failed to become healthy"
+            docker-compose logs postgres
+            exit 1
+        fi
+    done
 
-    # Check if docker-compose.yml exists
-    echo "Checking docker-compose.yml:"
-    ls -la docker-compose.yml
-
-    # Check configurations
-    echo "Checking configurations:"
-    ls -la config/
-    ls -la /opt/airflow/config/
-
-    # Start initialization service first
+    # Run initialization
     echo "Running Airflow initialization..."
-    docker-compose up airflow-init || {
+    if ! docker-compose up --exit-code-from airflow-init airflow-init; then
         echo "Airflow initialization failed. Checking logs:"
         docker-compose logs airflow-init
         exit 1
-    }
+    fi
 
-    # Start core services
-    echo "Starting core Airflow services..."
-    docker-compose up -d postgres airflow-webserver airflow-scheduler || {
-        echo "Failed to start Airflow services. Checking logs:"
-        docker-compose logs
-        exit 1
-    }
+    # Start remaining services
+    echo "Starting Airflow services..."
+    docker-compose up -d airflow-webserver airflow-scheduler
 
     # Wait for services to be healthy
-    echo "Waiting for services to be healthy..."
-    for service in postgres airflow-webserver airflow-scheduler; do
+    for service in airflow-webserver airflow-scheduler; do
         timeout=300
         echo "Waiting for $service to be healthy..."
         while [ $timeout -gt 0 ]; do
@@ -246,7 +239,6 @@ resource "google_compute_instance" "airflow" {
 
     echo "All services are running and healthy!"
     docker-compose ps
-
     echo "Airflow setup complete!"
     EOF
 
