@@ -12,7 +12,7 @@ variable "region" {
 variable "zone" {
   description = "GCP zone"
   type        = string
-  default     = "asia-east1-a"
+  default     = "asia-east1-b"
 }
 
 variable "environment" {
