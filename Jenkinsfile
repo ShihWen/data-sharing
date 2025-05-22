@@ -68,6 +68,32 @@ pipeline {
                 }
             }
         }
+
+        stage('Check and Import Service Account') {
+            steps {
+                dir('terraform') {
+                    script {
+                        // Check if service account exists in GCP
+                        sh '''
+                            echo "Checking if service account exists in GCP..."
+                            if gcloud iam service-accounts describe airflow-scheduler-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com --project=${DEV_GCP_PROJECT_ID} > /dev/null 2>&1; then
+                                echo "Service account exists in GCP, checking Terraform state..."
+                                
+                                # Check if service account is in Terraform state
+                                if ! terraform state list | grep -q 'module.airflow.google_service_account.scheduler_sa'; then
+                                    echo "Service account not in Terraform state, importing..."
+                                    terraform import module.airflow.google_service_account.scheduler_sa "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/airflow-scheduler-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
+                                else
+                                    echo "Service account already in Terraform state"
+                                fi
+                            else
+                                echo "Service account does not exist in GCP, will be created by Terraform"
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
         
         stage('Terraform Plan') {
             steps {
