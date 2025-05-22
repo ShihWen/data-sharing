@@ -31,4 +31,19 @@ variable "airflow_storage_class" {
   description = "Storage class for Airflow GCS bucket"
   type        = string
   default     = "STANDARD"
+}
+
+variable "bronze_dataset_id" {
+  description = "ID of the Bronze dataset"
+  type        = string
+}
+
+variable "silver_dataset_id" {
+  description = "ID of the Silver dataset"
+  type        = string
+}
+
+variable "gold_dataset_id" {
+  description = "ID of the Gold dataset"
+  type        = string
 } 

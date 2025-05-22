@@ -63,9 +63,9 @@ module "airflow" {
   project_id = var.project_id
   region     = var.region
   zone       = var.zone
-
-  depends_on = [
-    module.bigquery_datasets,
-    module.bigquery_tables
-  ]
+  
+  # Pass dataset IDs as variables instead of using depends_on
+  bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
+  silver_dataset_id = module.bigquery_datasets["tpe_mrt_silver"].dataset_id
+  gold_dataset_id   = module.bigquery_datasets["tpe_mrt_gold"].dataset_id
 }

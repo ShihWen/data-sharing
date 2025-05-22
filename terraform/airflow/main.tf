@@ -1,8 +1,3 @@
-provider "google" {
-  project = var.project_id
-  region  = var.region
-}
-
 # Create service account for Airflow
 resource "google_service_account" "airflow_sa" {
   account_id   = "airflow-service-account"
