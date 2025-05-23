@@ -146,8 +146,17 @@ resource "google_compute_instance" "airflow" {
     # Create Airflow directories with proper permissions
     echo "Creating Airflow directories..."
     mkdir -p /opt/airflow/{dags,logs,config,plugins}
-    AIRFLOW_UID=$(id -u)
-    AIRFLOW_GID=$(id -g)
+    
+    # Set up Airflow user and group if they don't exist
+    if ! getent group airflow > /dev/null; then
+        groupadd --system airflow
+    fi
+    if ! getent passwd airflow > /dev/null; then
+        useradd --system --home-dir /opt/airflow --no-create-home --shell /bin/false --gid airflow airflow
+    fi
+    
+    AIRFLOW_UID=$(id -u airflow)
+    AIRFLOW_GID=$(id -g airflow)
 
     # Pull Airflow configurations from GCS
     echo "Pulling configurations from GCS..."
@@ -198,8 +207,15 @@ resource "google_compute_instance" "airflow" {
     chmod 600 .env
     chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
-    # Add current user to docker group
-    usermod -aG docker $USER
+    # Add current user to docker group and airflow group
+    usermod -aG docker airflow
+    usermod -aG airflow $USER
+
+    # Ensure proper ownership of Docker socket
+    if [ -S /var/run/docker.sock ]; then
+        chown root:docker /var/run/docker.sock
+        chmod 660 /var/run/docker.sock
+    fi
 
     # Stop any existing containers and clean up
     docker-compose down -v
