@@ -179,12 +179,13 @@ resource "google_compute_instance" "airflow" {
     echo "Service account key fetched successfully"
     
     # Set proper permissions
-    chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow
+    chown -R airflow:airflow /opt/airflow
     chmod -R 755 /opt/airflow/dags
     chmod -R 755 /opt/airflow/logs
     chmod -R 755 /opt/airflow/plugins
     chmod 600 /opt/airflow/config/airflow.cfg
-    chmod 600 /opt/airflow/config/service-account.json
+    chmod 644 /opt/airflow/config/service-account.json
+    chown airflow:airflow /opt/airflow/config/service-account.json
 
     # Generate Fernet key and create environment file
     FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
