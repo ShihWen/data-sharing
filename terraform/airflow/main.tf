@@ -140,6 +140,9 @@ resource "google_compute_instance" "airflow" {
     curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
 
+    # Install required Python packages
+    pip3 install cryptography
+
     # Create Airflow directories with proper permissions
     echo "Creating Airflow directories..."
     mkdir -p /opt/airflow/{dags,logs,config,plugins}
@@ -174,11 +177,14 @@ resource "google_compute_instance" "airflow" {
     chmod 600 /opt/airflow/config/airflow.cfg
     chmod 600 /opt/airflow/config/service-account.json
 
-    # Create environment file
+    # Generate Fernet key and create environment file
+    FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    
+    # Create environment file with explicit database connection
     cat > .env <<EOL
     AIRFLOW_UID=$AIRFLOW_UID
     AIRFLOW_GID=$AIRFLOW_GID
-    AIRFLOW_FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    AIRFLOW_FERNET_KEY=$FERNET_KEY
     AIRFLOW_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(16))")
     AIRFLOW_GCS_BUCKET=${google_storage_bucket.airflow_bucket.name}
     AIRFLOW_ADMIN_USER=admin
@@ -186,12 +192,16 @@ resource "google_compute_instance" "airflow" {
     AIRFLOW_ADMIN_FIRSTNAME=Admin
     AIRFLOW_ADMIN_LASTNAME=User
     AIRFLOW_ADMIN_EMAIL=admin@example.com
+    AIRFLOW_DB_CONNECTION=postgresql+psycopg2://airflow:airflow@postgres/airflow
     EOL
 
     chmod 600 .env
     chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
-    # Stop any existing containers
+    # Add current user to docker group
+    usermod -aG docker $USER
+
+    # Stop any existing containers and clean up
     docker-compose down -v
 
     # Start services with proper order and health checks
