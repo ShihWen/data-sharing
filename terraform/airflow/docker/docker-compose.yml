@@ -83,6 +83,18 @@ services:
       - ./logs:/opt/airflow/logs
       - ./config:/opt/airflow/config
       - ./plugins:/opt/airflow/plugins
+    command: |
+      bash -c '
+        airflow db init &&
+        airflow users create \\
+          -u admin \\
+          -p admin \\
+          -f Airflow \\
+          -l Admin \\
+          -r Admin \\
+          -e admin@example.com
+      '
+    restart: "no"
 
 volumes:
   postgres-db-volume: 
