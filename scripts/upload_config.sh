@@ -4,14 +4,15 @@
 BUCKET_NAME="open-data-v2-cicd-airflow-storage"
 
 # Create temporary directories
-mkdir -p docker/config
+mkdir -p docker/config docker/dags docker/plugins
 
 # Copy files to temporary directory
-cp ../terraform/airflow/docker/docker-compose.yml docker/
-cp ../terraform/airflow/docker/config/airflow.cfg docker/config/
+cp -r ../terraform/airflow/docker/* docker/
 
 # Upload to GCS
 gsutil -m cp -r docker/* gs://${BUCKET_NAME}/docker/
 
 # Clean up
-rm -rf docker/ 
+rm -rf docker/
+
+echo "Successfully uploaded Airflow configuration to gs://${BUCKET_NAME}/docker/" 
