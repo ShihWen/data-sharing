@@ -106,25 +106,29 @@ pipeline {
                 script {
                     // Check if VM exists and is running
                     def vmStatus = sh(
-                        script: """
+                        script: '''
                             gcloud compute instances describe airflow-vm \
                                 --project=${DEV_GCP_PROJECT_ID} \
                                 --zone=us-central1-a \
                                 --format='get(status)' 2>/dev/null || echo 'NOT_FOUND'
-                        """,
+                        ''',
                         returnStdout: true
                     ).trim()
 
                     // Check if Airflow is healthy if VM is running
                     if (vmStatus == 'RUNNING') {
+                        def vmIp = sh(
+                            script: '''
+                                gcloud compute instances describe airflow-vm \
+                                    --project=${DEV_GCP_PROJECT_ID} \
+                                    --zone=us-central1-a \
+                                    --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+                            ''',
+                            returnStdout: true
+                        ).trim()
+                        
                         def airflowHealth = sh(
-                            script: """
-                                curl -s -o /dev/null -w "%{http_code}" \
-                                    http://$(gcloud compute instances describe airflow-vm \
-                                        --project=${DEV_GCP_PROJECT_ID} \
-                                        --zone=us-central1-a \
-                                        --format='get(networkInterfaces[0].accessConfigs[0].natIP)'):8081/health || echo '000'
-                            """,
+                            script: "curl -s -o /dev/null -w '%{http_code}' http://${vmIp}:8081/health || echo '000'",
                             returnStdout: true
                         ).trim()
 
