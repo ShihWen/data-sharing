@@ -93,15 +93,13 @@ services:
     entrypoint: >
       /bin/bash -c "
       airflow db init &&
-      airflow users create
-        --username $${AIRFLOW_ADMIN_USER}
-        --password $${AIRFLOW_ADMIN_PASSWORD}
-        --firstname $${AIRFLOW_ADMIN_FIRSTNAME}
-        --lastname $${AIRFLOW_ADMIN_LASTNAME}
-        --role Admin
-        --email $${AIRFLOW_ADMIN_EMAIL} &&
-      exit 0
-      "
+      airflow users create \
+        --username ${AIRFLOW_ADMIN_USER} \
+        --password ${AIRFLOW_ADMIN_PASSWORD} \
+        --firstname ${AIRFLOW_ADMIN_FIRSTNAME} \
+        --lastname ${AIRFLOW_ADMIN_LASTNAME} \
+        --role Admin \
+        --email ${AIRFLOW_ADMIN_EMAIL}"
     restart: "no"
 
 volumes:
