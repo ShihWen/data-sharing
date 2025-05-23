@@ -3,6 +3,7 @@ from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator
+import os
 
 default_args = {
     'owner': 'airflow',
@@ -47,6 +48,8 @@ with DAG(
         ''',
         use_legacy_sql=False,
         location='asia-east1',
+        gcp_conn_id='google_cloud_default',
+        project_id=os.getenv('GOOGLE_CLOUD_PROJECT')
     )
 
     end = EmptyOperator(

@@ -31,12 +31,14 @@ services:
       - AIRFLOW__WEBSERVER__WEB_SERVER_PORT=8081
       - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
       - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
-    user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
+      - AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT=google-cloud-platform://?extra__google_cloud_platform__key_path=/opt/airflow/config/service-account.json&extra__google_cloud_platform__project=${GOOGLE_CLOUD_PROJECT}&extra__google_cloud_platform__scope=https://www.googleapis.com/auth/cloud-platform
+    user: "${AIRFLOW_UID}:0"
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
-      - ./config:/opt/airflow/config:ro
+      - ./config:/opt/airflow/config
       - ./plugins:/opt/airflow/plugins
     ports:
       - "8081:8081"
@@ -58,12 +60,14 @@ services:
       - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
-    user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
+      - AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT=google-cloud-platform://?extra__google_cloud_platform__key_path=/opt/airflow/config/service-account.json&extra__google_cloud_platform__project=${GOOGLE_CLOUD_PROJECT}&extra__google_cloud_platform__scope=https://www.googleapis.com/auth/cloud-platform
+    user: "${AIRFLOW_UID}:0"
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
-      - ./config:/opt/airflow/config:ro
+      - ./config:/opt/airflow/config
       - ./plugins:/opt/airflow/plugins
     command: scheduler
     restart: always

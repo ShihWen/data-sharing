@@ -197,6 +197,7 @@ resource "google_compute_instance" "airflow" {
     AIRFLOW_FERNET_KEY=$FERNET_KEY
     AIRFLOW_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(16))")
     AIRFLOW_GCS_BUCKET=${google_storage_bucket.airflow_bucket.name}
+    GOOGLE_CLOUD_PROJECT=${var.project_id}
     AIRFLOW_ADMIN_USER=admin
     AIRFLOW_ADMIN_PASSWORD=admin
     AIRFLOW_ADMIN_FIRSTNAME=Admin
@@ -208,6 +209,10 @@ resource "google_compute_instance" "airflow" {
     chmod 600 .env
     chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
+    # Set proper permissions for service account file
+    chmod 644 /opt/airflow/config/service-account.json
+    chown $AIRFLOW_UID:0 /opt/airflow/config/service-account.json
+    
     # Add current user to docker group and airflow group
     usermod -aG docker airflow
     usermod -aG airflow $USER
