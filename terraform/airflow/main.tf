@@ -106,6 +106,14 @@ resource "google_compute_instance" "airflow" {
   machine_type = "e2-small"
   zone         = var.zone
 
+  lifecycle {
+    prevent_destroy = false
+    ignore_changes = [
+      metadata_startup_script,
+      boot_disk,
+    ]
+  }
+
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-11"
@@ -183,16 +191,19 @@ resource "google_compute_instance" "airflow" {
     chmod 600 .env
     chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
+    # Stop any existing containers
+    docker-compose down -v
+
     # Start services with proper order and health checks
     echo "Starting services..."
     
     # Start Postgres first
     docker-compose up -d postgres
     echo "Waiting for Postgres to be healthy..."
-    timeout=120
+    timeout=300  # Increased timeout
     while [ $timeout -gt 0 ]; do
-        if docker-compose ps postgres | grep -q "Up (healthy)"; then
-            echo "Postgres is healthy!"
+        if docker-compose exec -T postgres pg_isready -U airflow; then
+            echo "Postgres is accepting connections!"
             break
         fi
         echo "Waiting for Postgres... $(($timeout / 5)) seconds remaining"

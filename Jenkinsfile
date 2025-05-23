@@ -101,18 +101,76 @@ pipeline {
             }
         }
         
+        stage('Check Airflow VM Status') {
+            steps {
+                script {
+                    // Check if VM exists and is running
+                    def vmStatus = sh(
+                        script: """
+                            gcloud compute instances describe airflow-vm \
+                                --project=${DEV_GCP_PROJECT_ID} \
+                                --zone=us-central1-a \
+                                --format='get(status)' 2>/dev/null || echo 'NOT_FOUND'
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    // Check if Airflow is healthy if VM is running
+                    if (vmStatus == 'RUNNING') {
+                        def airflowHealth = sh(
+                            script: """
+                                curl -s -o /dev/null -w "%{http_code}" \
+                                    http://$(gcloud compute instances describe airflow-vm \
+                                        --project=${DEV_GCP_PROJECT_ID} \
+                                        --zone=us-central1-a \
+                                        --format='get(networkInterfaces[0].accessConfigs[0].natIP)'):8081/health || echo '000'
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        if (airflowHealth == '200') {
+                            echo "Airflow VM is running and healthy. Will skip VM recreation but apply other changes."
+                            env.SKIP_VM_RECREATION = 'true'
+                        } else {
+                            echo "Airflow VM is running but not healthy. Will recreate VM."
+                            env.SKIP_VM_RECREATION = 'false'
+                        }
+                    } else {
+                        echo "Airflow VM not found or not running. Will create new VM."
+                        env.SKIP_VM_RECREATION = 'false'
+                    }
+                }
+            }
+        }
+        
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    sh '''
-                        terraform plan \
-                            -var="project_id=${DEV_GCP_PROJECT_ID}" \
-                            -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
-                            -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
-                            -var="s3_bucket=${S3_BUCKET}" \
-                            -out=tfplan
-                    '''
-                    archiveArtifacts artifacts: 'tfplan'
+                    script {
+                        if (env.SKIP_VM_RECREATION == 'true') {
+                            // Create a targeted plan that excludes the VM
+                            sh '''
+                                terraform plan \
+                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \
+                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
+                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
+                                    -var="s3_bucket=${S3_BUCKET}" \
+                                    -target="!module.airflow.google_compute_instance.airflow" \
+                                    -out=tfplan
+                            '''
+                        } else {
+                            // Create a full plan including VM
+                            sh '''
+                                terraform plan \
+                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \
+                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
+                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
+                                    -var="s3_bucket=${S3_BUCKET}" \
+                                    -out=tfplan
+                            '''
+                        }
+                        archiveArtifacts artifacts: 'tfplan'
+                    }
                 }
             }
         }
