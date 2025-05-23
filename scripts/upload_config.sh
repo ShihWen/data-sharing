@@ -3,11 +3,8 @@
 # Set bucket name
 BUCKET_NAME="open-data-v2-cicd-airflow-storage"
 
-# Create temporary directories
-mkdir -p docker/config docker/dags docker/plugins
-
 # Copy files to temporary directory
-cp -r ../terraform/airflow/docker/* docker/
+cp -r ../terraform/airflow/docker docker/
 
 # Upload to GCS
 gsutil -m cp -r docker/* gs://${BUCKET_NAME}/docker/
