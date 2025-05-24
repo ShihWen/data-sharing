@@ -62,11 +62,12 @@ pipeline {
                         gcloud config set project ${DEV_GCP_PROJECT_ID}
                     '''
 
-                    // Upload only the DAGs directory to GCS
+                    // Use the upload_config script to sync DAGs
                     sh '''
-                        echo "Uploading DAGs to GCS..."
-                        gsutil -m cp -r terraform/airflow/docker/dags/* gs://${AIRFLOW_BUCKET}/docker/dags/
-                        echo "DAGs uploaded successfully to gs://${AIRFLOW_BUCKET}/docker/dags/"
+                        echo "Running upload_config.sh to sync DAGs..."
+                        cd scripts
+                        chmod +x upload_config.sh
+                        ./upload_config.sh
                     '''
                 }
             }
