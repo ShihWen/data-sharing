@@ -23,12 +23,22 @@ echo "Creating Airflow directories..."
 mkdir -p /opt/airflow/{dags,logs,config,plugins}
 
 # Set up Airflow user and group if they don't exist
+echo "Setting up Airflow user and group..."
 if ! getent group airflow > /dev/null; then
+    echo "Creating airflow group..."
     groupadd --system airflow
 fi
 if ! getent passwd airflow > /dev/null; then
+    echo "Creating airflow user..."
     useradd --system --home-dir /opt/airflow --no-create-home --shell /bin/false --gid airflow airflow
 fi
+
+# Verify airflow user exists before proceeding
+if ! getent passwd airflow > /dev/null; then
+    echo "ERROR: Failed to create airflow user!"
+    exit 1
+fi
+echo "Airflow user created successfully"
 
 # Set fixed UID/GID for Airflow user
 AIRFLOW_UID=50000
@@ -115,7 +125,14 @@ chmod 644 /opt/airflow/config/service-account.json
 chown $AIRFLOW_UID:0 /opt/airflow/config/service-account.json
 
 # Add current user to docker group and airflow group
-usermod -aG docker airflow
+echo "Adding airflow user to docker group..."
+if getent passwd airflow > /dev/null; then
+    usermod -aG docker airflow
+    echo "Successfully added airflow user to docker group"
+else
+    echo "ERROR: airflow user does not exist, cannot add to docker group"
+    exit 1
+fi
 if [ -n "$USER" ]; then
   usermod -aG airflow $USER
 fi
