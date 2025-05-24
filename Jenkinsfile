@@ -224,7 +224,7 @@ pipeline {
                     script {
                         if (env.SKIP_VM_RECREATION == 'true') {
                             // Create a targeted plan that excludes the VM
-                            sh '''
+                            sh '''#!/bin/bash
                                 set -euo pipefail
                                 echo "Generating targeted plan excluding airflow VM..."
 
