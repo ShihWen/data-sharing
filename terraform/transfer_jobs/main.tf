@@ -9,6 +9,26 @@ resource "google_project_service" "enable_secretmanager" {
   service = "secretmanager.googleapis.com"
 }
 
+# Create service account for transfer jobs
+resource "google_service_account" "transfer_sa" {
+  account_id   = "bigquery-transfer-sa"
+  display_name = "BigQuery Transfer Service Account"
+  description  = "Service account for BigQuery data transfer jobs"
+  project      = var.project_id
+}
+
+# Grant necessary roles to the transfer service account
+resource "google_project_iam_member" "transfer_sa_roles" {
+  for_each = toset([
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser",
+    "roles/storage.objectViewer"
+  ])
+  project = var.project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.transfer_sa.email}"
+}
+
 # Create a secret for AWS credentials
 resource "google_secret_manager_secret" "aws_credentials" {
   secret_id = "aws-s3-credentials-${var.bronze_dataset_id}"  # Make secret name unique per dataset
@@ -32,7 +52,7 @@ resource "google_secret_manager_secret_version" "aws_credentials_version" {
 
 # Transfer job for MRT Traffic data
 resource "google_bigquery_data_transfer_config" "mrt_traffic_transfer" {
-  depends_on = [google_project_service.enable_transfer]
+  depends_on = [google_project_service.enable_transfer, google_project_iam_member.transfer_sa_roles]
 
   display_name           = "MRT Traffic Data Transfer"
   project               = var.project_id
@@ -40,6 +60,7 @@ resource "google_bigquery_data_transfer_config" "mrt_traffic_transfer" {
   data_source_id        = "amazon_s3"
   schedule              = var.schedule
   destination_dataset_id = var.bronze_dataset_id
+  service_account_name  = google_service_account.transfer_sa.email
   disabled              = false
 
   params = {
@@ -55,7 +76,7 @@ resource "google_bigquery_data_transfer_config" "mrt_traffic_transfer" {
 
 # Transfer job for MRT Station data
 resource "google_bigquery_data_transfer_config" "mrt_station_transfer" {
-  depends_on = [google_project_service.enable_transfer]
+  depends_on = [google_project_service.enable_transfer, google_project_iam_member.transfer_sa_roles]
 
   display_name           = "MRT Station Data Transfer"
   project               = var.project_id
@@ -63,6 +84,7 @@ resource "google_bigquery_data_transfer_config" "mrt_station_transfer" {
   data_source_id        = "amazon_s3"
   schedule              = var.schedule
   destination_dataset_id = var.bronze_dataset_id
+  service_account_name  = google_service_account.transfer_sa.email
   disabled              = false
 
   params = {
@@ -78,7 +100,7 @@ resource "google_bigquery_data_transfer_config" "mrt_station_transfer" {
 
 # Transfer job for MRT Exit data
 resource "google_bigquery_data_transfer_config" "mrt_exit_transfer" {
-  depends_on = [google_project_service.enable_transfer]
+  depends_on = [google_project_service.enable_transfer, google_project_iam_member.transfer_sa_roles]
 
   display_name           = "MRT Exit Data Transfer"
   project               = var.project_id
@@ -86,6 +108,7 @@ resource "google_bigquery_data_transfer_config" "mrt_exit_transfer" {
   data_source_id        = "amazon_s3"
   schedule              = var.schedule
   destination_dataset_id = var.bronze_dataset_id
+  service_account_name  = google_service_account.transfer_sa.email
   disabled              = false
 
   params = {
