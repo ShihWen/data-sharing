@@ -233,10 +233,17 @@ pipeline {
                                 
                                 # Create plan targeting all resources except the VM
                                 TARGET_ARGS=""
-                                while IFS= read -r resource; do
-                                    echo "Including resource: $resource"
+                                echo "$RESOURCES" | while IFS= read -r resource; do
+                                    if [ -n "$resource" ]; then
+                                        echo "Including resource: $resource"
+                                        TARGET_ARGS="$TARGET_ARGS -target=$resource"
+                                    fi
+                                done
+                                
+                                # Build target args in a different way since while loop runs in subshell
+                                for resource in $RESOURCES; do
                                     TARGET_ARGS="$TARGET_ARGS -target=$resource"
-                                done <<< "$RESOURCES"
+                                done
                                 
                                 echo "Running terraform plan with targets: $TARGET_ARGS"
                                 terraform plan \\
