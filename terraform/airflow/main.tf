@@ -103,7 +103,7 @@ resource "google_cloud_scheduler_job" "stop_airflow" {
 # Basic VM for Airflow
 resource "google_compute_instance" "airflow" {
   name         = "airflow-vm"
-  machine_type = "e2-small"
+  machine_type = "e2-medium"
   zone         = var.zone
 
   lifecycle {
