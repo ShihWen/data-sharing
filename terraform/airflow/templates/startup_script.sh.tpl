@@ -116,7 +116,9 @@ chown $AIRFLOW_UID:0 /opt/airflow/config/service-account.json
 
 # Add current user to docker group and airflow group
 usermod -aG docker airflow
-usermod -aG airflow $USER
+if [ -n "$USER" ]; then
+  usermod -aG airflow $USER
+fi
 
 # Ensure proper ownership of Docker socket
 if [ -S /var/run/docker.sock ]; then
