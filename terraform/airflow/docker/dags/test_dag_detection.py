@@ -48,8 +48,7 @@ with DAG(
         ''',
         use_legacy_sql=False,
         location='asia-east1',
-        gcp_conn_id='google_cloud_default',
-        project_id=os.getenv('GOOGLE_CLOUD_PROJECT')
+        gcp_conn_id='google_cloud_default'
     )
 
     end = EmptyOperator(
