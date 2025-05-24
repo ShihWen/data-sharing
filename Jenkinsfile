@@ -224,8 +224,8 @@ pipeline {
                     script {
                         if (env.SKIP_VM_RECREATION == 'true') {
                             // Create a targeted plan that excludes the VM
-                            sh '''#!/bin/bash
-                                set -euo pipefail
+                            sh '''
+                                set -eu
                                 echo "Generating targeted plan excluding airflow VM..."
 
                                 # Get all resources except the VM
@@ -239,24 +239,24 @@ pipeline {
                                 done <<< "$RESOURCES"
                                 
                                 echo "Running terraform plan with targets: $TARGET_ARGS"
-                                terraform plan \
-                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \
-                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
-                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
-                                    -var="s3_bucket=${S3_BUCKET}" \
-                                    $TARGET_ARGS \
+                                terraform plan \\
+                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \\
+                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \\
+                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \\
+                                    -var="s3_bucket=${S3_BUCKET}" \\
+                                    $TARGET_ARGS \\
                                     -out=tfplan
                             '''
                         } else {
                             // Create a full plan including VM
                             sh '''
-                                set -euo pipefail
+                                set -eu
                                 echo "Generating full terraform plan..."
-                                terraform plan \
-                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \
-                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
-                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
-                                    -var="s3_bucket=${S3_BUCKET}" \
+                                terraform plan \\
+                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \\
+                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \\
+                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \\
+                                    -var="s3_bucket=${S3_BUCKET}" \\
                                     -out=tfplan
                             '''
                         }
