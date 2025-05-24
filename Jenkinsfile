@@ -225,15 +225,20 @@ pipeline {
                         if (env.SKIP_VM_RECREATION == 'true') {
                             // Create a targeted plan that excludes the VM
                             sh '''
+                                set -euo pipefail
+                                echo "Generating targeted plan excluding airflow VM..."
+
                                 # Get all resources except the VM
                                 RESOURCES=$(terraform state list | grep -v "module.airflow.google_compute_instance.airflow")
                                 
                                 # Create plan targeting all resources except the VM
                                 TARGET_ARGS=""
                                 while IFS= read -r resource; do
-                                    TARGET_ARGS="$TARGET_ARGS -target='$resource'"
+                                    echo "Including resource: $resource"
+                                    TARGET_ARGS="$TARGET_ARGS -target=$resource"
                                 done <<< "$RESOURCES"
                                 
+                                echo "Running terraform plan with targets: $TARGET_ARGS"
                                 terraform plan \
                                     -var="project_id=${DEV_GCP_PROJECT_ID}" \
                                     -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
@@ -245,6 +250,8 @@ pipeline {
                         } else {
                             // Create a full plan including VM
                             sh '''
+                                set -euo pipefail
+                                echo "Generating full terraform plan..."
                                 terraform plan \
                                     -var="project_id=${DEV_GCP_PROJECT_ID}" \
                                     -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
