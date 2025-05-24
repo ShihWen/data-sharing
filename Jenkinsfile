@@ -12,12 +12,63 @@ pipeline {
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
         AWS_CREDENTIALS = credentials('aws-s3-credentials')  // Add this credential in Jenkins
         S3_BUCKET = 'online-data-lake-thirty-three'  // You might want to make this configurable per environment
+        AIRFLOW_BUCKET = 'open-data-v2-cicd-airflow-storage'  // Add this for Airflow GCS bucket
     }
     
     stages {
         stage('Checkout Code') {
             steps {
                 checkout scm
+            }
+        }
+        
+        stage('Detect DAG Changes') {
+            steps {
+                script {
+                    // Check if there are any changes in the DAGs directory
+                    def dagChanges = sh(
+                        script: '''
+                            if git diff --name-only HEAD~1 HEAD | grep -q "terraform/airflow/docker/dags/"; then
+                                echo "true"
+                            else
+                                echo "false"
+                            fi
+                        ''',
+                        returnStdout: true
+                    ).trim()
+
+                    // Set environment variable for later stages
+                    env.DAG_CHANGES = dagChanges
+                    
+                    if (dagChanges == "true") {
+                        echo "DAG changes detected. Will upload to GCS."
+                    } else {
+                        echo "No DAG changes detected."
+                    }
+                }
+            }
+        }
+
+        stage('Upload DAGs to GCS') {
+            when {
+                expression { return env.DAG_CHANGES == "true" }
+            }
+            steps {
+                script {
+                    // Authenticate with GCP
+                    sh '''
+                        echo "Authenticating with GCP..."
+                        gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                        gcloud config set project ${DEV_GCP_PROJECT_ID}
+                    '''
+
+                    // Upload only the DAGs directory to GCS
+                    sh '''
+                        echo "Uploading DAGs to GCS..."
+                        gsutil -m cp -r terraform/airflow/docker/dags/* gs://${AIRFLOW_BUCKET}/docker/dags/
+                        echo "DAGs uploaded successfully to gs://${AIRFLOW_BUCKET}/docker/dags/"
+                    '''
+                }
             }
         }
         
