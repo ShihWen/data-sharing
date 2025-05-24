@@ -104,44 +104,64 @@ pipeline {
         stage('Check Airflow VM Status') {
             steps {
                 script {
-                    // Check if VM exists and is running
-                    def vmStatus = sh(
+                    // First, find the VM's zone
+                    def vmZone = sh(
                         script: '''
-                            gcloud compute instances describe airflow-vm \
+                            gcloud compute instances list \
                                 --project=${DEV_GCP_PROJECT_ID} \
-                                --zone=us-central1-a \
-                                --format='get(status)' 2>/dev/null || echo 'NOT_FOUND'
+                                --filter="name=airflow-vm" \
+                                --format='get(zone)' 2>/dev/null || echo 'NOT_FOUND'
                         ''',
                         returnStdout: true
                     ).trim()
 
-                    // Check if Airflow is healthy if VM is running
-                    if (vmStatus == 'RUNNING') {
-                        def vmIp = sh(
-                            script: '''
+                    if (vmZone == 'NOT_FOUND') {
+                        echo "Airflow VM not found. Will create new VM."
+                        env.SKIP_VM_RECREATION = 'false'
+                    } else {
+                        // Extract zone name from full path
+                        vmZone = vmZone.split('/')[-1]
+                        echo "Found Airflow VM in zone: ${vmZone}"
+                        
+                        // Check VM status in the correct zone
+                        def vmStatus = sh(
+                            script: """
                                 gcloud compute instances describe airflow-vm \
                                     --project=${DEV_GCP_PROJECT_ID} \
-                                    --zone=us-central1-a \
-                                    --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
-                            ''',
-                            returnStdout: true
-                        ).trim()
-                        
-                        def airflowHealth = sh(
-                            script: "curl -s -o /dev/null -w '%{http_code}' http://${vmIp}:8081/health || echo '000'",
+                                    --zone=${vmZone} \
+                                    --format='get(status)' 2>/dev/null || echo 'NOT_FOUND'
+                            """,
                             returnStdout: true
                         ).trim()
 
-                        if (airflowHealth == '200') {
-                            echo "Airflow VM is running and healthy. Will skip VM recreation but apply other changes."
-                            env.SKIP_VM_RECREATION = 'true'
+                        // Check if Airflow is healthy if VM is running
+                        if (vmStatus == 'RUNNING') {
+                            def vmIp = sh(
+                                script: """
+                                    gcloud compute instances describe airflow-vm \
+                                        --project=${DEV_GCP_PROJECT_ID} \
+                                        --zone=${vmZone} \
+                                        --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+                                """,
+                                returnStdout: true
+                            ).trim()
+                            
+                            def airflowHealth = sh(
+                                script: "curl -s -o /dev/null -w '%{http_code}' http://${vmIp}:8081/health || echo '000'",
+                                returnStdout: true
+                            ).trim()
+
+                            if (airflowHealth == '200') {
+                                echo "Airflow VM is running and healthy. Will skip VM recreation but apply other changes."
+                                env.SKIP_VM_RECREATION = 'true'
+                            } else {
+                                echo "Airflow VM is running but not healthy. Will recreate VM."
+                                env.SKIP_VM_RECREATION = 'false'
+                            }
                         } else {
-                            echo "Airflow VM is running but not healthy. Will recreate VM."
+                            echo "Airflow VM exists but is not running (status: ${vmStatus}). Will recreate VM."
                             env.SKIP_VM_RECREATION = 'false'
                         }
-                    } else {
-                        echo "Airflow VM not found or not running. Will create new VM."
-                        env.SKIP_VM_RECREATION = 'false'
                     }
                 }
             }
