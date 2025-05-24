@@ -97,6 +97,10 @@ chmod 600 /opt/airflow/config/airflow.cfg
 chmod 644 /opt/airflow/config/service-account.json
 chown airflow:airflow /opt/airflow/config/service-account.json
 
+# Fix permissions for Airflow container (UID 50000)
+chown -R 50000:0 /opt/airflow/logs
+chmod -R 755 /opt/airflow/logs
+
 # Generate Fernet key and create environment file
 FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 AIRFLOW_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(16))")
