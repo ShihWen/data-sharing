@@ -16,7 +16,7 @@ default_args = {
 
 def print_hello():
     """Print hello as a test task"""
-    print('Hello from Airflow, I\'m uploaded by Jenkins!')
+    print('Hello from Airflow, I\'m uploaded by Jenkins at 2025-05-24 16:42')
     return 'I\'m uploaded by Jenkins!'
 
 with DAG(
@@ -42,9 +42,9 @@ with DAG(
     bq_task = BigQueryExecuteQueryOperator(
         task_id='example_bq_query',
         sql='''
-            SELECT 
-                CURRENT_TIMESTAMP() as execution_time,
-                'Hello from BigQuery' as message
+            SELECT * 
+            FROM `open-data-v2-cicd.tpe_mrt_bronze.mrt_exit`
+            LIMIT 10
         ''',
         use_legacy_sql=False,
         location='asia-east1',
