@@ -27,30 +27,44 @@ echo "Creating Airflow directories..."
 mkdir -p /opt/airflow/{dags,logs,config,plugins}
 mkdir -p /opt/airflow/logs/{scheduler,dag_processor_manager,webserver}
 
-# Set up Airflow user and group if they don't exist
-echo "Setting up Airflow user and group..."
+# Set up Airflow users and groups
+echo "Setting up Airflow users and groups..."
+
+# Create airflow system user for host operations (if it doesn't exist)
 if ! getent group airflow > /dev/null; then
     echo "Creating airflow group..."
     groupadd --system airflow
 fi
 if ! getent passwd airflow > /dev/null; then
-    echo "Creating airflow user..."
+    echo "Creating airflow system user..."
     useradd --system --home-dir /opt/airflow --no-create-home --shell /bin/false --gid airflow airflow
 fi
 
-# Verify airflow user exists before proceeding
+# Create airflow container user with UID 50000 (if it doesn't exist)
+if ! getent passwd $AIRFLOW_UID > /dev/null; then
+    echo "Creating airflow container user with UID $AIRFLOW_UID..."
+    useradd --system --uid $AIRFLOW_UID --home-dir /opt/airflow --no-create-home --shell /bin/false --gid root airflow-container
+else
+    echo "User with UID $AIRFLOW_UID already exists"
+fi
+
+# Verify both users exist
 if ! getent passwd airflow > /dev/null; then
-    echo "ERROR: Failed to create airflow user!"
+    echo "ERROR: Failed to create airflow system user!"
     exit 1
 fi
-echo "Airflow user created successfully"
+if ! getent passwd $AIRFLOW_UID > /dev/null; then
+    echo "ERROR: Failed to create airflow container user!"
+    exit 1
+fi
+echo "Airflow users created successfully"
 
 # Pull Airflow configurations from GCS
 echo "Pulling configurations from GCS..."
 cd /opt/airflow
 gsutil -m cp -r gs://${gcs_bucket}/docker/* .
 
-# Set up GCS sync service
+# Set up GCS sync service to run as the container user (UID 50000)
 echo "Setting up GCS sync service..."
 cat > /etc/systemd/system/gcs-sync.service <<EOL
 [Unit]
@@ -59,8 +73,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=airflow
-Group=airflow
+User=airflow-container
+Group=root
 ExecStart=/usr/bin/gsutil -m rsync -r gs://${gcs_bucket}/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
@@ -73,6 +87,11 @@ EOL
 systemctl daemon-reload
 systemctl enable gcs-sync.service
 systemctl start gcs-sync.service
+
+# Fix gsutil directory permissions for airflow-container user
+echo "Fixing gsutil directory permissions..."
+chown -R $AIRFLOW_UID:root /opt/airflow/.gsutil
+echo "Fixed gsutil directory permissions"
 
 # Fetch service account key from Secret Manager
 echo "Fetching service account key from Secret Manager..."
@@ -129,13 +148,21 @@ chown $AIRFLOW_UID:$AIRFLOW_GID .env
 chmod 644 /opt/airflow/config/service-account.json
 chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/config/service-account.json
 
-# Add airflow user to docker group
-echo "Adding airflow user to docker group..."
+# Add airflow users to docker group
+echo "Adding airflow users to docker group..."
 if getent passwd airflow > /dev/null; then
     usermod -aG docker airflow
-    echo "Successfully added airflow user to docker group"
+    echo "Successfully added airflow system user to docker group"
 else
-    echo "ERROR: airflow user does not exist, cannot add to docker group"
+    echo "ERROR: airflow system user does not exist, cannot add to docker group"
+    exit 1
+fi
+
+if getent passwd airflow-container > /dev/null; then
+    usermod -aG docker airflow-container
+    echo "Successfully added airflow-container user to docker group"
+else
+    echo "ERROR: airflow-container user does not exist, cannot add to docker group"
     exit 1
 fi
 
