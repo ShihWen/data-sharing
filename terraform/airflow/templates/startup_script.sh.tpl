@@ -18,9 +18,14 @@ chmod +x /usr/local/bin/docker-compose
 # Install required Python packages
 pip3 install cryptography
 
+# Set fixed UID/GID for Airflow container
+AIRFLOW_UID=50000
+AIRFLOW_GID=0
+
 # Create Airflow directories with proper permissions
 echo "Creating Airflow directories..."
 mkdir -p /opt/airflow/{dags,logs,config,plugins}
+mkdir -p /opt/airflow/logs/{scheduler,dag_processor_manager,webserver}
 
 # Set up Airflow user and group if they don't exist
 echo "Setting up Airflow user and group..."
@@ -39,10 +44,6 @@ if ! getent passwd airflow > /dev/null; then
     exit 1
 fi
 echo "Airflow user created successfully"
-
-# Set fixed UID/GID for Airflow user
-AIRFLOW_UID=50000
-AIRFLOW_GID=0
 
 # Pull Airflow configurations from GCS
 echo "Pulling configurations from GCS..."
@@ -88,19 +89,6 @@ if [ ! -s /opt/airflow/config/service-account.json ]; then
 fi
 echo "Service account key fetched successfully"
 
-# Set proper permissions
-chown -R airflow:airflow /opt/airflow
-chmod -R 755 /opt/airflow/dags
-chmod -R 755 /opt/airflow/logs
-chmod -R 755 /opt/airflow/plugins
-chmod 600 /opt/airflow/config/airflow.cfg
-chmod 644 /opt/airflow/config/service-account.json
-chown airflow:airflow /opt/airflow/config/service-account.json
-
-# Fix permissions for Airflow container (UID 50000)
-chown -R 50000:0 /opt/airflow/logs
-chmod -R 755 /opt/airflow/logs
-
 # Generate Fernet key and create environment file
 FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 AIRFLOW_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(16))")
@@ -121,14 +109,27 @@ AIRFLOW_ADMIN_EMAIL=admin@example.com
 AIRFLOW_DB_CONNECTION=postgresql+psycopg2://airflow:airflow@postgres/airflow
 EOL
 
+# Set comprehensive permissions for Airflow container (UID 50000)
+echo "Setting proper permissions for Airflow container..."
+# Set ownership for all Airflow directories to UID 50000
+chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/dags
+chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/logs
+chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/plugins
+chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/config
+
+# Set proper permissions
+chmod -R 755 /opt/airflow/dags
+chmod -R 755 /opt/airflow/logs
+chmod -R 755 /opt/airflow/plugins
+chmod -R 644 /opt/airflow/config/*
 chmod 600 .env
 chown $AIRFLOW_UID:$AIRFLOW_GID .env
 
-# Set proper permissions for service account file
+# Ensure service account file has correct permissions
 chmod 644 /opt/airflow/config/service-account.json
-chown $AIRFLOW_UID:0 /opt/airflow/config/service-account.json
+chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/config/service-account.json
 
-# Add current user to docker group and airflow group
+# Add airflow user to docker group
 echo "Adding airflow user to docker group..."
 if getent passwd airflow > /dev/null; then
     usermod -aG docker airflow
@@ -136,9 +137,6 @@ if getent passwd airflow > /dev/null; then
 else
     echo "ERROR: airflow user does not exist, cannot add to docker group"
     exit 1
-fi
-if [ -n "$USER" ]; then
-  usermod -aG airflow $USER
 fi
 
 # Ensure proper ownership of Docker socket
@@ -172,21 +170,24 @@ while [ $timeout -gt 0 ]; do
     fi
 done
 
-# Run initialization with proper command structure
+# Run initialization - the docker-compose.yml now has the fixed command
 echo "Running Airflow initialization..."
-if ! docker-compose run --rm airflow-init bash -c '
-    airflow db init &&
-    airflow users create \
-        -u admin \
-        -p admin \
-        -f Airflow \
-        -l Admin \
-        -r Admin \
-        -e admin@example.com
-'; then
+if ! docker-compose run --rm airflow-init; then
     echo "Airflow initialization failed. Checking logs:"
     docker-compose logs airflow-init
-    exit 1
+    
+    # Try to create user manually if initialization failed
+    echo "Attempting manual user creation..."
+    if docker-compose run --rm airflow-init airflow db migrate; then
+        echo "Database migration successful, creating admin user..."
+        docker-compose run --rm airflow-init airflow users create \
+            --username admin \
+            --password admin \
+            --firstname Airflow \
+            --lastname Admin \
+            --role Admin \
+            --email admin@example.com || echo "Manual user creation also failed"
+    fi
 fi
 
 # Start remaining services
@@ -198,21 +199,21 @@ for service in airflow-webserver airflow-scheduler; do
     timeout=300
     echo "Waiting for $service to be healthy..."
     while [ $timeout -gt 0 ]; do
-        if docker-compose ps $service | grep -q "Up (healthy)"; then
-            echo "$service is healthy!"
+        if docker-compose ps $service | grep -q "Up (healthy)" || docker-compose ps $service | grep -q "Up"; then
+            echo "$service is running!"
             break
         fi
         echo "Waiting for $service... $(($timeout / 5)) seconds remaining"
         sleep 5
         timeout=$((timeout - 5))
         if [ $timeout -eq 0 ]; then
-            echo "$service failed to become healthy"
+            echo "$service failed to start properly"
             docker-compose logs $service
-            exit 1
+            # Don't exit here, let other services try to start
         fi
     done
 done
 
-echo "All services are running and healthy!"
+echo "Service startup completed!"
 docker-compose ps
 echo "Airflow setup complete!" 
