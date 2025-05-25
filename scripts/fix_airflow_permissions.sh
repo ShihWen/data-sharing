@@ -60,7 +60,7 @@ After=network.target
 Type=simple
 User=airflow-container
 Group=root
-ExecStart=/usr/bin/gsutil -m rsync -r gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
+ExecStart=/usr/bin/gsutil -m rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
 

@@ -75,7 +75,7 @@ After=network.target
 Type=simple
 User=airflow-container
 Group=root
-ExecStart=/usr/bin/gsutil -m rsync -r gs://${gcs_bucket}/docker/dags/ /opt/airflow/dags/
+ExecStart=/usr/bin/gsutil -m rsync -r -d gs://${gcs_bucket}/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
 
