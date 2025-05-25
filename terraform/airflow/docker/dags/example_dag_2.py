@@ -20,7 +20,7 @@ def print_hello():
     return 'Hello from Airflow!'
 
 with DAG(
-    'example_dag',
+    'example_dag_2',
     default_args=default_args,
     description='A simple example DAG with BigQuery integration',
     schedule_interval='0 12 * * *',
