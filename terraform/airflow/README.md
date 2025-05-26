@@ -1,40 +1,143 @@
-# Airflow Infrastructure Module
+# Airflow Infrastructure
 
-This module provisions an Airflow instance on Google Cloud Platform using Compute Engine and Docker Compose.
+This module creates and manages an Airflow instance on Google Cloud Platform with automated DAG synchronization and proper permission management.
 
-## Architecture
+## 🏗️ Architecture
 
-- **Compute Instance**: `e2-medium` VM running Debian 11
-- **Services**: PostgreSQL, Airflow Webserver, Airflow Scheduler
-- **Storage**: GCS bucket for DAGs, logs, and configurations
-- **Networking**: Firewall rule allowing access on port 8081
-- **Scheduling**: Cloud Scheduler jobs for automatic start/stop
+- **VM**: Debian 11 with Docker and Docker Compose
+- **Services**: Airflow webserver, scheduler, and PostgreSQL database
+- **Storage**: GCS bucket for DAG files and logs
+- **Sync**: Automated DAG synchronization from GCS
+- **Permissions**: Robust user and permission management
 
-## Components
+## 👥 User Management
 
-### 1. VM Instance (`google_compute_instance.airflow`)
-- Runs startup script to install Docker and configure Airflow
-- Uses service account for GCP authentication
-- Scheduled to run Saturday 8:00 AM to Sunday 00:00 AM (Taiwan Time)
+### User Structure
+- **System User**: `airflow` (UID 997) - for host operations
+- **Container User**: `airflow-container` (UID 50000) - for Docker containers
+- **Docker Containers**: Run as UID 50000 for security and consistency
 
-### 2. GCS Bucket (`google_storage_bucket.airflow_bucket`)
-- Stores DAG files, logs, and Docker configurations
-- Versioning enabled with 30-day lifecycle policy
+### Permission System
+- All Airflow directories (`/opt/airflow/{dags,logs,config,plugins}`) are owned by UID 50000
+- GCS sync service runs as `airflow-container` user
+- Automatic permission fix service runs on every boot
+- Startup script ensures correct permissions on VM creation/restart
 
-### 3. Service Accounts
-- **Airflow SA**: For Airflow operations (BigQuery, GCS access)
-- **Scheduler SA**: For starting/stopping the VM via Cloud Scheduler
+## 🔧 Permanent Fixes Applied
 
-### 4. Docker Services
-- **PostgreSQL**: Database backend
-- **Airflow Webserver**: Web UI on port 8081
-- **Airflow Scheduler**: DAG scheduling and execution
+### 1. Terraform Configuration
+- Removed `metadata_startup_script` from `ignore_changes` to allow startup script updates
+- Enhanced startup script with robust permission handling
 
-## Access Information
+### 2. Boot-time Permission Service
+A systemd service (`airflow-permissions.service`) automatically fixes permissions on every boot:
+```bash
+# Service runs: chown -R 50000:0 /opt/airflow/{dags,logs,plugins,config}
+sudo systemctl status airflow-permissions.service
+```
 
-- **URL**: `http://<VM_EXTERNAL_IP>:8081`
+### 3. GCS Sync Service
+Properly configured to run as `airflow-container` user:
+```bash
+sudo systemctl status gcs-sync.service
+```
+
+## 🚀 Deployment
+
+### Initial Deployment
+```bash
+cd terraform
+terraform init
+terraform plan -var="project_id=your-project" -var="aws_access_key=xxx" -var="aws_secret_key=xxx" -var="s3_bucket=xxx"
+terraform apply
+```
+
+### DAG Updates
+```bash
+cd scripts
+./upload_config.sh  # Syncs DAGs to GCS, automatically pulled by VM
+```
+
+### Permission Fixes (if needed)
+```bash
+cd scripts
+./fix_airflow_permissions.sh  # Comprehensive fix for current VM
+```
+
+## 🔍 Monitoring & Validation
+
+### Health Check
+```bash
+cd scripts
+./validate_airflow.sh
+```
+
+### Manual Checks
+```bash
+# Check services
+gcloud compute ssh airflow-vm --zone=asia-east1-b --command='cd /opt/airflow && sudo docker-compose ps'
+
+# Check permissions
+gcloud compute ssh airflow-vm --zone=asia-east1-b --command='ls -la /opt/airflow/'
+
+# Check logs
+gcloud compute ssh airflow-vm --zone=asia-east1-b --command='cd /opt/airflow && sudo docker-compose logs airflow-scheduler --tail=20'
+```
+
+## 🔄 VM Lifecycle
+
+### Restart VM
+```bash
+cd scripts
+./restart_airflow_vm.sh  # Safe restart with health monitoring
+```
+
+### Recreate VM
+```bash
+cd terraform
+terraform destroy -target=module.airflow.google_compute_instance.airflow
+terraform apply  # Startup script will configure everything correctly
+```
+
+## 🛠️ Troubleshooting
+
+### DAGs Not Showing
+1. Check GCS sync: `sudo systemctl status gcs-sync.service`
+2. Check permissions: `ls -la /opt/airflow/dags/`
+3. Check scheduler logs: `sudo docker-compose logs airflow-scheduler`
+4. Run permission fix: `./scripts/fix_airflow_permissions.sh`
+
+### Permission Issues
+1. Check user existence: `getent passwd | grep -E "(airflow|50000)"`
+2. Check directory ownership: `ls -la /opt/airflow/`
+3. Run comprehensive fix: `./scripts/fix_airflow_permissions.sh`
+
+### Service Issues
+1. Check all services: `sudo docker-compose ps`
+2. Restart services: `sudo docker-compose restart`
+3. Check startup logs: `sudo journalctl -u google-startup-scripts.service`
+
+## 📋 Access Information
+
+- **Web UI**: `http://<VM_IP>:8081`
 - **Username**: `admin`
 - **Password**: `admin`
+- **VM SSH**: `gcloud compute ssh airflow-vm --zone=asia-east1-b`
+
+## 🔐 Security Notes
+
+- VM uses service account with minimal required permissions
+- Airflow containers run as non-root user (UID 50000)
+- GCS bucket has versioning and lifecycle policies
+- Firewall rules restrict access to necessary ports only
+
+## 🎯 Persistence Guarantees
+
+This configuration ensures permissions and setup persist through:
+- ✅ VM restarts (boot-time permission service)
+- ✅ VM recreations (enhanced startup script)
+- ✅ Terraform updates (startup script updates allowed)
+- ✅ Manual interventions (comprehensive fix script available)
 
 ## File Structure
 

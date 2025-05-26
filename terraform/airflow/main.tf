@@ -109,7 +109,6 @@ resource "google_compute_instance" "airflow" {
   lifecycle {
     prevent_destroy = false
     ignore_changes = [
-      metadata_startup_script,
       boot_disk,
     ]
   }

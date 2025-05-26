@@ -130,7 +130,13 @@ EOL
 
 # Set comprehensive permissions for Airflow container (UID 50000)
 echo "Setting proper permissions for Airflow container..."
+
+# Ensure directories exist first
+mkdir -p /opt/airflow/{dags,logs,config,plugins}
+mkdir -p /opt/airflow/logs/{scheduler,dag_processor_manager,webserver}
+
 # Set ownership for all Airflow directories to UID 50000
+echo "Setting ownership to UID $AIRFLOW_UID (airflow-container user)..."
 chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/dags
 chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/logs
 chown -R $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/plugins
@@ -147,6 +153,33 @@ chown $AIRFLOW_UID:$AIRFLOW_GID .env
 # Ensure service account file has correct permissions
 chmod 644 /opt/airflow/config/service-account.json
 chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/config/service-account.json
+
+# Verify permissions are set correctly
+echo "Verifying permissions..."
+ls -la /opt/airflow/ | head -10
+echo "Logs directory permissions:"
+ls -la /opt/airflow/logs/ | head -5
+
+# Create a permission fix service that runs on every boot
+echo "Creating permission fix service for boot-time execution..."
+cat > /etc/systemd/system/airflow-permissions.service <<EOL
+[Unit]
+Description=Fix Airflow Permissions on Boot
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'chown -R 50000:0 /opt/airflow/{dags,logs,plugins,config} && chmod -R 755 /opt/airflow/{dags,logs,plugins}'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# Enable the permission fix service
+systemctl daemon-reload
+systemctl enable airflow-permissions.service
+echo "✅ Airflow permissions service enabled for future boots"
 
 # Add airflow users to docker group
 echo "Adding airflow users to docker group..."
