@@ -88,10 +88,15 @@ systemctl daemon-reload
 systemctl enable gcs-sync.service
 systemctl start gcs-sync.service
 
-# Fix gsutil directory permissions for airflow-container user
-echo "Fixing gsutil directory permissions..."
-chown -R $AIRFLOW_UID:root /opt/airflow/.gsutil
-echo "Fixed gsutil directory permissions"
+# Fix gsutil directory permissions for airflow-container user (if it exists)
+echo "Checking for gsutil directory..."
+if [ -d "/opt/airflow/.gsutil" ]; then
+    echo "Fixing gsutil directory permissions..."
+    chown -R $AIRFLOW_UID:root /opt/airflow/.gsutil
+    echo "Fixed gsutil directory permissions"
+else
+    echo "gsutil directory doesn't exist yet - will be created by GCS sync service"
+fi
 
 # Fetch service account key from Secret Manager
 echo "Fetching service account key from Secret Manager..."
@@ -169,7 +174,7 @@ After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'chown -R 50000:0 /opt/airflow/{dags,logs,plugins,config} && chmod -R 755 /opt/airflow/{dags,logs,plugins}'
+ExecStart=/bin/bash -c 'chown -R 50000:0 /opt/airflow/{dags,logs,plugins,config} && chmod -R 755 /opt/airflow/{dags,logs,plugins} && if [ -d "/opt/airflow/.gsutil" ]; then chown -R 50000:0 /opt/airflow/.gsutil; fi'
 RemainAfterExit=yes
 
 [Install]
