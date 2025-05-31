@@ -75,6 +75,7 @@ After=network.target
 Type=simple
 User=airflow-container
 Group=root
+Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json"
 ExecStart=/usr/bin/gsutil -m rsync -r -d gs://${gcs_bucket}/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
@@ -88,15 +89,13 @@ systemctl daemon-reload
 systemctl enable gcs-sync.service
 systemctl start gcs-sync.service
 
-# Fix gsutil directory permissions for airflow-container user (if it exists)
-echo "Checking for gsutil directory..."
-if [ -d "/opt/airflow/.gsutil" ]; then
-    echo "Fixing gsutil directory permissions..."
-    chown -R $AIRFLOW_UID:root /opt/airflow/.gsutil
-    echo "Fixed gsutil directory permissions"
-else
-    echo "gsutil directory doesn't exist yet - will be created by GCS sync service"
-fi
+# Create necessary directories with proper permissions for gcloud/gsutil
+echo "Creating gcloud and gsutil directories..."
+mkdir -p /opt/airflow/.config/gcloud/configurations
+mkdir -p /opt/airflow/.gsutil
+chown -R $AIRFLOW_UID:root /opt/airflow/.config
+chown -R $AIRFLOW_UID:root /opt/airflow/.gsutil
+echo "Created and configured gcloud/gsutil directories"
 
 # Fetch service account key from Secret Manager
 echo "Fetching service account key from Secret Manager..."
@@ -174,7 +173,7 @@ After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'chown -R 50000:0 /opt/airflow/{dags,logs,plugins,config} && chmod -R 755 /opt/airflow/{dags,logs,plugins} && if [ -d "/opt/airflow/.gsutil" ]; then chown -R 50000:0 /opt/airflow/.gsutil; fi'
+ExecStart=/bin/bash -c 'chown -R 50000:0 /opt/airflow/{dags,logs,plugins,config} && chmod -R 755 /opt/airflow/{dags,logs,plugins} && if [ -d "/opt/airflow/.gsutil" ]; then chown -R 50000:0 /opt/airflow/.gsutil; fi && if [ -d "/opt/airflow/.config" ]; then chown -R 50000:0 /opt/airflow/.config; fi'
 RemainAfterExit=yes
 
 [Install]
