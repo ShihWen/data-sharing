@@ -244,13 +244,7 @@ if ! docker-compose run --rm airflow-init; then
     echo "Attempting manual user creation..."
     if docker-compose run --rm airflow-init airflow db migrate; then
         echo "Database migration successful, creating admin user..."
-        docker-compose run --rm airflow-init airflow users create \
-            --username admin \
-            --password admin \
-            --firstname Airflow \
-            --lastname Admin \
-            --role Admin \
-            --email admin@example.com || echo "Manual user creation also failed"
+        docker-compose run --rm airflow-init airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com || echo "Manual user creation also failed"
     fi
 fi
 
