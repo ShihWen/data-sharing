@@ -211,9 +211,267 @@ restart_vm() {
     echo "6️⃣ Validating Airflow..."
     if validate_airflow; then
         print_status "SUCCESS: Airflow VM restart completed successfully!"
+        return 0
     else
-        print_warning "Airflow restart completed but validation failed"
-        print_info "Services may still be initializing. Try validation again in a few minutes."
+        print_warning "Initial validation failed. Applying emergency fixes automatically..."
+        echo ""
+        echo "7️⃣ Running emergency fix to resolve startup issues..."
+        
+        # Run emergency fix function but without the VM status check since we know it's running
+        print_status "VM is running, applying emergency fixes..."
+
+        # Create comprehensive emergency fix script
+        cat > /tmp/emergency_vm_fix.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "=== Emergency VM Fix Starting ==="
+
+# 1. Fix dpkg issues
+echo "1️⃣ Fixing dpkg issues..."
+export DEBIAN_FRONTEND=noninteractive
+dpkg --configure -a || true
+apt-get -f install -y || true
+
+# 2. Complete any interrupted package operations
+echo "2️⃣ Updating packages..."
+apt-get update -y
+apt-get upgrade -y
+
+# 3. Install Docker if not present
+echo "3️⃣ Ensuring Docker is installed..."
+if ! command -v docker &> /dev/null; then
+    echo "Installing Docker..."
+    apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+    curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io
+    systemctl enable docker
+    systemctl start docker
+else
+    echo "Docker already installed"
+    systemctl restart docker
+fi
+
+# 4. Install Docker Compose if not present
+echo "4️⃣ Ensuring Docker Compose is installed..."
+if ! command -v docker-compose &> /dev/null; then
+    echo "Installing Docker Compose..."
+    curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+else
+    echo "Docker Compose already installed"
+fi
+
+# 5. Install Python packages
+echo "5️⃣ Installing Python packages..."
+pip3 install --upgrade cryptography
+
+# 6. Ensure users exist
+echo "6️⃣ Setting up users..."
+AIRFLOW_UID=50000
+if ! getent passwd $AIRFLOW_UID > /dev/null; then
+    useradd --system --uid $AIRFLOW_UID --home-dir /opt/airflow --no-create-home --shell /bin/false --gid root airflow-container
+fi
+if ! getent passwd airflow > /dev/null; then
+    useradd --system --home-dir /opt/airflow --no-create-home --shell /bin/false airflow
+fi
+
+# Add users to docker group
+usermod -aG docker airflow-container 2>/dev/null || true
+usermod -aG docker airflow 2>/dev/null || true
+
+# 7. Set up directories
+echo "7️⃣ Setting up directories..."
+mkdir -p /opt/airflow/{dags,logs,config,plugins}
+mkdir -p /opt/airflow/logs/{scheduler,dag_processor_manager,webserver}
+mkdir -p /opt/airflow/.config/gcloud/configurations
+mkdir -p /opt/airflow/.gsutil
+
+# 8. Get configurations from GCS if needed
+echo "8️⃣ Getting configurations from GCS..."
+cd /opt/airflow
+if [ ! -f "docker-compose.yml" ]; then
+    echo "Downloading configurations from GCS..."
+    gsutil -m cp -r gs://open-data-v2-cicd-airflow-storage/docker/* . 2>/dev/null || echo "Could not download from GCS, continuing..."
+fi
+
+# 9. Create service account key if missing
+echo "9️⃣ Setting up service account..."
+mkdir -p /opt/airflow/config
+if [ ! -f "/opt/airflow/config/service-account.json" ]; then
+    gcloud secrets versions access latest --secret="airflow-service-account-key" > /opt/airflow/config/service-account.json 2>/dev/null || echo "Could not fetch service account key"
+fi
+
+# 10. Create environment file if missing
+echo "🔟 Creating environment file..."
+if [ ! -f ".env" ]; then
+    FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    AIRFLOW_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(16))")
+    
+    cat > .env << EOL
+AIRFLOW_UID=50000
+AIRFLOW_GID=0
+AIRFLOW_FERNET_KEY=$FERNET_KEY
+AIRFLOW_SECRET_KEY=$AIRFLOW_SECRET_KEY
+AIRFLOW_GCS_BUCKET=open-data-v2-cicd-airflow-storage
+GOOGLE_CLOUD_PROJECT=open-data-v2-cicd
+AIRFLOW_ADMIN_USER=admin
+AIRFLOW_ADMIN_PASSWORD=admin
+AIRFLOW_ADMIN_FIRSTNAME=Airflow
+AIRFLOW_ADMIN_LASTNAME=Admin
+AIRFLOW_ADMIN_EMAIL=admin@example.com
+AIRFLOW_DB_CONNECTION=postgresql+psycopg2://airflow:airflow@postgres/airflow
+EOL
+fi
+
+# 11. Fix all permissions
+echo "1️⃣1️⃣ Fixing permissions..."
+chown -R $AIRFLOW_UID:0 /opt/airflow/{dags,logs,plugins,config}
+chown -R $AIRFLOW_UID:0 /opt/airflow/.config
+chown -R $AIRFLOW_UID:0 /opt/airflow/.gsutil
+chmod -R 755 /opt/airflow/{dags,logs,plugins}
+chown $AIRFLOW_UID:0 .env
+chmod 600 .env
+
+# 12. Update systemd services
+echo "1️⃣2️⃣ Updating systemd services..."
+
+# GCS sync service
+cat > /etc/systemd/system/gcs-sync.service << 'EOL'
+[Unit]
+Description=GCS DAGs Sync Service
+After=network.target
+
+[Service]
+Type=simple
+User=airflow-container
+Group=root
+Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json"
+ExecStart=/usr/bin/gsutil -m rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# Airflow permissions service
+cat > /etc/systemd/system/airflow-permissions.service << 'EOL'
+[Unit]
+Description=Fix Airflow Permissions on Boot
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'chown -R 50000:0 /opt/airflow/{dags,logs,plugins,config} && chmod -R 755 /opt/airflow/{dags,logs,plugins} && if [ -d "/opt/airflow/.gsutil" ]; then chown -R 50000:0 /opt/airflow/.gsutil; fi && if [ -d "/opt/airflow/.config" ]; then chown -R 50000:0 /opt/airflow/.config; fi'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# Airflow startup service
+cat > /etc/systemd/system/airflow-startup.service << 'EOL'
+[Unit]
+Description=Start Airflow Services
+After=docker.service airflow-permissions.service
+Requires=docker.service
+Wants=airflow-permissions.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/airflow
+ExecStartPre=/bin/bash -c 'while ! docker info > /dev/null 2>&1; do echo "Waiting for Docker..."; sleep 2; done'
+ExecStart=/bin/bash -c 'cd /opt/airflow && docker-compose up -d'
+RemainAfterExit=yes
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# 13. Enable and start services
+echo "1️⃣3️⃣ Enabling services..."
+systemctl daemon-reload
+systemctl enable airflow-permissions.service
+systemctl enable gcs-sync.service
+systemctl enable airflow-startup.service
+
+# Start permission service
+systemctl start airflow-permissions.service
+
+# 14. Start Docker services
+echo "1️⃣4️⃣ Starting Docker services..."
+cd /opt/airflow
+
+# Clean up any existing containers
+docker-compose down -v 2>/dev/null || true
+
+# Start services step by step
+echo "Starting Postgres..."
+docker-compose up -d postgres
+
+# Wait for Postgres
+echo "Waiting for Postgres to be healthy..."
+timeout=120
+while [ $timeout -gt 0 ]; do
+    if docker-compose exec -T postgres pg_isready -U airflow 2>/dev/null; then
+        echo "Postgres is ready!"
+        break
+    fi
+    echo "Waiting for Postgres... $timeout seconds remaining"
+    sleep 5
+    timeout=$((timeout - 5))
+done
+
+# Initialize database
+echo "Initializing Airflow database..."
+docker-compose run --rm airflow-init 2>/dev/null || {
+    echo "Airflow init failed, trying manual setup..."
+    docker-compose run --rm airflow-init airflow db migrate 2>/dev/null || true
+    docker-compose run --rm airflow-init airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com 2>/dev/null || true
+}
+
+# Start remaining services
+echo "Starting Airflow services..."
+docker-compose up -d airflow-webserver airflow-scheduler
+
+echo "✅ Emergency fix completed!"
+echo "Services should be starting up now..."
+
+# Show status
+echo ""
+echo "Service status:"
+docker-compose ps
+EOF
+
+        echo "Copying and executing emergency fix script..."
+        gcloud compute scp /tmp/emergency_vm_fix.sh $VM_NAME:/tmp/emergency_vm_fix.sh --zone=$ZONE
+        gcloud compute ssh $VM_NAME --zone=$ZONE --command="chmod +x /tmp/emergency_vm_fix.sh && sudo /tmp/emergency_vm_fix.sh"
+
+        echo ""
+        print_info "Waiting for services to stabilize..."
+        sleep 60
+
+        # Cleanup
+        rm -f /tmp/emergency_vm_fix.sh
+        gcloud compute ssh $VM_NAME --zone=$ZONE --command="rm -f /tmp/emergency_vm_fix.sh" 2>/dev/null || true
+
+        echo ""
+        echo "8️⃣ Final validation after emergency fix..."
+        if validate_airflow; then
+            print_status "SUCCESS: Airflow VM restart completed with automatic emergency fix!"
+            echo ""
+            echo "🌐 Access Airflow UI: http://$vm_ip:8081"
+            echo "👤 Username: admin"
+            echo "🔑 Password: admin"
+        else
+            print_error "Emergency fix completed but validation still failed"
+            print_info "Please check the VM manually or try running 'emergency-fix' command again"
+            return 1
+        fi
     fi
 }
 
@@ -644,7 +902,7 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  validate       - Validate Airflow is running and accessible"
-    echo "  restart        - Restart the Airflow VM"
+    echo "  restart        - Restart the Airflow VM (auto-applies emergency fix if needed)"
     echo "  fix            - Apply permanent fixes to prevent restart issues"
     echo "  emergency-fix  - Apply comprehensive emergency fixes for severe issues"
     echo "  upload         - Upload DAGs to GCS bucket"
@@ -653,9 +911,12 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 validate"
-    echo "  $0 restart"
+    echo "  $0 restart          # Now handles issues automatically!"
     echo "  $0 fix"
-    echo "  $0 emergency-fix    # Use when services fail to start after restart"
+    echo "  $0 emergency-fix    # Only needed for manual troubleshooting"
+    echo ""
+    echo "Note: The 'restart' command now automatically applies emergency fixes"
+    echo "      if validation fails, so you don't need to run emergency-fix manually!"
     echo ""
 }
 
