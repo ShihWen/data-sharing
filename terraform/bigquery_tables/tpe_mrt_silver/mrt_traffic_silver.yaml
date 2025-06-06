@@ -1,5 +1,5 @@
 table_id: "mrt_traffic"
-dataset_id_var_name: "tpe_mrt_silver_dataset_id"
+dataset_id_var_name: "tpe_mrt_silver"
 description: "Add basic transformed MRT traffic data from S3"
 labels:
   data_source: "bronze"
