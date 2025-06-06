@@ -1,18 +1,16 @@
 variable "project_id" {
-  description = "GCP project ID"
+  description = "The GCP project ID"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region"
+  description = "The region to deploy resources to"
   type        = string
-  default     = "asia-east1"
 }
 
 variable "zone" {
-  description = "GCP zone"
+  description = "The zone to deploy resources to"
   type        = string
-  default     = "asia-east1-b"
 }
 
 variable "environment" {
@@ -33,17 +31,7 @@ variable "airflow_storage_class" {
   default     = "STANDARD"
 }
 
-variable "bronze_dataset_id" {
-  description = "ID of the Bronze dataset"
-  type        = string
-}
-
-variable "silver_dataset_id" {
-  description = "ID of the Silver dataset"
-  type        = string
-}
-
-variable "gold_dataset_id" {
-  description = "ID of the Gold dataset"
-  type        = string
+variable "dataset_ids" {
+  description = "Map of dataset IDs to their BigQuery dataset IDs"
+  type        = map(string)
 } 

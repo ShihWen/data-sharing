@@ -1,5 +1,5 @@
 table_id: "mrt_exit"
-dataset_id_var_name: "tpe_mrt_bronze_dataset_id"
+dataset_id_var_name: "tpe_mrt_bronze"
 description: "Raw MRT station exit information from S3"
 labels:
   data_source: "s3"

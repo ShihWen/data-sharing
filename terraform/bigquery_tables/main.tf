@@ -4,13 +4,6 @@ locals {
   table_configs = {
     for file in local.table_files : basename(file) => yamldecode(file("${path.module}/${file}"))
   }
-
-  # Map dataset variable names to their values
-  dataset_ids = {
-    "tpe_mrt_bronze_dataset_id" = var.tpe_mrt_bronze_dataset_id
-    "tpe_mrt_silver_dataset_id" = var.tpe_mrt_silver_dataset_id
-    "tpe_mrt_gold_dataset_id"   = var.tpe_mrt_gold_dataset_id
-  }
 }
 
 # Add output for debugging
@@ -27,7 +20,7 @@ output "table_configs" {
 resource "google_bigquery_table" "tables" {
   for_each = local.table_configs
 
-  dataset_id  = local.dataset_ids[each.value.dataset_id_var_name]
+  dataset_id  = var.dataset_ids[each.value.dataset_id_var_name]
   table_id    = each.value.table_id
   project     = var.project_id
   description = each.value.description

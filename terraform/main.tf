@@ -10,6 +10,11 @@ data "google_project" "current" {
 
 locals {
   datasets = yamldecode(file("${path.module}/bigquery_datasets/config/datasets.yaml")).datasets
+  
+  # Create a map of all dataset IDs to their module outputs
+  dataset_outputs = {
+    for ds in local.datasets : ds.id => module.bigquery_datasets[ds.id].dataset_id
+  }
 }
 
 module "bigquery_datasets" {
@@ -23,49 +28,33 @@ module "bigquery_datasets" {
   description     = each.value.description
   location        = var.region
   labels          = each.value.labels
-
-  access_rules = [
-    for rule in each.value.access_rules : {
-      role                  = rule.role
-      user_by_email         = lookup(rule, "user_by_email", null)
-      group_by_email        = lookup(rule, "group_by_email", null)
-      special_group         = lookup(rule, "special_group", null)
-      service_account_email = lookup(rule, "service_account_email", null)
-    }
-  ]
+  access_rules    = each.value.access_rules
 }
 
 module "bigquery_tables" {
   source = "./bigquery_tables"
 
-  project_id                = var.project_id
-  tpe_mrt_bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
-  tpe_mrt_silver_dataset_id = module.bigquery_datasets["tpe_mrt_silver"].dataset_id
-  tpe_mrt_gold_dataset_id   = module.bigquery_datasets["tpe_mrt_gold"].dataset_id
-  depends_on                = [module.bigquery_datasets]
+  project_id   = var.project_id
+  dataset_ids  = local.dataset_outputs
+  depends_on   = [module.bigquery_datasets]
 }
 
 module "transfer_jobs" {
   source = "./transfer_jobs"
 
-  project_id        = var.project_id
-  aws_access_key    = var.aws_access_key
-  aws_secret_key    = var.aws_secret_key
-  s3_bucket         = var.s3_bucket
-  bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
-  depends_on        = [module.bigquery_datasets, module.bigquery_tables]
+  project_id     = var.project_id
+  aws_access_key = var.aws_access_key
+  aws_secret_key = var.aws_secret_key
+  s3_bucket      = var.s3_bucket
+  dataset_ids    = local.dataset_outputs
+  depends_on     = [module.bigquery_datasets, module.bigquery_tables]
 }
 
-# Add Airflow module
 module "airflow" {
   source = "./airflow"
 
-  project_id = var.project_id
-  region     = var.region
-  zone       = var.zone
-  
-  # Pass dataset IDs as variables instead of using depends_on
-  bronze_dataset_id = module.bigquery_datasets["tpe_mrt_bronze"].dataset_id
-  silver_dataset_id = module.bigquery_datasets["tpe_mrt_silver"].dataset_id
-  gold_dataset_id   = module.bigquery_datasets["tpe_mrt_gold"].dataset_id
+  project_id   = var.project_id
+  region       = var.region
+  zone         = var.zone
+  dataset_ids  = local.dataset_outputs
 }

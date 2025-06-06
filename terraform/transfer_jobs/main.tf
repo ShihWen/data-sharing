@@ -31,7 +31,7 @@ resource "google_project_iam_member" "transfer_sa_roles" {
 
 # Create a secret for AWS credentials
 resource "google_secret_manager_secret" "aws_credentials" {
-  secret_id = "aws-s3-credentials-${var.bronze_dataset_id}"  # Make secret name unique per dataset
+  secret_id = "aws-s3-credentials-${var.dataset_ids["tpe_mrt_bronze"]}"  # Make secret name unique per dataset
   project   = var.project_id
 
   replication {
@@ -59,7 +59,7 @@ resource "google_bigquery_data_transfer_config" "mrt_traffic_transfer" {
   location              = "asia-east1"
   data_source_id        = "amazon_s3"
   schedule              = var.schedule
-  destination_dataset_id = var.bronze_dataset_id
+  destination_dataset_id = var.dataset_ids["tpe_mrt_bronze"]
   service_account_name  = google_service_account.transfer_sa.email
   disabled              = false
 
@@ -83,7 +83,7 @@ resource "google_bigquery_data_transfer_config" "mrt_station_transfer" {
   location              = "asia-east1"
   data_source_id        = "amazon_s3"
   schedule              = var.schedule
-  destination_dataset_id = var.bronze_dataset_id
+  destination_dataset_id = var.dataset_ids["tpe_mrt_bronze"]
   service_account_name  = google_service_account.transfer_sa.email
   disabled              = false
 
@@ -107,7 +107,7 @@ resource "google_bigquery_data_transfer_config" "mrt_exit_transfer" {
   location              = "asia-east1"
   data_source_id        = "amazon_s3"
   schedule              = var.schedule
-  destination_dataset_id = var.bronze_dataset_id
+  destination_dataset_id = var.dataset_ids["tpe_mrt_bronze"]
   service_account_name  = google_service_account.transfer_sa.email
   disabled              = false
 
