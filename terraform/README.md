@@ -22,46 +22,88 @@ terraform/
 
 1. Add the dataset configuration to `bigquery_datasets/config/datasets.yaml`:
    ```yaml
-   datasets:
-     - id: "your_new_dataset"
-       friendly_name: "Your New Dataset"
-       description: "Description of your dataset"
-       labels:
-         environment: "development"
-         domain: "your_domain"
-         data_tier: "bronze|silver|gold"
-         owner: "your_team"
-       access_rules:
-         - role: "OWNER"
-           special_group: "projectOwners"
-         - role: "WRITER"
-           special_group: "projectWriters"
-         - role: "READER"
-           special_group: "projectReaders"
+   - id: "your_new_dataset"          # This ID will be used as reference in tables
+     friendly_name: "Your Dataset"
+     description: "Description of your dataset"
+     labels:
+       environment: "development"
+       domain: "your_domain"
+       data_tier: "bronze|silver|gold"
+       owner: "your_team"
+     access_rules:
+       - role: "OWNER"
+         special_group: "projectOwners"
+       - role: "WRITER"
+         special_group: "projectWriters"
+       - role: "READER"
+         special_group: "projectReaders"
    ```
 
-That's it! The dataset will be automatically picked up by all modules. The dataset ID you specify in the `id` field will be used as the reference key in table configurations.
+2. (Optional) Add Tables:
+   - Create a new directory for your tables:
+     ```bash
+     mkdir bigquery_tables/your_new_dataset
+     ```
+   - Create table YAML files in this directory:
+     ```yaml
+     # your_table.yaml
+     table_id: "your_table_name"
+     dataset_id_var_name: "your_new_dataset"  # Must match dataset.id from step 1
+     description: "Table description"
+     labels:
+       data_source: "source_name"
+       data_type: "type"
+       tier: "bronze|silver|gold"
+     
+     schema:
+       - name: "column_name"
+         type: "STRING|INTEGER|DATE|etc"
+         mode: "NULLABLE|REQUIRED|REPEATED"
+         description: "Column description"
+     ```
 
-### Adding New Tables
-
-1. Create a new YAML file in the appropriate directory under `bigquery_tables/`:
-   ```yaml
-   table_id: "your_table_name"
-   dataset_id_var_name: "your_dataset_id"  # Must match the dataset's 'id' field from datasets.yaml
-   description: "Table description"
-   labels:
-     data_source: "source_name"
-     data_type: "type"
-     tier: "bronze|silver|gold"
-   
-   schema:
-     - name: "column_name"
-       type: "STRING|INTEGER|DATE|etc"
-       mode: "NULLABLE|REQUIRED|REPEATED"
-       description: "Column description"
+3. (Optional) Add Transfer Jobs:
+   If you need to transfer data to your new dataset, add transfer job configurations in `transfer_jobs/main.tf`:
+   ```hcl
+   resource "google_bigquery_data_transfer_config" "your_transfer" {
+     display_name           = "Your Data Transfer"
+     project               = var.project_id
+     location              = "asia-east1"
+     data_source_id        = "amazon_s3"
+     schedule              = var.schedule
+     destination_dataset_id = var.dataset_ids["your_new_dataset"]
+     service_account_name  = google_service_account.transfer_sa.email
+     # ... rest of configuration
+   }
    ```
 
-Note: The `dataset_id_var_name` should exactly match the `id` field of the dataset you defined in `datasets.yaml`.
+4. Apply Changes:
+   ```bash
+   # Review changes
+   terraform plan
+
+   # Apply changes
+   terraform apply
+   ```
+
+That's it! The dataset will be automatically:
+- Created in BigQuery with the specified configuration
+- Available to all modules through the dataset_ids map
+- Accessible for table creation
+- Available for transfer jobs
+- Available for Airflow tasks
+
+No other file modifications are needed thanks to the dynamic configuration system.
+
+## Best Practices
+
+1. Always add descriptive labels to datasets and tables
+2. Include comprehensive descriptions for all resources
+3. Follow the naming convention for dataset tiers (bronze, silver, gold)
+4. Use appropriate access rules for data security
+5. Document schema changes in table YAML files
+6. Keep dataset IDs consistent between dataset and table configurations
+7. Use meaningful and consistent naming patterns for tables within each tier
 
 ## Infrastructure Updates
 
@@ -77,11 +119,15 @@ To apply infrastructure changes:
    terraform apply
    ```
 
-## Best Practices
+## Common Patterns
 
-1. Always add descriptive labels to datasets and tables
-2. Include comprehensive descriptions for all resources
-3. Follow the naming convention for dataset tiers (bronze, silver, gold)
-4. Use appropriate access rules for data security
-5. Document schema changes in table YAML files
-6. Keep dataset IDs consistent between dataset and table configurations 
+### Dataset Tiers
+- **Bronze**: Raw data, exactly as received from source
+- **Silver**: Cleaned and validated data
+- **Gold**: Analytics-ready, aggregated data
+
+### Access Rules
+- Project owners get OWNER access
+- Project writers get WRITER access
+- Project readers get READER access
+- Additional custom access can be granted per dataset 
