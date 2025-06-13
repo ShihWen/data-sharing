@@ -73,22 +73,6 @@ pipeline {
             }
         }
 
-        stage('Update Scheduler Configuration') {
-            steps {
-                script {
-                    // Make the script executable
-                    sh '''
-                        chmod +x scripts/update_airflow_config.sh
-                    '''
-                    
-                    // Update scheduler configuration
-                    sh '''
-                        ./scripts/update_airflow_config.sh scheduler terraform/airflow/docker/config/airflow.cfg
-                    '''
-                }
-            }
-        }
-        
         stage('Setup Environment') {
             steps {
                 script {
@@ -295,6 +279,91 @@ pipeline {
                 dir('terraform') {
                     sh '''
                         terraform apply tfplan
+                    '''
+                }
+            }
+        }
+
+        stage('Update Scheduler Configuration') {
+            steps {
+                script {
+                    echo "=== Updating Scheduler Configuration ==="
+                    
+                    // Check if VM was recreated or already existed
+                    if (env.SKIP_VM_RECREATION == 'true') {
+                        echo "✅ VM was already running and healthy, proceeding with config update..."
+                        // VM is already ready, minimal wait
+                        sleep(time: 30, unit: 'SECONDS')
+                    } else {
+                        echo "🔄 VM was created/recreated, waiting for it to be fully ready..."
+                        // VM was just created, need to wait longer
+                        sleep(time: 180, unit: 'SECONDS') // Wait 3 minutes for startup
+                        
+                        // Wait for Airflow to be healthy
+                        timeout(time: 10, unit: 'MINUTES') {
+                            waitUntil {
+                                script {
+                                    def vmIp = sh(
+                                        script: '''
+                                            gcloud compute instances describe airflow-vm \
+                                                --project=${DEV_GCP_PROJECT_ID} \
+                                                --zone=asia-east1-b \
+                                                --format='get(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null || echo ''
+                                        ''',
+                                        returnStdout: true
+                                    ).trim()
+                                    
+                                    if (vmIp) {
+                                        def healthCheck = sh(
+                                            script: "curl -s -o /dev/null -w '%{http_code}' http://${vmIp}:8081/health || echo '000'",
+                                            returnStdout: true
+                                        ).trim()
+                                        
+                                        if (healthCheck == '200') {
+                                            echo "✅ Airflow is healthy and ready!"
+                                            return true
+                                        } else {
+                                            echo "⏳ Waiting for Airflow to be healthy... (HTTP ${healthCheck})"
+                                            return false
+                                        }
+                                    } else {
+                                        echo "⏳ Waiting for VM IP..."
+                                        return false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Make the script executable
+                    sh '''
+                        chmod +x scripts/update_airflow_config.sh
+                    '''
+                    
+                    // Update scheduler configuration
+                    sh '''
+                        echo "📝 Running scheduler configuration update..."
+                        ./scripts/update_airflow_config.sh scheduler terraform/airflow/docker/config/airflow.cfg
+                    '''
+                }
+            }
+        }
+
+        stage('Setup Airflow Connections & Variables') {
+            steps {
+                script {
+                    echo "=== Setting up Airflow Connections & Variables ==="
+                    
+                    // Make the airflow-manager script executable
+                    sh '''
+                        chmod +x scripts/airflow-manager.sh
+                    '''
+                    
+                    // Create connections and variables
+                    sh '''
+                        echo "🔗 Creating Airflow connections and variables..."
+                        cd scripts
+                        ./airflow-manager.sh connections
                     '''
                 }
             }
