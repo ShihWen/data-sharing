@@ -6,11 +6,11 @@ These queries are used by the mrt_traffic_bronze_to_silver_weekly DAG.
 CHECK_NEW_DATA_QUERY = """
 WITH bronze_count AS (
     SELECT COUNT(*) as count
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic_bronze`
+    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 ),
 silver_count AS (
     SELECT COUNT(*) as count
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic_silver`
+    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
 )
 SELECT 
     CASE 
@@ -21,7 +21,7 @@ FROM bronze_count, silver_count
 """
 
 TRANSFORM_AND_LOAD_QUERY = """
-INSERT INTO `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic_silver`
+INSERT INTO `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
 (
     dt,
     hour,
@@ -56,6 +56,6 @@ SELECT
         ELSE 'off_peak'
     END as peak_period,
     CURRENT_TIMESTAMP() as processed_at
-FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic_bronze`
+FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 WHERE dt >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)  -- Process last 30 days of data
 """ 
