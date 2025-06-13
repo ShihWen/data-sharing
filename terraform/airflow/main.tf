@@ -5,7 +5,12 @@ resource "google_service_account" "airflow_sa" {
   description  = "Service account for Airflow operations"
 }
 
-# Create Secret Manager secret for service account key
+# Create service account key
+resource "google_service_account_key" "airflow_sa_key" {
+  service_account_id = google_service_account.airflow_sa.name
+}
+
+# Store the key in Secret Manager
 resource "google_secret_manager_secret" "airflow_sa_key" {
   secret_id = "airflow-service-account-key"
   
@@ -16,6 +21,11 @@ resource "google_secret_manager_secret" "airflow_sa_key" {
       }
     }
   }
+}
+
+resource "google_secret_manager_secret_version" "airflow_sa_key" {
+  secret = google_secret_manager_secret.airflow_sa_key.id
+  secret_data = base64decode(google_service_account_key.airflow_sa_key.private_key)
 }
 
 # Grant access to Secret Manager secret
@@ -57,7 +67,10 @@ resource "google_service_account" "scheduler_sa" {
 resource "google_project_iam_member" "scheduler_sa_roles" {
   for_each = toset([
     "roles/compute.instanceAdmin.v1",
-    "roles/logging.logWriter"
+    "roles/logging.logWriter",
+    "roles/bigquery.dataViewer",
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser"
   ])
   project = var.project_id
   role    = each.key
@@ -147,6 +160,13 @@ resource "google_compute_instance" "airflow" {
   }
 
   tags = ["airflow"]
+
+  # Add metadata for startup script
+  metadata = {
+    airflow-connections = templatefile("${path.module}/templates/airflow_connections.sh.tpl", {
+      project_id = var.project_id
+    })
+  }
 }
 
 # Create firewall rule for Airflow webserver
