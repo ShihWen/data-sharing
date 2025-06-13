@@ -72,6 +72,22 @@ pipeline {
                 }
             }
         }
+
+        stage('Update Scheduler Configuration') {
+            steps {
+                script {
+                    // Make the script executable
+                    sh '''
+                        chmod +x scripts/update_airflow_config.sh
+                    '''
+                    
+                    // Update scheduler configuration
+                    sh '''
+                        ./scripts/update_airflow_config.sh scheduler terraform/airflow/docker/config/airflow.cfg
+                    '''
+                }
+            }
+        }
         
         stage('Setup Environment') {
             steps {
