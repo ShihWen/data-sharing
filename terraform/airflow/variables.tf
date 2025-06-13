@@ -36,4 +36,5 @@ variable "airflow_storage_class" {
 variable "dataset_ids" {
   description = "Map of dataset IDs to their BigQuery dataset IDs"
   type        = map(string)
+  default     = {}
 } 

@@ -57,3 +57,8 @@ variable "access_rules" {
     }
   ]
 }
+
+variable "airflow_service_account_email" {
+  description = "Email of the Airflow service account"
+  type        = string
+}

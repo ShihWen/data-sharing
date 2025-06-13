@@ -17,18 +17,29 @@ locals {
   }
 }
 
+module "airflow" {
+  source = "./airflow"
+
+  project_id   = var.project_id
+  region       = var.region
+  zone         = var.zone
+}
+
 module "bigquery_datasets" {
   source   = "./bigquery_datasets"
   for_each = { for ds in local.datasets : ds.id => ds }
 
-  project_id      = var.project_id
-  project_number  = data.google_project.current.number
-  dataset_id      = each.value.id
-  friendly_name   = each.value.friendly_name
-  description     = each.value.description
-  location        = var.region
-  labels          = each.value.labels
-  access_rules    = each.value.access_rules
+  project_id                     = var.project_id
+  project_number                 = data.google_project.current.number
+  dataset_id                     = each.value.id
+  friendly_name                  = each.value.friendly_name
+  description                    = each.value.description
+  location                       = var.region
+  labels                         = each.value.labels
+  access_rules                   = each.value.access_rules
+  airflow_service_account_email  = module.airflow.airflow_service_account_email
+  
+  depends_on = [module.airflow]
 }
 
 module "bigquery_tables" {
@@ -48,13 +59,4 @@ module "transfer_jobs" {
   s3_bucket      = var.s3_bucket
   dataset_ids    = local.dataset_outputs
   depends_on     = [module.bigquery_datasets, module.bigquery_tables]
-}
-
-module "airflow" {
-  source = "./airflow"
-
-  project_id   = var.project_id
-  region       = var.region
-  zone         = var.zone
-  dataset_ids  = local.dataset_outputs
 }

@@ -18,6 +18,11 @@ output "airflow_webserver_url" {
   value       = "http://${google_compute_instance.airflow.network_interface[0].access_config[0].nat_ip}:8081"
 }
 
+output "airflow_service_account_email" {
+  description = "The email of the Airflow service account"
+  value       = google_service_account.airflow_sa.email
+}
+
 output "scheduler_service_account" {
   description = "The email of the service account used for scheduling"
   value       = google_service_account.scheduler_sa.email

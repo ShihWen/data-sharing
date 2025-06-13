@@ -23,4 +23,10 @@ resource "google_bigquery_dataset" "main" {
     role          = "WRITER"
     user_by_email = "service-${var.project_number}@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com"
   }
+
+  # Add explicit access for Airflow service account
+  access {
+    role          = "WRITER"
+    user_by_email = var.airflow_service_account_email
+  }
 } 
