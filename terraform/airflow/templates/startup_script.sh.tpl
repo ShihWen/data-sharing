@@ -306,7 +306,7 @@ if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1;
         echo "# Create common Airflow variables" >> /tmp/create_connections.sh
         echo "docker-compose exec -T airflow-webserver airflow variables set \"gcp_project_id\" \"${project_id}\"" >> /tmp/create_connections.sh
         echo "docker-compose exec -T airflow-webserver airflow variables set \"notification_email\" '[\"admin@example.com\"]'" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow variables set \"bigquery_location\" \"US\"" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow variables set \"bigquery_location\" \"asia_east1\"" >> /tmp/create_connections.sh
         echo "docker-compose exec -T airflow-webserver airflow variables set \"data_retention_days\" \"30\"" >> /tmp/create_connections.sh
         echo "docker-compose exec -T airflow-webserver airflow variables set \"max_parallel_tasks\" \"5\"" >> /tmp/create_connections.sh
         echo "docker-compose exec -T airflow-webserver airflow variables set \"environment\" \"dev\"" >> /tmp/create_connections.sh
