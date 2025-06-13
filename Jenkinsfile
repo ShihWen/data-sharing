@@ -73,38 +73,18 @@ pipeline {
             }
         }
 
-        stage('Update Airflow Configuration') {
+        stage('Update Scheduler Configuration') {
             steps {
                 script {
-                    // Get the VM's zone
-                    def vmZone = sh(
-                        script: '''
-                            gcloud compute instances list \
-                                --project=${DEV_GCP_PROJECT_ID} \
-                                --filter="name=airflow-vm" \
-                                --format='get(zone)' 2>/dev/null || echo 'NOT_FOUND'
-                        ''',
-                        returnStdout: true
-                    ).trim()
+                    // Make the script executable
+                    sh '''
+                        chmod +x scripts/update_airflow_config.sh
+                    '''
                     
-                    if (vmZone != 'NOT_FOUND') {
-                        // Extract zone name from full path
-                        vmZone = vmZone.split('/')[-1]
-                        
-                        // Copy the new airflow.cfg to the VM
-                        sh """
-                            echo "Copying new airflow.cfg to VM..."
-                            gcloud compute scp terraform/airflow/docker/config/airflow.cfg airflow-vm:/tmp/airflow.cfg \
-                                --project=${DEV_GCP_PROJECT_ID} \
-                                --zone=${vmZone}
-                            
-                            # Execute commands on the VM to update the configuration
-                            gcloud compute ssh airflow-vm \
-                                --project=${DEV_GCP_PROJECT_ID} \
-                                --zone=${vmZone} \
-                                --command='sudo docker cp /tmp/airflow.cfg \$(sudo docker ps -q -f name=airflow-scheduler):/opt/airflow/airflow.cfg && sudo docker restart \$(sudo docker ps -q -f name=airflow-scheduler)'
-                        """
-                    }
+                    // Update scheduler configuration
+                    sh '''
+                        ./scripts/update_airflow_config.sh scheduler terraform/airflow/docker/config/airflow.cfg
+                    '''
                 }
             }
         }
