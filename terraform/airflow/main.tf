@@ -37,6 +37,7 @@ resource "google_project_iam_member" "airflow_sa_roles" {
   for_each = toset([
     "roles/storage.objectViewer",
     "roles/bigquery.dataViewer",
+    "roles/bigquery.dataEditor",
     "roles/bigquery.jobUser",
     "roles/logging.logWriter"
   ])
