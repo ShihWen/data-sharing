@@ -9,6 +9,203 @@ This module creates and manages an Airflow instance on Google Cloud Platform wit
 - **Storage**: GCS bucket for DAG files and logs
 - **Sync**: Automated DAG synchronization from GCS
 - **Permissions**: Robust user and permission management
+- **Connections & Variables**: Automated setup via templates and manual management via scripts
+
+## 🔗 Airflow Connections & Variables Management
+
+### **Architecture Overview**
+
+There are **two complementary systems** for managing Airflow connections and variables:
+
+#### **1. 🤖 Automated System (Long-term/Persistent)**
+- **Purpose**: Permanent configuration that survives VM restarts
+- **When**: Executed automatically every time VM starts
+- **Files**: 
+  - `templates/airflow_connections.sh.tpl` - Connection templates
+  - `templates/airflow_variables.sh.tpl` - Variable templates
+- **Execution Flow**:
+  ```
+  Terraform → VM Metadata → Startup Script → Template Execution → Airflow Configuration
+  ```
+
+#### **2. 🛠️ Manual System (Immediate/Troubleshooting)**
+- **Purpose**: Quick fixes, immediate changes, troubleshooting
+- **When**: Run manually when needed
+- **Tool**: `scripts/airflow-manager.sh connections`
+- **Use Case**: "I need to fix this right now"
+
+### **How Template Execution Works**
+
+1. **Terraform** renders templates and stores them in **VM metadata**:
+   ```hcl
+   metadata = {
+     airflow-connections = templatefile("${path.module}/templates/airflow_connections.sh.tpl", {
+       project_id = var.project_id
+     })
+     airflow-variables = templatefile("${path.module}/templates/airflow_variables.sh.tpl", {
+       project_id = var.project_id
+     })
+   }
+   ```
+
+2. **VM Startup Script** reads metadata and executes:
+   ```bash
+   # Get templates from metadata
+   CONNECTIONS_SCRIPT=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/airflow-connections" -H "Metadata-Flavor: Google")
+   
+   # Execute the templates
+   /tmp/create_connections.sh
+   /tmp/create_variables.sh
+   ```
+
+### **Adding New Connections or Variables**
+
+#### **📝 For Permanent Changes (Recommended)**
+
+**Step 1: Update Template Files**
+
+For **Variables**:
+```bash
+# Edit the template
+nano terraform/airflow/templates/airflow_variables.sh.tpl
+
+# Add your new variables (example):
+airflow variables set "my_new_variable" "my_value"
+airflow variables set "api_endpoint" "https://api.example.com"
+airflow variables set "batch_size" "1000"
+```
+
+For **Connections**:
+```bash
+# Edit the template
+nano terraform/airflow/templates/airflow_connections.sh.tpl
+
+# Add your new connections (example):
+airflow connections add 'my_postgres_conn' \
+    --conn-type 'postgres' \
+    --conn-host 'localhost' \
+    --conn-login 'myuser' \
+    --conn-password 'mypass' \
+    --conn-schema 'mydb' \
+    --conn-port '5432'
+```
+
+**Step 2: Update Airflow Manager Script**
+```bash
+# Edit the script
+nano scripts/airflow-manager.sh
+
+# Find the create_connections() function and add your new items:
+docker-compose exec -T airflow-webserver airflow variables set "my_new_variable" "my_value"
+echo "✅ Set my_new_variable"
+```
+
+**Step 3: Apply Changes**
+```bash
+# Apply Terraform changes (updates VM metadata)
+cd terraform
+terraform apply
+
+# For immediate effect, also run:
+cd ../scripts
+./airflow-manager.sh connections
+```
+
+#### **⚡ For Immediate Changes (Quick Fix)**
+
+```bash
+# Just run the manual command
+cd scripts
+./airflow-manager.sh connections
+
+# This will create all connections and variables immediately
+```
+
+### **Current Configuration**
+
+#### **🔗 Connections**
+- `google_cloud_default`: Google Cloud Platform connection
+  - Type: `google_cloud_platform`
+  - Project: `open-data-v2-cicd`
+  - Key Path: `/opt/airflow/config/service-account.json`
+
+#### **�� Variables**
+- `gcp_project_id`: `open-data-v2-cicd`
+- `project_id`: `open-data-v2-cicd`
+- `bigquery_location`: `asia-east1` (Taiwan region)
+- `notification_email`: `["admin@example.com"]`
+- `environment`: `dev`
+- `data_retention_days`: `30`
+- `max_parallel_tasks`: `5`
+
+**Dataset Variables (used in SQL queries)**:
+- `tpe_mrt_bronze_dataset_id`: `tpe_mrt_bronze`
+- `tpe_mrt_silver_dataset_id`: `tpe_mrt_silver`
+- `tpe_mrt_gold_dataset_id`: `tpe_mrt_gold`
+
+### **Verification Steps**
+
+After adding new connections/variables:
+
+1. **Check in Airflow UI**:
+   - Navigate to `http://<VM_IP>:8081`
+   - Admin → Connections (verify connections)
+   - Admin → Variables (verify variables)
+
+2. **Test in DAGs**:
+   ```python
+   from airflow.models import Variable
+   from airflow.hooks.base import BaseHook
+   
+   # Test variable
+   my_var = Variable.get("my_new_variable")
+   
+   # Test connection
+   conn = BaseHook.get_connection("my_postgres_conn")
+   ```
+
+3. **Verify via Script**:
+   ```bash
+   cd scripts
+   ./airflow-manager.sh connections  # Shows verification output
+   ```
+
+### **Common Connection Types**
+
+#### **Google Cloud Platform**
+```bash
+airflow connections add 'my_gcp_conn' \
+    --conn-type 'google_cloud_platform' \
+    --conn-extra '{"project": "my-project", "key_path": "/path/to/key.json"}'
+```
+
+#### **PostgreSQL**
+```bash
+airflow connections add 'my_postgres_conn' \
+    --conn-type 'postgres' \
+    --conn-host 'localhost' \
+    --conn-login 'user' \
+    --conn-password 'pass' \
+    --conn-schema 'db' \
+    --conn-port '5432'
+```
+
+#### **HTTP/API**
+```bash
+airflow connections add 'my_api_conn' \
+    --conn-type 'http' \
+    --conn-host 'api.example.com' \
+    --conn-extra '{"timeout": 30}'
+```
+
+### **Best Practices**
+
+1. **Always use templates** for permanent changes
+2. **Test changes manually first** with `airflow-manager.sh`
+3. **Use descriptive variable names** with prefixes (`gcp_`, `api_`, etc.)
+4. **Document your variables** in this README
+5. **Keep sensitive data in Google Secret Manager**, not in variables
+6. **Restart VM after template changes** to ensure they take effect
 
 ## 👥 User Management
 

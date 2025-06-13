@@ -876,6 +876,156 @@ EOF
     print_status "Emergency fix completed!"
 }
 
+# Function to create Airflow connections
+create_connections() {
+    echo "=== Creating Airflow Connections and Variables ==="
+    echo "Timestamp: $(date)"
+    echo ""
+
+    # Check VM status
+    current_status=$(check_vm_status)
+    if [ "$current_status" != "RUNNING" ]; then
+        print_error "VM is not running (status: $current_status)"
+        return 1
+    fi
+
+    VM_IP=$(get_vm_ip)
+    if [ -z "$VM_IP" ]; then
+        print_error "Could not get VM IP"
+        return 1
+    fi
+
+    print_info "VM IP: $VM_IP"
+
+    # Test if Airflow is accessible
+    echo "1️⃣ Testing Airflow accessibility..."
+    if ! curl -s --connect-timeout 10 "http://$VM_IP:8081/health" > /dev/null 2>&1; then
+        print_error "Airflow is not accessible. Please ensure it's running first."
+        echo "Try: $0 validate"
+        return 1
+    fi
+    print_status "Airflow is accessible"
+
+    # Create the connections and variables script
+    echo ""
+    echo "2️⃣ Creating connections and variables script..."
+    cat > /tmp/create_airflow_connections.sh <<'EOF'
+#!/bin/bash
+set -e
+
+echo "Creating Airflow Google Cloud connection and variables..."
+
+# Change to airflow directory
+cd /opt/airflow
+
+# Wait a bit for services to be stable
+echo "Waiting for services to stabilize..."
+sleep 10
+
+echo "=== Creating Connections ==="
+# Delete existing connection (ignore errors)
+echo "Removing existing google_cloud_default connection..."
+docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true
+
+# Create new Google Cloud connection
+echo "Creating new google_cloud_default connection..."
+docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \
+    --conn-type 'google_cloud_platform' \
+    --conn-extra '{"project": "open-data-v2-cicd", "key_path": "/opt/airflow/config/service-account.json"}'
+
+# Verify connection was created
+echo "Verifying connection..."
+if docker-compose exec -T airflow-webserver airflow connections get 'google_cloud_default' > /dev/null 2>&1; then
+    echo "✅ Google Cloud connection created successfully!"
+else
+    echo "❌ Failed to verify connection"
+    exit 1
+fi
+
+echo ""
+echo "=== Creating Variables ==="
+# Create common Airflow variables
+echo "Creating Airflow variables..."
+
+docker-compose exec -T airflow-webserver airflow variables set "gcp_project_id" "open-data-v2-cicd"
+echo "✅ Set gcp_project_id"
+
+docker-compose exec -T airflow-webserver airflow variables set "project_id" "open-data-v2-cicd"
+echo "✅ Set project_id"
+
+docker-compose exec -T airflow-webserver airflow variables set "notification_email" '["admin@example.com"]'
+echo "✅ Set notification_email"
+
+docker-compose exec -T airflow-webserver airflow variables set "bigquery_location" "asia-east1"
+echo "✅ Set bigquery_location"
+
+docker-compose exec -T airflow-webserver airflow variables set "data_retention_days" "30"
+echo "✅ Set data_retention_days"
+
+docker-compose exec -T airflow-webserver airflow variables set "max_parallel_tasks" "5"
+echo "✅ Set max_parallel_tasks"
+
+docker-compose exec -T airflow-webserver airflow variables set "environment" "dev"
+echo "✅ Set environment"
+
+# Dataset configurations (used in SQL queries)
+docker-compose exec -T airflow-webserver airflow variables set "tpe_mrt_bronze_dataset_id" "tpe_mrt_bronze"
+echo "✅ Set tpe_mrt_bronze_dataset_id"
+
+docker-compose exec -T airflow-webserver airflow variables set "tpe_mrt_silver_dataset_id" "tpe_mrt_silver"
+echo "✅ Set tpe_mrt_silver_dataset_id"
+
+docker-compose exec -T airflow-webserver airflow variables set "tpe_mrt_gold_dataset_id" "tpe_mrt_gold"
+echo "✅ Set tpe_mrt_gold_dataset_id"
+
+# List all variables to verify
+echo ""
+echo "=== Verifying Variables ==="
+echo "Current Airflow variables:"
+docker-compose exec -T airflow-webserver airflow variables list
+
+echo ""
+echo "✅ Connections and variables creation completed!"
+EOF
+
+    chmod +x /tmp/create_airflow_connections.sh
+
+    # Copy and execute the script on the VM
+    echo ""
+    echo "3️⃣ Copying and executing connections and variables script on VM..."
+    gcloud compute scp /tmp/create_airflow_connections.sh $VM_NAME:/tmp/create_airflow_connections.sh --zone=$ZONE
+
+    # Execute the script
+    if gcloud compute ssh $VM_NAME --zone=$ZONE --command="chmod +x /tmp/create_airflow_connections.sh && sudo /tmp/create_airflow_connections.sh"; then
+        print_status "Connections and variables created successfully!"
+    else
+        print_error "Failed to create connections or variables"
+        echo ""
+        print_info "Checking creation logs..."
+        gcloud compute ssh $VM_NAME --zone=$ZONE --command="tail -50 /var/log/airflow-connections.log" 2>/dev/null || true
+        return 1
+    fi
+
+    # Cleanup
+    echo ""
+    echo "4️⃣ Cleaning up temporary files..."
+    rm -f /tmp/create_airflow_connections.sh
+    gcloud compute ssh $VM_NAME --zone=$ZONE --command="rm -f /tmp/create_airflow_connections.sh" 2>/dev/null || true
+
+    # Final verification
+    echo ""
+    echo "5️⃣ Final verification..."
+    echo "🌐 Access Airflow UI: http://$VM_IP:8081"
+    echo "👤 Username: admin"
+    echo "🔑 Password: admin"
+    echo ""
+    print_info "Check the following in Airflow UI:"
+    echo "  • Admin -> Connections -> Verify 'google_cloud_default' exists"
+    echo "  • Admin -> Variables -> Verify variables are set"
+    
+    print_status "Connections and variables creation completed!"
+}
+
 # Function to upload DAGs
 upload_dags() {
     echo "=== Uploading DAGs to GCS ==="
@@ -905,6 +1055,7 @@ show_help() {
     echo "  restart        - Restart the Airflow VM (auto-applies emergency fix if needed)"
     echo "  fix            - Apply permanent fixes to prevent restart issues"
     echo "  emergency-fix  - Apply comprehensive emergency fixes for severe issues"
+    echo "  connections    - Create Airflow Google Cloud connections and variables"
     echo "  upload         - Upload DAGs to GCS bucket"
     echo "  status         - Show current VM and service status"
     echo "  help           - Show this help message"
@@ -913,6 +1064,7 @@ show_help() {
     echo "  $0 validate"
     echo "  $0 restart          # Now handles issues automatically!"
     echo "  $0 fix"
+    echo "  $0 connections      # Fix connection and variable issues"
     echo "  $0 emergency-fix    # Only needed for manual troubleshooting"
     echo ""
     echo "Note: The 'restart' command now automatically applies emergency fixes"
@@ -960,6 +1112,9 @@ case "${1:-help}" in
         ;;
     emergency-fix)
         emergency_fix
+        ;;
+    connections)
+        create_connections
         ;;
     upload)
         upload_dags

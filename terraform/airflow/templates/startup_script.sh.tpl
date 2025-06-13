@@ -283,6 +283,46 @@ docker-compose ps
 echo "Performing final health check..."
 if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1; then
     echo "✅ Airflow is responding to health checks!"
+    
+    # Create Airflow connections after services are running
+    echo "Creating Airflow connections..."
+    
+    # Get the connections script from metadata
+    CONNECTIONS_SCRIPT=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/airflow-connections" -H "Metadata-Flavor: Google" 2>/dev/null || echo "")
+    
+    if [ ! -z "$CONNECTIONS_SCRIPT" ]; then
+        # Create connections and variables script with correct key path
+        echo "#!/bin/bash" > /tmp/create_connections.sh
+        echo "" >> /tmp/create_connections.sh
+        echo "# Wait for Airflow to be fully ready" >> /tmp/create_connections.sh
+        echo "sleep 30" >> /tmp/create_connections.sh
+        echo "" >> /tmp/create_connections.sh
+        echo "# Create Google Cloud connection" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \\" >> /tmp/create_connections.sh
+        echo "    --conn-type 'google_cloud_platform' \\" >> /tmp/create_connections.sh
+        echo "    --conn-extra '{\"project\": \"${project_id}\", \"key_path\": \"/opt/airflow/config/service-account.json\"}'" >> /tmp/create_connections.sh
+        echo "" >> /tmp/create_connections.sh
+        echo "# Create common Airflow variables" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow variables set \"gcp_project_id\" \"${project_id}\"" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow variables set \"notification_email\" '[\"admin@example.com\"]'" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow variables set \"bigquery_location\" \"US\"" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow variables set \"data_retention_days\" \"30\"" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow variables set \"max_parallel_tasks\" \"5\"" >> /tmp/create_connections.sh
+        echo "docker-compose exec -T airflow-webserver airflow variables set \"environment\" \"dev\"" >> /tmp/create_connections.sh
+        echo "" >> /tmp/create_connections.sh
+        echo "echo \"Airflow connections and variables created successfully!\"" >> /tmp/create_connections.sh
+        
+        chmod +x /tmp/create_connections.sh
+        
+        # Execute connections script in the background
+        nohup /tmp/create_connections.sh > /var/log/airflow-connections.log 2>&1 &
+        
+        echo "✅ Airflow connections and variables script scheduled for execution"
+    else
+        echo "⚠️  No connections script found in metadata"
+    fi
+    
     echo "Airflow setup complete!"
     exit 0
 else
