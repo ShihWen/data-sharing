@@ -231,7 +231,10 @@ prepare_batch = PythonOperator(
 process_first_run_batch = BigQueryExecuteQueryOperator(
     task_id='process_first_run_batch',
     sql=TRANSFORM_AND_LOAD_INCREMENTAL_QUERY,
-    params="{{ task_instance.xcom_pull(task_ids='prepare_batch_params') }}",
+    params={
+        'start_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["start_month"] }}',
+        'end_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["end_month"] }}'
+    },
     use_legacy_sql=False,
     dag=dag,
 )
@@ -240,7 +243,10 @@ process_first_run_batch = BigQueryExecuteQueryOperator(
 process_incremental = BigQueryExecuteQueryOperator(
     task_id='process_incremental',
     sql=TRANSFORM_AND_LOAD_INCREMENTAL_QUERY, 
-    params="{{ task_instance.xcom_pull(task_ids='prepare_batch_params') }}",
+    params={
+        'start_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["start_month"] }}',
+        'end_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["end_month"] }}'
+    },
     use_legacy_sql=False,
     dag=dag,
 )
@@ -264,7 +270,10 @@ get_next_batch = PythonOperator(
 process_next_batch = BigQueryExecuteQueryOperator(
     task_id='process_next_batch',
     sql=TRANSFORM_AND_LOAD_INCREMENTAL_QUERY,
-    params="{{ task_instance.xcom_pull(task_ids='get_next_batch') }}",
+    params={
+        'start_month': '{{ ti.xcom_pull(task_ids="get_next_batch")["start_month"] }}',
+        'end_month': '{{ ti.xcom_pull(task_ids="get_next_batch")["end_month"] }}'
+    },
     use_legacy_sql=False,
     dag=dag,
 )
