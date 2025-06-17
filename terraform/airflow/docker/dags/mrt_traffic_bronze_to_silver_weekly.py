@@ -52,7 +52,7 @@ def notify_failure(context):
 
 def determine_processing_strategy(**context):
     """
-    Determine if this is a first run, incremental run, or no processing needed.
+    Determine if processing is needed or not.
     Returns the appropriate task_id to branch to.
     """
     hook = BigQueryHook(
@@ -86,12 +86,9 @@ def determine_processing_strategy(**context):
     if run_type == 'NO_NEW_DATA':
         logging.info("No new data to process")
         return 'no_processing_needed'
-    elif run_type == 'FIRST_RUN':
-        logging.info(f"First run detected - processing {strategy_info['records_diff']} records in batches")
-        return 'process_first_run_batch'
-    elif run_type == 'INCREMENTAL':
-        logging.info(f"Incremental run - processing {strategy_info['records_diff']} new records")
-        return 'process_incremental'
+    elif run_type in ['FIRST_RUN', 'INCREMENTAL']:
+        logging.info(f"Processing needed: {run_type}")
+        return 'prepare_batch_params'
     else:
         logging.error(f"Unknown run type: {run_type}")
         raise ValueError(f"Unknown run type: {run_type}")
@@ -257,6 +254,28 @@ def no_processing_needed(**context):
     logging.info("No new data found - skipping processing")
     return "No processing needed"
 
+def decide_processing_type(**context):
+    """
+    Decide between first run batch processing or incremental processing
+    based on the strategy info from prepare_batch.
+    """
+    strategy_info = context['task_instance'].xcom_pull(key='strategy_info')
+    
+    if not strategy_info:
+        raise ValueError("No strategy info found in XCom")
+    
+    run_type = strategy_info['run_type']
+    
+    if run_type == 'FIRST_RUN':
+        logging.info("Routing to first run batch processing")
+        return 'process_first_run_batch'
+    elif run_type == 'INCREMENTAL':
+        logging.info("Routing to incremental processing") 
+        return 'process_incremental'
+    else:
+        logging.error(f"Unexpected run type in decide_processing_type: {run_type}")
+        raise ValueError(f"Unexpected run type: {run_type}")
+
 dag = DAG(
     'mrt_traffic_bronze_to_silver_weekly',
     default_args=default_args,
@@ -319,11 +338,19 @@ validate_processing = BigQueryExecuteQueryOperator(
     trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS
 )
 
-# Set task dependencies
+# Set task dependencies - Fixed branching logic
 determine_strategy >> [no_processing, prepare_batch]
 
-# First run and incremental paths
-prepare_batch >> [process_first_run_batch, process_incremental]
+# Create a second branching point after prepare_batch
+prepare_batch_branch = BranchPythonOperator(
+    task_id='prepare_batch_branch',
+    python_callable=decide_processing_type,
+    dag=dag,
+)
+
+# Update task dependencies
+prepare_batch >> prepare_batch_branch
+prepare_batch_branch >> [process_first_run_batch, process_incremental]
 
 # Validation (triggered from both paths)
 [process_first_run_batch, process_incremental] >> validate_processing 
