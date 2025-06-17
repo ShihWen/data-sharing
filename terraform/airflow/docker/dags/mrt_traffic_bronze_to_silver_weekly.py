@@ -129,37 +129,44 @@ def process_batch(**context):
     
     return params
 
-def check_batch_completion(**context):
+def process_first_run_all_batches(**context):
     """
-    Check if there are more batches to process for first run.
-    """
-    strategy_info = context['task_instance'].xcom_pull(key='strategy_info')
-    
-    if not strategy_info:
-        return 'validate_processing'
-    
-    has_more_batches = strategy_info.get('has_more_batches', False)
-    
-    if has_more_batches:
-        logging.info("More batches to process - triggering next batch")
-        return 'get_next_batch'
-    else:
-        logging.info("All batches completed - proceeding to validation")
-        return 'validate_processing'
-
-def get_next_batch_params(**context):
-    """
-    Get parameters for the next batch processing (month-based).
+    Process all batches for first run in a single task to avoid DAG cycles.
     """
     hook = BigQueryHook(
         gcp_conn_id='google_cloud_default',
         use_legacy_sql=False
     )
     
+    strategy_info = context['task_instance'].xcom_pull(key='strategy_info')
+    
+    if not strategy_info:
+        raise ValueError("No strategy info found in XCom")
+    
+    # Process the first batch
+    start_month = strategy_info['batch_start_month']
+    end_month = strategy_info['batch_end_month']
+    
+    logging.info(f"Processing first batch from {start_month} to {end_month}")
+    
+    # Execute first batch
     job_config = {
         'query': {
-            'query': GET_NEXT_BATCH_QUERY,
-            'useLegacySql': False
+            'query': TRANSFORM_AND_LOAD_INCREMENTAL_QUERY,
+            'useLegacySql': False,
+            'parameterMode': 'NAMED',
+            'queryParameters': [
+                {
+                    'name': 'start_month',
+                    'parameterType': {'type': 'STRING'},
+                    'parameterValue': {'value': start_month}
+                },
+                {
+                    'name': 'end_month', 
+                    'parameterType': {'type': 'STRING'},
+                    'parameterValue': {'value': end_month}
+                }
+            ]
         }
     }
     
@@ -167,24 +174,81 @@ def get_next_batch_params(**context):
         configuration=job_config,
         project_id=hook.project_id
     )
+    query_job.result()  # Wait for completion
     
-    results = query_job.result()
-    next_batch_info = list(results)[0]
+    # Process additional batches if any
+    has_more_batches = strategy_info.get('has_more_batches', False)
+    batch_count = 1
     
-    logging.info(f"Next batch info: {dict(next_batch_info)}")
+    while has_more_batches:
+        logging.info(f"Processing additional batch {batch_count + 1}")
+        
+        # Get next batch info
+        next_batch_job_config = {
+            'query': {
+                'query': GET_NEXT_BATCH_QUERY,
+                'useLegacySql': False
+            }
+        }
+        
+        next_batch_job = hook.insert_job(
+            configuration=next_batch_job_config,
+            project_id=hook.project_id
+        )
+        
+        next_batch_results = next_batch_job.result()
+        next_batch_info = list(next_batch_results)[0]
+        
+        # Process the next batch
+        next_start_month = str(next_batch_info['batch_start_month'])
+        next_end_month = str(next_batch_info['batch_end_month'])
+        has_more_batches = next_batch_info['has_more_batches']
+        
+        logging.info(f"Processing batch from {next_start_month} to {next_end_month}")
+        
+        # Execute next batch
+        batch_job_config = {
+            'query': {
+                'query': TRANSFORM_AND_LOAD_INCREMENTAL_QUERY,
+                'useLegacySql': False,
+                'parameterMode': 'NAMED',
+                'queryParameters': [
+                    {
+                        'name': 'start_month',
+                        'parameterType': {'type': 'STRING'},
+                        'parameterValue': {'value': next_start_month}
+                    },
+                    {
+                        'name': 'end_month',
+                        'parameterType': {'type': 'STRING'},
+                        'parameterValue': {'value': next_end_month}
+                    }
+                ]
+            }
+        }
+        
+        batch_query_job = hook.insert_job(
+            configuration=batch_job_config,
+            project_id=hook.project_id
+        )
+        batch_query_job.result()  # Wait for completion
+        
+        batch_count += 1
+        
+        # Safety check to prevent infinite loops
+        if batch_count > 50:  # Reasonable limit
+            logging.warning("Reached maximum batch limit (50) - stopping processing")
+            break
     
-    # Prepare month-based parameters
-    batch_params = {
-        'start_month': str(next_batch_info['batch_start_month']),
-        'end_month': str(next_batch_info['batch_end_month']),
-        'months_in_batch': next_batch_info['months_in_batch'],
-        'has_more_batches': next_batch_info['has_more_batches']
-    }
-    
-    # Store next batch info in XCom
-    context['task_instance'].xcom_push(key='next_batch_info', value=batch_params)
-    
-    return batch_params
+    logging.info(f"Completed processing {batch_count} batches for first run")
+    return f"Processed {batch_count} batches"
+
+def process_incremental(**context):
+    """
+    Process incremental data.
+    """
+    logging.info("Processing incremental data")
+    return "Incremental data processed"
 
 def no_processing_needed(**context):
     """
@@ -227,15 +291,10 @@ prepare_batch = PythonOperator(
     dag=dag,
 )
 
-# Process first run batch
-process_first_run_batch = BigQueryExecuteQueryOperator(
+# Process first run batch - now handles all batches in one task
+process_first_run_batch = PythonOperator(
     task_id='process_first_run_batch',
-    sql=TRANSFORM_AND_LOAD_INCREMENTAL_QUERY,
-    params={
-        'start_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["start_month"] }}',
-        'end_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["end_month"] }}'
-    },
-    use_legacy_sql=False,
+    python_callable=process_first_run_all_batches,
     dag=dag,
 )
 
@@ -246,33 +305,6 @@ process_incremental = BigQueryExecuteQueryOperator(
     params={
         'start_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["start_month"] }}',
         'end_month': '{{ ti.xcom_pull(task_ids="prepare_batch_params")["end_month"] }}'
-    },
-    use_legacy_sql=False,
-    dag=dag,
-)
-
-# Check if more batches are needed
-check_completion = BranchPythonOperator(
-    task_id='check_batch_completion',
-    python_callable=check_batch_completion,
-    dag=dag,
-    trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS
-)
-
-# Get next batch parameters
-get_next_batch = PythonOperator(
-    task_id='get_next_batch',
-    python_callable=get_next_batch_params,
-    dag=dag,
-)
-
-# Process next batch (for first run continuation)
-process_next_batch = BigQueryExecuteQueryOperator(
-    task_id='process_next_batch',
-    sql=TRANSFORM_AND_LOAD_INCREMENTAL_QUERY,
-    params={
-        'start_month': '{{ ti.xcom_pull(task_ids="get_next_batch")["start_month"] }}',
-        'end_month': '{{ ti.xcom_pull(task_ids="get_next_batch")["end_month"] }}'
     },
     use_legacy_sql=False,
     dag=dag,
@@ -293,10 +325,5 @@ determine_strategy >> [no_processing, prepare_batch]
 # First run and incremental paths
 prepare_batch >> [process_first_run_batch, process_incremental]
 
-# First run batch processing flow
-process_first_run_batch >> check_completion
-check_completion >> get_next_batch >> process_next_batch
-process_next_batch >> check_completion
-
-# Validation (triggered from multiple paths)
-[process_incremental, check_completion] >> validate_processing 
+# Validation (triggered from both paths)
+[process_first_run_batch, process_incremental] >> validate_processing 
