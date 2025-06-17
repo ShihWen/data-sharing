@@ -284,43 +284,83 @@ echo "Performing final health check..."
 if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1; then
     echo "✅ Airflow is responding to health checks!"
     
-    # Create Airflow connections after services are running
-    echo "Creating Airflow connections..."
+    # Setup automatic connections creation using existing airflow-manager.sh script
+    echo "Setting up automatic Airflow connections service..."
     
-    # Get the connections script from metadata
-    CONNECTIONS_SCRIPT=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/airflow-connections" -H "Metadata-Flavor: Google" 2>/dev/null || echo "")
-    
-    if [ ! -z "$CONNECTIONS_SCRIPT" ]; then
-        # Create connections and variables script with correct key path
-        echo "#!/bin/bash" > /tmp/create_connections.sh
-        echo "" >> /tmp/create_connections.sh
-        echo "# Wait for Airflow to be fully ready" >> /tmp/create_connections.sh
-        echo "sleep 30" >> /tmp/create_connections.sh
-        echo "" >> /tmp/create_connections.sh
-        echo "# Create Google Cloud connection" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \\" >> /tmp/create_connections.sh
-        echo "    --conn-type 'google_cloud_platform' \\" >> /tmp/create_connections.sh
-        echo "    --conn-extra '{\"project\": \"${project_id}\", \"key_path\": \"/opt/airflow/config/service-account.json\"}'" >> /tmp/create_connections.sh
-        echo "" >> /tmp/create_connections.sh
-        echo "# Create common Airflow variables" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow variables set \"gcp_project_id\" \"${project_id}\"" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow variables set \"notification_email\" '[\"admin@example.com\"]'" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow variables set \"bigquery_location\" \"asia_east1\"" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow variables set \"data_retention_days\" \"30\"" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow variables set \"max_parallel_tasks\" \"5\"" >> /tmp/create_connections.sh
-        echo "docker-compose exec -T airflow-webserver airflow variables set \"environment\" \"dev\"" >> /tmp/create_connections.sh
-        echo "" >> /tmp/create_connections.sh
-        echo "echo \"Airflow connections and variables created successfully!\"" >> /tmp/create_connections.sh
-        
-        chmod +x /tmp/create_connections.sh
-        
-        # Execute connections script in the background
-        nohup /tmp/create_connections.sh > /var/log/airflow-connections.log 2>&1 &
-        
-        echo "✅ Airflow connections and variables script scheduled for execution"
+    # Download airflow-manager.sh from GCS bucket
+    echo "Downloading airflow-manager.sh script..."
+    if gsutil cp gs://${gcs_bucket}/scripts/airflow-manager.sh /opt/airflow/airflow-manager.sh; then
+        chmod +x /opt/airflow/airflow-manager.sh
+        chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/airflow-manager.sh
+        echo "✅ Downloaded airflow-manager.sh script"
     else
-        echo "⚠️  No connections script found in metadata"
+        echo "⚠️  Could not download airflow-manager.sh, creating minimal connections script"
+        # Create a minimal fallback script
+        cat > /opt/airflow/create_connections_fallback.sh <<'FALLBACK_EOF'
+#!/bin/bash
+set -e
+echo "Creating basic Google Cloud connection..."
+cd /opt/airflow
+# Wait for Airflow to be ready
+timeout=300
+while [ $timeout -gt 0 ]; do
+    if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1; then
+        break
+    fi
+    sleep 10
+    timeout=$((timeout - 10))
+done
+# Create basic connection
+docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true
+docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \
+    --conn-type 'google_cloud_platform' \
+    --conn-extra '{"project": "${project_id}", "key_path": "/opt/airflow/config/service-account.json"}'
+echo "✅ Basic connection created"
+FALLBACK_EOF
+        chmod +x /opt/airflow/create_connections_fallback.sh
+        chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/create_connections_fallback.sh
+    fi
+    
+    # Create systemd service for automatic connections creation
+    cat > /etc/systemd/system/airflow-connections.service <<EOL
+[Unit]
+Description=Create Airflow Connections and Variables using airflow-manager.sh
+After=multi-user.target
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/airflow
+Environment="PROJECT_ID=${project_id}"
+Environment="ZONE=asia-east1-b"
+Environment="VM_NAME=airflow-vm"
+Environment="BUCKET_NAME=${gcs_bucket}"
+ExecStartPre=/bin/bash -c 'timeout=600; while [ \$timeout -gt 0 ]; do if curl -s --connect-timeout 5 "http://localhost:8081/health" > /dev/null 2>&1; then echo "Airflow is ready"; break; fi; echo "Waiting for Airflow... \$((\$timeout / 30)) checks remaining"; sleep 30; timeout=\$((\$timeout - 30)); done'
+ExecStart=/bin/bash -c 'if [ -f /opt/airflow/airflow-manager.sh ]; then /opt/airflow/airflow-manager.sh connections; else /opt/airflow/create_connections_fallback.sh; fi'
+StandardOutput=journal
+StandardError=journal
+RemainAfterExit=yes
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+    # Enable the connections service
+    systemctl daemon-reload
+    systemctl enable airflow-connections.service
+    echo "✅ Airflow connections service enabled for automatic execution on boot"
+    
+    # Execute connections creation now (in background to not block startup)
+    echo "Creating connections and variables immediately..."
+    if [ -f /opt/airflow/airflow-manager.sh ]; then
+        nohup /opt/airflow/airflow-manager.sh connections > /var/log/airflow-connections.log 2>&1 &
+        echo "✅ Started airflow-manager.sh connections in background"
+    else
+        nohup /opt/airflow/create_connections_fallback.sh > /var/log/airflow-connections.log 2>&1 &
+        echo "✅ Started fallback connections script in background"
     fi
     
     echo "Airflow setup complete!"
@@ -328,6 +368,7 @@ if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1;
 else
     echo "⚠️  Airflow webserver is not responding to health checks, but services are running"
     echo "This may be normal during initial startup. Services will continue to initialize."
+    echo "The connections service will automatically create connections when Airflow becomes ready."
     echo "Airflow setup complete!"
     exit 0
 fi 
