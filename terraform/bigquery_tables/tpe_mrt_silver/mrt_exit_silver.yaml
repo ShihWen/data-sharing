@@ -7,9 +7,9 @@ labels:
   tier: "silver"
 
 # Clustering for better query performance (no time partitioning needed for static exit data)
-clustering:
-  - "station_id"
-  - "is_accessible"
+# clustering:
+#   - "station_id"
+#   - "is_accessible"
 
 schema:
   # Original fields (standardized naming)
