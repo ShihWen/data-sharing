@@ -2,7 +2,7 @@ locals {
   # Update the file pattern to be more specific
   table_files = fileset(path.module, "**/*.yaml")
   table_configs = {
-    for file in local.table_files : basename(file) => yamldecode(file("${path.module}/${file}"))
+    for file in local.table_files : trimsuffix(file, ".yaml") => yamldecode(file("${path.module}/${file}"))
   }
 }
 
