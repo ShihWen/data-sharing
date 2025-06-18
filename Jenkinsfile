@@ -368,20 +368,16 @@ pipeline {
                     '''
                     
                     // Check if connections and variables already exist
+                    echo "🔍 Checking if Airflow connections and variables already exist..."
                     def connectionsExist = sh(
                         script: '''
-                            echo "🔍 Checking if Airflow connections and variables already exist..."
                             cd scripts
-                            if ./airflow-manager.sh check-connections; then
-                                echo "true"
-                            else
-                                echo "false"
-                            fi
+                            ./airflow-manager.sh check-connections
                         ''',
-                        returnStdout: true
-                    ).trim()
+                        returnStatus: true
+                    )
 
-                    if (connectionsExist == "true") {
+                    if (connectionsExist == 0) {
                         echo "✅ Connections and variables already exist - skipping creation step"
                         echo "This saves time by not recreating existing configurations!"
                     } else {
