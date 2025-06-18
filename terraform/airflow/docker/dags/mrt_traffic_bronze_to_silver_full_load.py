@@ -4,6 +4,7 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
+from airflow.models import Variable
 import logging
 
 # Import SQL queries from separate file
@@ -19,6 +20,9 @@ from utils.common_functions import (
     get_airflow_variable,
     send_notification
 )
+
+# Get the location at module level to use in operators
+BIGQUERY_LOCATION = Variable.get('bigquery_location', 'asia-east1')
 
 default_args = {
     'owner': 'airflow',
@@ -47,30 +51,150 @@ def notify_failure(context):
         include_exception=True
     )
 
-def process_prerequisites_result(**context):
+def check_prerequisites_with_hook(**context):
     """
-    Process the results from check_prerequisites task.
-    This function receives the query results and processes them.
+    Check prerequisites using BigQuery hook with proper location handling.
     """
-    # Get the results from the previous task
-    task_instance = context['task_instance']
-    dag_run = context['dag_run']
+    # Get variables using Airflow's Variable model
+    project_id = Variable.get('project_id')
+    location = Variable.get('bigquery_location', 'asia-east1')
     
-    # The check_prerequisites_query task stores results in XCom
-    # We need to retrieve them from the BigQuery operator
-    logging.info("Processing prerequisites check results...")
+    logging.info(f"🌏 Using BigQuery location: {location}")
+    logging.info(f"📊 Using project: {project_id}")
     
-    # Note: The actual prerequisite logic will be handled by the BigQuery operator
-    # This function mainly serves as a checkpoint and logging
+    hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False,
+        location=location
+    )
     
-    return "Prerequisites processed successfully"
+    # Render the SQL template
+    bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
+    silver_dataset = Variable.get('tpe_mrt_silver_dataset_id')
+    
+    rendered_sql = CHECK_PREREQUISITES_QUERY.replace(
+        '{{ var.value.project_id }}', project_id
+    ).replace(
+        '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
+    ).replace(
+        '{{ var.value.tpe_mrt_silver_dataset_id }}', silver_dataset
+    )
+    
+    logging.info("🔍 Executing prerequisites check query...")
+    
+    job_config = {
+        'query': {
+            'query': rendered_sql,
+            'useLegacySql': False
+        }
+    }
+    
+    query_job = hook.insert_job(
+        configuration=job_config,
+        project_id=project_id,
+        location=location
+    )
+    
+    results = query_job.result()
+    result = list(results)[0]
+    
+    logging.info(f"Prerequisites check results:")
+    logging.info(f"Bronze: {result['bronze_records']} records, {result['bronze_months']} months")
+    logging.info(f"Silver: {result['silver_records']} records, {result['silver_months']} months")
+    logging.info(f"Status: {result['load_status']}")
+    
+    if result['load_status'] == 'ALREADY_COMPLETE':
+        raise Exception("Full load already complete! Silver table has same record count as bronze.")
+    
+    # Store info for downstream tasks
+    context['task_instance'].xcom_push(key='load_info', value=dict(result))
+    
+    return f"Ready for full load: {result['load_status']}"
 
-def process_cost_estimation_result(**context):
+def estimate_costs_with_hook(**context):
     """
-    Process the results from cost estimation query.
+    Estimate costs using BigQuery hook with proper location handling.
     """
-    logging.info("💰 Cost estimation completed. Check the previous task logs for detailed breakdown.")
-    return "Cost estimation processed successfully"
+    # Get variables
+    project_id = Variable.get('project_id')
+    location = Variable.get('bigquery_location', 'asia-east1')
+    bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
+    
+    logging.info(f"🌏 Using BigQuery location: {location}")
+    
+    hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False,
+        location=location
+    )
+    
+    # Render the SQL template
+    rendered_sql = COST_ESTIMATION_QUERY.replace(
+        '{{ var.value.project_id }}', project_id
+    ).replace(
+        '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
+    )
+    
+    logging.info("💰 Executing cost estimation query...")
+    
+    job_config = {
+        'query': {
+            'query': rendered_sql,
+            'useLegacySql': False
+        }
+    }
+    
+    query_job = hook.insert_job(
+        configuration=job_config,
+        project_id=project_id,
+        location=location
+    )
+    
+    results = query_job.result()
+    
+    total_processing_cost = 0
+    total_storage_cost = 0
+    total_records = 0
+    total_gb = 0
+    
+    logging.info("💰 COST ESTIMATION BREAKDOWN:")
+    logging.info("=" * 60)
+    
+    for row in results:
+        year = row['year']
+        records = row['records_per_year']
+        gb_size = row['estimated_gb_per_year']
+        processing_cost = row['estimated_processing_cost_usd']
+        storage_cost = row['estimated_storage_cost_monthly_usd']
+        
+        total_records += records
+        total_gb += gb_size
+        total_processing_cost += processing_cost
+        total_storage_cost += storage_cost
+        
+        logging.info(f"Year {year}: {records:,} records, {gb_size} GB")
+        logging.info(f"  → Processing cost: ${processing_cost}")
+        logging.info(f"  → Monthly storage: ${storage_cost}")
+        logging.info("-" * 40)
+    
+    logging.info("📊 TOTAL ESTIMATED COSTS:")
+    logging.info(f"Total records to process: {total_records:,}")
+    logging.info(f"Total data size: {total_gb:.2f} GB")
+    logging.info(f"💵 One-time processing cost: ${total_processing_cost:.2f}")
+    logging.info(f"💾 Monthly storage cost: ${total_storage_cost:.3f}")
+    logging.info("=" * 60)
+    
+    # Store cost info for monitoring
+    cost_info = {
+        'total_records': total_records,
+        'total_gb': total_gb,
+        'processing_cost_usd': total_processing_cost,
+        'storage_cost_monthly_usd': total_storage_cost
+    }
+    
+    context['task_instance'].xcom_push(key='cost_estimation', value=cost_info)
+    
+    return f"Estimated cost: ${total_processing_cost:.2f} processing + ${total_storage_cost:.3f}/month storage"
 
 def process_full_load_years(**context):
     """
@@ -78,12 +202,10 @@ def process_full_load_years(**context):
     Since we need to process multiple years, we'll do this in a loop.
     """
     # Get variables using Airflow's Variable model for proper resolution
-    from airflow.models import Variable
-    
     hook = BigQueryHook(
         gcp_conn_id='google_cloud_default',
         use_legacy_sql=False,
-        location=Variable.get('bigquery_location', 'asia-east1')  # Use Variable.get for proper resolution
+        location=Variable.get('bigquery_location', 'asia-east1')
     )
     
     # Process years from 2017 to 2025
@@ -141,6 +263,69 @@ def process_full_load_years(**context):
     
     return f"Processed {total_processed:,} records across {len(years_to_process)} years"
 
+def validate_full_load_with_hook(**context):
+    """
+    Validate the full load results using BigQuery hook.
+    """
+    # Get variables
+    project_id = Variable.get('project_id')
+    location = Variable.get('bigquery_location', 'asia-east1')
+    bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
+    silver_dataset = Variable.get('tpe_mrt_silver_dataset_id')
+    
+    logging.info(f"🌏 Using BigQuery location: {location}")
+    
+    hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False,
+        location=location
+    )
+    
+    # Render the SQL template
+    rendered_sql = FULL_LOAD_VALIDATION_QUERY.replace(
+        '{{ var.value.project_id }}', project_id
+    ).replace(
+        '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
+    ).replace(
+        '{{ var.value.tpe_mrt_silver_dataset_id }}', silver_dataset
+    )
+    
+    logging.info("🔍 Executing validation query...")
+    
+    job_config = {
+        'query': {
+            'query': rendered_sql,
+            'useLegacySql': False
+        }
+    }
+    
+    query_job = hook.insert_job(
+        configuration=job_config,
+        project_id=project_id,
+        location=location
+    )
+    
+    results = query_job.result()
+    
+    validation_results = []
+    for row in results:
+        row_dict = dict(row)
+        validation_results.append(row_dict)
+        logging.info(f"Validation - {row['source']}: {row['record_count']:,} records, "
+                    f"{row['unique_months']} months, {row['unique_years']} years, "
+                    f"dates: {row['min_date']} to {row['max_date']}")
+        if row['completion_percentage']:
+            logging.info(f"✅ Full load completion: {row['completion_percentage']}%")
+    
+    # Check if completion is satisfactory
+    silver_result = [r for r in validation_results if r['source'] == 'silver'][0]
+    if silver_result['completion_percentage'] and silver_result['completion_percentage'] >= 99.9:
+        logging.info("🎉 Full load validation PASSED!")
+    else:
+        logging.warning("⚠️ Full load validation shows incomplete data transfer")
+    
+    return f"Validation complete: {silver_result['completion_percentage']}% of data transferred"
+
 # Create the DAG
 dag = DAG(
     'mrt_traffic_bronze_to_silver_full_load',
@@ -155,53 +340,33 @@ dag = DAG(
     max_active_runs=1
 )
 
-# Task 1: Check prerequisites using BigQueryExecuteQueryOperator
-check_prerequisites_query = BigQueryExecuteQueryOperator(
+# Task 1: Check prerequisites using Python function with proper location
+check_prerequisites_task = PythonOperator(
     task_id='check_prerequisites',
-    sql=CHECK_PREREQUISITES_QUERY,
-    use_legacy_sql=False,
-    location='{{ var.value.bigquery_location }}',  # Use Airflow templating
+    python_callable=check_prerequisites_with_hook,
     dag=dag,
 )
 
-# Task 2: Process prerequisites results
-process_prerequisites_task = PythonOperator(
-    task_id='process_prerequisites',
-    python_callable=process_prerequisites_result,
-    dag=dag,
-)
-
-# Task 3: Estimate costs using BigQueryExecuteQueryOperator
-estimate_costs_query = BigQueryExecuteQueryOperator(
+# Task 2: Estimate costs using Python function with proper location
+estimate_costs_task = PythonOperator(
     task_id='estimate_costs',
-    sql=COST_ESTIMATION_QUERY,
-    use_legacy_sql=False,
-    location='{{ var.value.bigquery_location }}',  # Use Airflow templating
+    python_callable=estimate_costs_with_hook,
     dag=dag,
 )
 
-# Task 4: Process cost estimation results
-process_costs_task = PythonOperator(
-    task_id='process_costs',
-    python_callable=process_cost_estimation_result,
-    dag=dag,
-)
-
-# Task 5: Process full load in optimized batches
+# Task 3: Process full load in optimized batches
 process_full_load_task = PythonOperator(
     task_id='process_full_load',
     python_callable=process_full_load_years,
     dag=dag,
 )
 
-# Task 6: Final validation using BigQueryExecuteQueryOperator
-final_validation_query = BigQueryExecuteQueryOperator(
+# Task 4: Final validation using Python function with proper location
+final_validation_task = PythonOperator(
     task_id='final_validation',
-    sql=FULL_LOAD_VALIDATION_QUERY,
-    use_legacy_sql=False,
-    location='{{ var.value.bigquery_location }}',  # Use Airflow templating
+    python_callable=validate_full_load_with_hook,
     dag=dag,
 )
 
 # Set up dependencies
-check_prerequisites_query >> process_prerequisites_task >> estimate_costs_query >> process_costs_task >> process_full_load_task >> final_validation_query 
+check_prerequisites_task >> estimate_costs_task >> process_full_load_task >> final_validation_task 
