@@ -367,12 +367,31 @@ pipeline {
                         chmod +x scripts/airflow-manager.sh
                     '''
                     
-                    // Create connections and variables
-                    sh '''
-                        echo "🔗 Creating Airflow connections and variables..."
-                        cd scripts
-                        ./airflow-manager.sh connections
-                    '''
+                    // Check if connections and variables already exist
+                    def connectionsExist = sh(
+                        script: '''
+                            echo "🔍 Checking if Airflow connections and variables already exist..."
+                            cd scripts
+                            if ./airflow-manager.sh check-connections; then
+                                echo "true"
+                            else
+                                echo "false"
+                            fi
+                        ''',
+                        returnStdout: true
+                    ).trim()
+
+                    if (connectionsExist == "true") {
+                        echo "✅ Connections and variables already exist - skipping creation step"
+                        echo "This saves time by not recreating existing configurations!"
+                    } else {
+                        echo "🔗 Connections or variables are missing - creating them now..."
+                        sh '''
+                            cd scripts
+                            ./airflow-manager.sh connections
+                        '''
+                        echo "✅ Connections and variables have been created successfully"
+                    }
                 }
             }
         }

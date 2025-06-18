@@ -1026,6 +1026,140 @@ EOF
     print_status "Connections and variables creation completed!"
 }
 
+# Function to check if connections and variables already exist
+check_connections_and_variables() {
+    echo "=== Checking Airflow Connections and Variables ==="
+    echo "Timestamp: $(date)"
+    echo ""
+
+    # Check VM status
+    current_status=$(check_vm_status)
+    if [ "$current_status" != "RUNNING" ]; then
+        print_error "VM is not running (status: $current_status)"
+        return 1
+    fi
+
+    VM_IP=$(get_vm_ip)
+    if [ -z "$VM_IP" ]; then
+        print_error "Could not get VM IP"
+        return 1
+    fi
+
+    print_info "VM IP: $VM_IP"
+
+    # Test if Airflow is accessible
+    echo "1️⃣ Testing Airflow accessibility..."
+    if ! curl -s --connect-timeout 10 "http://$VM_IP:8081/health" > /dev/null 2>&1; then
+        print_error "Airflow is not accessible. Please ensure it's running first."
+        return 1
+    fi
+    print_status "Airflow is accessible"
+
+    # Create the check script
+    echo ""
+    echo "2️⃣ Checking existing connections and variables..."
+    cat > /tmp/check_airflow_connections.sh <<'EOF'
+#!/bin/bash
+set -e
+
+echo "Checking Airflow connections and variables..."
+
+# Change to airflow directory
+cd /opt/airflow
+
+# Wait a bit for services to be stable
+echo "Waiting for services to stabilize..."
+sleep 5
+
+echo "=== Checking Connections ==="
+# Required connections
+REQUIRED_CONNECTIONS=("google_cloud_default")
+missing_connections=0
+
+for conn in "${REQUIRED_CONNECTIONS[@]}"; do
+    echo "Checking connection: $conn"
+    if docker-compose exec -T airflow-webserver airflow connections get "$conn" > /dev/null 2>&1; then
+        echo "✅ Connection '$conn' exists"
+    else
+        echo "❌ Connection '$conn' is missing"
+        missing_connections=$((missing_connections + 1))
+    fi
+done
+
+echo ""
+echo "=== Checking Variables ==="
+# Required variables
+declare -A REQUIRED_VARIABLES=(
+    ["gcp_project_id"]="open-data-v2-cicd"
+    ["project_id"]="open-data-v2-cicd"
+    ["bigquery_location"]="asia-east1"
+    ["environment"]="dev"
+    ["data_retention_days"]="30"
+    ["max_parallel_tasks"]="5"
+    ["tpe_mrt_bronze_dataset_id"]="tpe_mrt_bronze"
+    ["tpe_mrt_silver_dataset_id"]="tpe_mrt_silver"
+    ["tpe_mrt_gold_dataset_id"]="tpe_mrt_gold"
+)
+
+missing_variables=0
+
+for var in "${!REQUIRED_VARIABLES[@]}"; do
+    echo "Checking variable: $var"
+    if docker-compose exec -T airflow-webserver airflow variables get "$var" > /dev/null 2>&1; then
+        echo "✅ Variable '$var' exists"
+    else
+        echo "❌ Variable '$var' is missing"
+        missing_variables=$((missing_variables + 1))
+    fi
+done
+
+echo ""
+echo "=== Summary ==="
+echo "Missing connections: $missing_connections"
+echo "Missing variables: $missing_variables"
+
+# Return appropriate exit code
+if [ $missing_connections -eq 0 ] && [ $missing_variables -eq 0 ]; then
+    echo "✅ All connections and variables are properly configured!"
+    exit 0
+else
+    echo "❌ Some connections or variables are missing and need to be created"
+    exit 1
+fi
+EOF
+
+    chmod +x /tmp/check_airflow_connections.sh
+
+    # Copy and execute the script on the VM
+    echo ""
+    echo "3️⃣ Copying and executing check script on VM..."
+    gcloud compute scp /tmp/check_airflow_connections.sh $VM_NAME:/tmp/check_airflow_connections.sh --zone=$ZONE
+
+    # Execute the script and capture result
+    if gcloud compute ssh $VM_NAME --zone=$ZONE --command="chmod +x /tmp/check_airflow_connections.sh && sudo /tmp/check_airflow_connections.sh"; then
+        print_status "All connections and variables are already configured!"
+        CONNECTIONS_EXIST=true
+    else
+        print_warning "Some connections or variables are missing"
+        CONNECTIONS_EXIST=false
+    fi
+
+    # Cleanup
+    echo ""
+    echo "4️⃣ Cleaning up temporary files..."
+    rm -f /tmp/check_airflow_connections.sh
+    gcloud compute ssh $VM_NAME --zone=$ZONE --command="rm -f /tmp/check_airflow_connections.sh" 2>/dev/null || true
+
+    # Return appropriate exit code for Jenkins
+    if [ "$CONNECTIONS_EXIST" = true ]; then
+        print_status "Check completed: Connections and variables are properly configured"
+        return 0
+    else
+        print_info "Check completed: Connections and variables need to be created"
+        return 1
+    fi
+}
+
 # Function to upload DAGs
 upload_dags() {
     echo "=== Uploading DAGs to GCS ==="
@@ -1051,21 +1185,27 @@ show_help() {
     echo "Usage: $0 [COMMAND]"
     echo ""
     echo "Commands:"
-    echo "  validate       - Validate Airflow is running and accessible"
-    echo "  restart        - Restart the Airflow VM (auto-applies emergency fix if needed)"
-    echo "  fix            - Apply permanent fixes to prevent restart issues"
-    echo "  emergency-fix  - Apply comprehensive emergency fixes for severe issues"
-    echo "  connections    - Create Airflow Google Cloud connections and variables"
-    echo "  upload         - Upload DAGs to GCS bucket"
-    echo "  status         - Show current VM and service status"
-    echo "  help           - Show this help message"
+    echo "  validate           - Validate Airflow is running and accessible"
+    echo "  restart            - Restart the Airflow VM (auto-applies emergency fix if needed)"
+    echo "  fix                - Apply permanent fixes to prevent restart issues"
+    echo "  emergency-fix      - Apply comprehensive emergency fixes for severe issues"
+    echo "  connections        - Create Airflow Google Cloud connections and variables"
+    echo "  check-connections  - Check if connections and variables already exist (for CI/CD optimization)"
+    echo "  upload             - Upload DAGs to GCS bucket"
+    echo "  status             - Show current VM and service status"
+    echo "  help               - Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 validate"
     echo "  $0 restart          # Now handles issues automatically!"
     echo "  $0 fix"
-    echo "  $0 connections      # Fix connection and variable issues"
+    echo "  $0 check-connections    # Check if setup is needed (useful for CI/CD)"
+    echo "  $0 connections      # Create connections and variables"
     echo "  $0 emergency-fix    # Only needed for manual troubleshooting"
+    echo ""
+    echo "CI/CD Optimization:"
+    echo "  Use 'check-connections' before 'connections' in your pipeline to save time"
+    echo "  when connections and variables are already properly configured."
     echo ""
     echo "Note: The 'restart' command now automatically applies emergency fixes"
     echo "      if validation fails, so you don't need to run emergency-fix manually!"
@@ -1115,6 +1255,9 @@ case "${1:-help}" in
         ;;
     connections)
         create_connections
+        ;;
+    check-connections)
+        check_connections_and_variables
         ;;
     upload)
         upload_dags
