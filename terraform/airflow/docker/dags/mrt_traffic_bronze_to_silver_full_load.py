@@ -247,8 +247,47 @@ def process_full_load_years(**context):
             location=location  # Explicitly set location
         )
         
-        result = query_job.result()
-        rows_processed = result.num_dml_affected_rows or 0
+        # Wait for the job to complete
+        query_job.result()  # This waits for completion
+        
+        # Get the number of affected rows from the job object, not the result
+        rows_processed = 0
+        
+        # Try multiple ways to get the affected row count
+        try:
+            # Method 1: Direct attribute access
+            if hasattr(query_job, 'num_dml_affected_rows') and query_job.num_dml_affected_rows is not None:
+                rows_processed = query_job.num_dml_affected_rows
+                logging.info(f"📊 Got row count from num_dml_affected_rows: {rows_processed}")
+            
+            # Method 2: From job statistics
+            elif hasattr(query_job, 'statistics') and query_job.statistics:
+                stats = query_job.statistics
+                if hasattr(stats, 'num_dml_affected_rows') and stats.num_dml_affected_rows is not None:
+                    rows_processed = stats.num_dml_affected_rows
+                    logging.info(f"📊 Got row count from statistics.num_dml_affected_rows: {rows_processed}")
+            
+            # Method 3: From job configuration/state
+            elif hasattr(query_job, '_properties') and query_job._properties:
+                props = query_job._properties
+                if 'statistics' in props and 'numDmlAffectedRows' in props['statistics']:
+                    rows_processed = int(props['statistics']['numDmlAffectedRows'])
+                    logging.info(f"📊 Got row count from _properties.statistics: {rows_processed}")
+            
+            # If we still don't have a count, log available attributes for debugging
+            if rows_processed == 0:
+                logging.warning(f"⚠️ Could not determine affected row count for year {year}")
+                logging.info(f"Available query_job attributes: {[attr for attr in dir(query_job) if not attr.startswith('_')]}")
+                if hasattr(query_job, 'statistics'):
+                    logging.info(f"Statistics attributes: {[attr for attr in dir(query_job.statistics) if not attr.startswith('_')]}")
+                
+                # Set a default based on typical year processing
+                rows_processed = 0  # We'll track this as 0 but job still succeeded
+                
+        except Exception as e:
+            logging.warning(f"⚠️ Error getting row count for year {year}: {e}")
+            rows_processed = 0
+        
         total_processed += rows_processed
         
         logging.info(f"✅ Year {year} completed: {rows_processed:,} records processed in {location}")
