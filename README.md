@@ -1,149 +1,189 @@
 # Data Sharing Infrastructure
 
-This project manages the infrastructure for data sharing using Terraform and Jenkins CI/CD pipeline.
+This project manages a comprehensive data sharing infrastructure using Terraform, Apache Airflow, and Jenkins CI/CD pipeline. The infrastructure provisions Google Cloud Platform resources for data ingestion, transformation, and analytics.
 
-## Project Structure
+## 🏗️ Architecture Overview
+
+The project implements a modern data platform with the following components:
+
+- **Data Ingestion**: AWS S3 to Google BigQuery transfer jobs
+- **Data Processing**: Apache Airflow for workflow orchestration
+- **Data Storage**: BigQuery datasets organized in Bronze/Silver/Gold tiers
+- **Infrastructure**: Terraform for Infrastructure as Code
+- **CI/CD**: Jenkins pipeline for automated deployments
+- **Monitoring**: Automated health checks and connection management
+
+## 📁 Project Structure
 
 ```
 .
-├── Jenkinsfile              # Jenkins pipeline configuration
-├── README.md               # Project documentation
-└── terraform/              # Terraform configurations
-    ├── environments/       # Environment-specific variables
-    ├── bigquery_datasets/  # BigQuery dataset configurations
-    └── bigquery_tables/    # BigQuery table configurations
+├── Jenkinsfile                    # Jenkins CI/CD pipeline configuration
+├── README.md                     # This file - project overview
+├── scripts/                      # Utility scripts for operations
+│   ├── README.md                # Scripts documentation
+│   ├── airflow-manager.sh       # Airflow operations management
+│   ├── setup_auto_connections.sh # Auto-connection setup
+│   ├── update_airflow_config.sh # Airflow configuration updates
+│   ├── test-connection-check.sh # Connection testing
+│   └── upload_config.sh         # DAG upload to GCS
+└── terraform/                   # Infrastructure as Code
+    ├── README.md               # Terraform documentation
+    ├── main.tf                 # Root module configuration
+    ├── variables.tf            # Variable definitions
+    ├── outputs.tf              # Output values
+    ├── backend.tf              # Terraform state backend
+    ├── environments/           # Environment-specific configurations
+    │   └── dev.tfvars         # Development environment variables
+    ├── airflow/               # Airflow VM and services
+    │   ├── README.md          # Airflow module documentation
+    │   ├── README_AUTO_CONNECTIONS.md # Auto-connection setup guide
+    │   ├── main.tf            # Airflow infrastructure
+    │   ├── docker/            # Docker configurations and DAGs
+    │   └── templates/         # VM startup scripts and configurations
+    ├── bigquery_datasets/     # BigQuery dataset configurations
+    │   ├── main.tf           # Dataset module
+    │   └── config/           # YAML-based dataset definitions
+    │       └── datasets.yaml # Dataset configuration file
+    ├── bigquery_tables/      # BigQuery table configurations
+    │   ├── main.tf          # Table module
+    │   ├── tpe_mrt_bronze/  # Bronze tier table definitions
+    │   ├── tpe_mrt_silver/  # Silver tier table definitions
+    │   └── fruit/           # Example dataset tables
+    └── transfer_jobs/       # S3 to BigQuery transfer jobs
+        └── main.tf         # Transfer job configurations
 ```
 
-## Environment Setup
+## 🌍 Environment Setup
 
-The project supports two environments:
-- Development (dev)
-- Production (main)
+The project supports multiple environments with isolated resources:
 
-Each environment:
-- Has its own GCP project
-- Uses a separate service account
-- Maintains state in a dedicated GCS bucket
+### Development Environment
+- **GCP Project**: `open-data-v2-cicd`
+- **State Bucket**: `terraform-state-data-sharing-dev-new`
+- **Airflow Bucket**: `open-data-v2-cicd-airflow-storage`
+- **Data Source**: `online-data-lake-thirty-three` (AWS S3)
 
-## Prerequisites
+### Production Environment
+- Configured via `main` branch
+- Separate GCP project and resources
+- Manual approval required for deployments
 
-- Terraform >= 1.0.0
-- Google Cloud SDK
-- Jenkins with required plugins:
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Terraform** >= 1.11.3
+- **Google Cloud SDK** with authentication
+- **Jenkins** with required plugins:
   - Terraform
   - Credentials
   - Pipeline
+- **Docker** and **Docker Compose** (for local development)
 
-## Development Workflow
+### Initial Setup
 
-1. Create feature branch from `dev`
-2. Make changes and test locally
-3. Create PR to `dev` branch
-4. After approval and merge, changes are automatically applied to dev environment
-5. Create PR from `dev` to `main` for production deployment
-6. Production deployment requires manual approval
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd data-sharing
+   ```
 
-## CI/CD Pipeline
+2. **Configure GCP credentials**:
+   ```bash
+   gcloud auth application-default login
+   gcloud config set project open-data-v2-cicd
+   ```
 
-The Jenkins pipeline:
-1. Authenticates with GCP
-2. Initializes Terraform
-3. Validates configurations
-4. Plans changes
-5. Applies changes (with approval for production)
+3. **Initialize Terraform**:
+   ```bash
+   cd terraform
+   terraform init
+   ```
 
-## Security Notes
+4. **Review and apply infrastructure**:
+   ```bash
+   terraform plan
+   terraform apply
+   ```
 
-- Service account keys are managed through Jenkins Credentials
-- Production deployments require manual approval
-- State files are stored in environment-specific GCS buckets
+## 🔄 Development Workflow
 
-## Adding New Datasets and Tables
+### Branch Strategy
+1. **Feature Development**: Create feature branch from `dev`
+2. **Testing**: Test changes locally and create PR to `dev`
+3. **Dev Deployment**: Auto-deployment on merge to `dev`
+4. **Production**: Create PR from `dev` to `main` (requires approval)
+
+### CI/CD Pipeline Stages
+
+The Jenkins pipeline (`Jenkinsfile`) includes:
+
+1. **Code Checkout**: Retrieves latest code
+2. **DAG Change Detection**: Identifies Airflow DAG modifications
+3. **DAG Upload**: Syncs DAGs to GCS bucket if changes detected
+4. **Environment Setup**: GCP authentication and bucket creation
+5. **Terraform Init**: Initializes Terraform with remote state
+6. **Service Account Import**: Handles existing resource imports
+7. **VM Status Check**: Determines if Airflow VM needs recreation
+8. **Terraform Plan**: Creates execution plan (targeted if VM healthy)
+9. **Terraform Apply**: Applies infrastructure changes
+10. **Airflow Connections Setup**: Configures Airflow connections and variables
+
+### Pipeline Features
+
+- **Smart VM Management**: Avoids unnecessary VM recreation
+- **Automated DAG Sync**: Only uploads DAGs when changes detected
+- **Health Checking**: Validates Airflow availability before operations
+- **Error Handling**: Robust error handling and recovery mechanisms
+
+## 📊 Data Architecture
+
+### Data Tiers
+- **Bronze**: Raw data directly from S3 sources
+- **Silver**: Cleaned and validated data
+- **Gold**: Analytics-ready, aggregated data
+
+### Current Datasets
+- **TPE MRT**: Taipei Metro system data (Bronze/Silver tiers)
+- **Fruit**: Example dataset for testing
+
+### Data Flow
+```
+AWS S3 → BigQuery (Bronze) → Airflow Processing → BigQuery (Silver/Gold)
+```
+
+## 🔒 Security & Permissions
+
+- **Service Accounts**: Dedicated service accounts for each component
+- **State Management**: Encrypted state files in GCS with versioning
+- **Connection Management**: Automated and secure connection setup
+- **Access Control**: Role-based access to datasets and resources
+
+## 📈 Monitoring & Operations
+
+### Airflow Management
+- **Web UI**: Available at `http://<VM_IP>:8081`
+- **Auto-Connections**: Automatic setup on VM restart
+- **Health Checks**: Automated monitoring and recovery
+
+### Operational Scripts
+- `airflow-manager.sh`: Comprehensive Airflow operations
+- `setup_auto_connections.sh`: Auto-connection configuration
+- `test-connection-check.sh`: Connection testing utilities
+
+## 🛠️ Adding New Resources
 
 ### Adding a New Dataset
-1. **Edit the `datasets.yaml` file**:
-   - Navigate to `terraform/config/datasets.yaml`.
-   - Add a new entry under `datasets` with the following fields:
-     - `id`: Unique identifier for the dataset.
-     - `friendly_name`: A user-friendly name for the dataset.
-     - `description`: A brief description of the dataset.
-     - `labels`: Key-value pairs for labeling the dataset.
-     - `access_rules`: Define access roles and groups.
+1. Edit `terraform/bigquery_datasets/config/datasets.yaml`
+2. Add dataset configuration with appropriate access rules
+3. Apply Terraform changes: `terraform apply`
 
-   Example:
-   ```yaml
-   - id: "new_dataset"
-     friendly_name: "New Dataset"
-     description: "Description of the new dataset"
-     labels:
-       environment: "development"
-       purpose: "new_purpose"
-     access_rules:
-       - role: "OWNER"
-         special_group: "projectOwners"
-       - role: "READER"
-         special_group: "projectReaders"
-   ```
+### Adding New Tables
+1. Create YAML files in `terraform/bigquery_tables/<dataset_name>/`
+2. Define schema, partitioning, and clustering
+3. Apply Terraform changes
 
-2. **Update the `dataset_ids` Mapping**:
-   - Edit `terraform/bigquery_tables/main.tf`.
-   - Add a new entry to the `dataset_ids` map in the `locals` block for the new dataset.
-
-   Example:
-   ```hcl
-   locals {
-     dataset_ids = {
-       "data_sharing_dataset_id" = var.data_sharing_dataset_id
-       "analytics_dataset_id"    = var.analytics_dataset_id
-       "new_dataset_id"          = var.new_dataset_id  # Add this line
-     }
-   }
-   ```
-
-3. **Declare the New Variable**:
-   - Ensure the new dataset ID variable is declared in `variables.tf` within the `bigquery_tables` module.
-
-4. **Pass the Variable**:
-   - Update the root `main.tf` to pass the new dataset ID to the `bigquery_tables` module.
-
-5. **Deploy the Changes**:
-   - Run `terraform plan` and `terraform apply` to deploy the new dataset.
-
-### Adding a New Table
-1. **Create a YAML Configuration File**:
-   - Navigate to `terraform/bigquery_tables/<dataset_name>/`.
-   - Create a new YAML file for the table with the following fields:
-     - `dataset_id_var_name`: The variable name for the dataset ID.
-     - `table_id`: Unique identifier for the table.
-     - `description`: A brief description of the table.
-     - `schema`: Define the table schema with fields, types, and modes.
-     - `clustering`: (Optional) Columns to cluster the table by.
-     - `time_partitioning`: (Optional) Define time-based partitioning.
-     - `labels`: Key-value pairs for labeling the table.
-
-   Example:
-   ```yaml
-   dataset_id_var_name: "data_sharing_dataset_id"
-   table_id: "new_table"
-   description: "Description of the new table"
-   schema:
-     - {name: "field1", type: "STRING", mode: "REQUIRED", description: "Description of field1"}
-     - {name: "field2", type: "INTEGER", mode: "NULLABLE", description: "Description of field2"}
-   clustering:
-     - "field1"
-   time_partitioning:
-     type: "DAY"
-     field: "field2"
-   labels:
-     data_sensitivity: "medium"
-     purpose: "new_purpose"
-   ```
-
-2. **Ensure the Dataset ID Variable is Declared**:
-   - Make sure the dataset ID variable referenced in `dataset_id_var_name` is declared in `variables.tf`.
-
-3. **Deploy the Changes**:
-   - Run `terraform plan` to ensure the configuration is correct and no errors occur.
-   - Run `terraform apply` to deploy the new table.
-
-These steps ensure that new datasets and tables are added following the infrastructure-as-code best practices, allowing for easy management and scalability.
+### Adding Transfer Jobs
+1. Configure in `terraform/transfer_jobs/main.tf`
+2. Specify S3 source and BigQuery destination
+3. Set schedule and authentication
