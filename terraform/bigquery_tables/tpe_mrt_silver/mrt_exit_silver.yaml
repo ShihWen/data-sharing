@@ -1,0 +1,44 @@
+table_id: "mrt_exit"
+dataset_id_var_name: "tpe_mrt_silver"
+description: "Enhanced MRT station exit information with data quality validations and derived fields"
+labels:
+  data_source: "bronze"
+  data_type: "exit"
+  tier: "silver"
+
+# Clustering for better query performance (no time partitioning needed for static exit data)
+clustering:
+  - "station_id"
+  - "is_accessible"
+
+schema:
+  # Original fields (standardized naming)
+  - {name: "station_id",            type: "STRING",    mode: "NULLABLE", description: "Station code (standardized)"}
+  - {name: "exit_id",               type: "STRING",    mode: "NULLABLE", description: "Exit identifier (standardized)"}
+  - {name: "location_description",  type: "STRING",    mode: "NULLABLE", description: "Description of the exit location and nearby landmarks"}
+  - {name: "has_stairs",            type: "BOOLEAN",   mode: "NULLABLE", description: "Whether this exit has stairs"}
+  - {name: "escalator_count",       type: "INTEGER",   mode: "NULLABLE", description: "Number of escalators at this exit"}
+  - {name: "has_elevator",          type: "BOOLEAN",   mode: "NULLABLE", description: "Whether this exit has elevator access"}
+  - {name: "src_update_time",       type: "TIMESTAMP", mode: "NULLABLE", description: "Last update time from source system"}
+  - {name: "update_time",           type: "TIMESTAMP", mode: "NULLABLE", description: "Last update time in current system"}
+  - {name: "version_id",            type: "INTEGER",   mode: "NULLABLE", description: "Version number of the record"}
+  - {name: "station_name_zh_tw",    type: "STRING",    mode: "NULLABLE", description: "Station name in Traditional Chinese"}
+  - {name: "station_name_en",       type: "STRING",    mode: "NULLABLE", description: "Station name in English"}
+  - {name: "exit_name_zh_tw",       type: "STRING",    mode: "NULLABLE", description: "Exit name/number in Traditional Chinese"}
+  - {name: "exit_name_en",          type: "STRING",    mode: "NULLABLE", description: "Exit name/number in English"}
+  - {name: "longitude",             type: "FLOAT",     mode: "NULLABLE", description: "Exit longitude coordinate"}
+  - {name: "latitude",              type: "FLOAT",     mode: "NULLABLE", description: "Exit latitude coordinate"}
+  - {name: "geohash",               type: "STRING",    mode: "NULLABLE", description: "Geohash of exit location"}
+
+  # Data quality validation fields
+  - {name: "is_valid_location",     type: "BOOLEAN",   mode: "NULLABLE", description: "Whether coordinates are within New Taipei City bounds"}
+  - {name: "is_complete_record",    type: "BOOLEAN",   mode: "NULLABLE", description: "Whether all required fields are populated"}
+  - {name: "data_quality_score",    type: "FLOAT",     mode: "NULLABLE", description: "Overall data quality score (0.0-1.0)"}
+
+  # Derived business logic fields
+  - {name: "is_accessible",         type: "BOOLEAN",   mode: "NULLABLE", description: "Whether exit is accessible (has elevator)"}
+  - {name: "total_mechanical_aids", type: "INTEGER",   mode: "NULLABLE", description: "Total count of escalators + elevators"}
+  - {name: "accessibility_score",   type: "INTEGER",   mode: "NULLABLE", description: "Accessibility rating (0-3: 0=stairs only, 1=escalator, 2=elevator, 3=both)"}
+
+  # Processing metadata
+  - {name: "processed_at",          type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp"} 
