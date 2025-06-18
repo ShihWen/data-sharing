@@ -29,8 +29,8 @@ default_args = {
     'depends_on_past': False,
     'email_on_failure': True,
     'email_on_retry': False,
-    'retries': 3,
-    'retry_delay': timedelta(minutes=10),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=3),
     'email': get_airflow_variable('notification_email', ['your-email@example.com'])
 }
 
@@ -334,7 +334,7 @@ dag = DAG(
     schedule_interval=None,  # Manual trigger only
     start_date=days_ago(1),
     catchup=False,
-    tags=['mrt', 'traffic', 'full-load', 'bronze', 'silver', 'paired-with-weekly'],
+    tags=['mrt', 'traffic', 'full-load', 'bronze', 'silver'],
     on_success_callback=notify_success,
     on_failure_callback=notify_failure,
     max_active_runs=1
