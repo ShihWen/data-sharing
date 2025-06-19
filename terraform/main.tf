@@ -3,6 +3,19 @@ provider "google" {
   region  = var.region
 }
 
+# Enable necessary APIs
+resource "google_project_service" "enable_secretmanager" {
+  project            = var.project_id
+  service            = "secretmanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "enable_transfer" {
+  project            = var.project_id
+  service            = "bigquerydatatransfer.googleapis.com"
+  disable_on_destroy = false
+}
+
 # Get project information
 data "google_project" "current" {
   project_id = var.project_id
@@ -66,6 +79,8 @@ resource "google_secret_manager_secret" "aws_credentials" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.enable_secretmanager]
 }
 
 resource "google_secret_manager_secret_version" "aws_credentials_version" {
@@ -82,6 +97,7 @@ module "airflow" {
   project_id   = var.project_id
   region       = var.region
   zone         = var.zone
+  depends_on = [google_project_service.enable_secretmanager]
 }
 
 module "bigquery_datasets" {
@@ -124,9 +140,10 @@ module "transfer_jobs" {
   transfer_service_account_email = google_service_account.transfer_sa.email
 
   depends_on = [
-    module.bigquery_datasets, 
-    module.bigquery_tables, 
+    module.bigquery_datasets,
+    module.bigquery_tables,
     google_project_iam_member.transfer_sa_roles,
-    google_secret_manager_secret_version.aws_credentials_version
+    google_secret_manager_secret_version.aws_credentials_version,
+    google_project_service.enable_transfer
   ]
 }

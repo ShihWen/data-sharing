@@ -1,18 +1,5 @@
-resource "google_project_service" "enable_transfer" {
-  project = var.project_id
-  service = "bigquerydatatransfer.googleapis.com"
-}
-
-# Enable Secret Manager API
-resource "google_project_service" "enable_secretmanager" {
-  project = var.project_id
-  service = "secretmanager.googleapis.com"
-}
-
 # Generic transfer job for S3 to BigQuery
 resource "google_bigquery_data_transfer_config" "s3_transfer" {
-  depends_on = [google_project_service.enable_transfer]
-
   display_name           = var.transfer_job_display_name
   project                = var.project_id
   location               = "asia-east1"
