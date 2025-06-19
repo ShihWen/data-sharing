@@ -153,6 +153,38 @@ pipeline {
             }
         }
         
+        stage('Check and Import Transfer Service Account') {
+            steps {
+                dir('terraform') {
+                    script {
+                        // Check if service account exists in GCP
+                        sh '''
+                            echo "Checking if bigquery-transfer-sa exists in GCP..."
+                            if gcloud iam service-accounts describe bigquery-transfer-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com --project=${DEV_GCP_PROJECT_ID} > /dev/null 2>&1; then
+                                echo "Service account exists in GCP, checking Terraform state..."
+                                
+                                # Check if service account is in Terraform state at the new location
+                                if ! terraform state list | grep -q 'google_service_account.transfer_sa'; then
+                                    echo "Service account not in Terraform state at root level, importing..."
+                                    terraform import \
+                                        -var="project_id=${DEV_GCP_PROJECT_ID}" \
+                                        -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
+                                        -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
+                                        -var="s3_bucket=${S3_BUCKET}" \
+                                        google_service_account.transfer_sa \
+                                        "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/bigquery-transfer-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
+                                else
+                                    echo "Service account already in Terraform state"
+                                fi
+                            else
+                                echo "Service account does not exist in GCP, will be created by Terraform"
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
+        
         stage('Check Airflow VM Status') {
             steps {
                 script {
