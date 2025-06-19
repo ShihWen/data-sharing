@@ -49,6 +49,51 @@ pipeline {
             }
         }
 
+        stage('Import Existing Resources') {
+            steps {
+                dir('terraform') {
+                    script {
+                        sh '''
+                            # This stage imports resources that may already exist in GCP to prevent
+                            # errors when Terraform tries to create them again.
+
+                            echo "INFO: Checking for resources that may need to be imported into Terraform state."
+
+                            # Import the BigQuery Data Transfer API service if it's not in state
+                            if ! terraform state list | grep -q 'google_project_service.enable_transfer'; then
+                                echo "INFO: BigQuery Data Transfer API service not found in state. Checking GCP..."
+                                if gcloud services list --enabled --filter="config.name=bigquerydatatransfer.googleapis.com" --format="value(config.name)" | grep -q "."; then
+                                    echo "INFO: API is enabled in GCP. Importing into Terraform state..."
+                                    terraform import \
+                                        google_project_service.enable_transfer \
+                                        "${DEV_GCP_PROJECT_ID}/bigquerydatatransfer.googleapis.com"
+                                else
+                                    echo "INFO: API not enabled in GCP. Terraform will enable it."
+                                fi
+                            else
+                                echo "INFO: BigQuery Data Transfer API service already in state."
+                            fi
+                            
+                            # Import the bigquery-transfer-sa service account if it's not in state
+                            if ! terraform state list | grep -q 'google_service_account.transfer_sa'; then
+                                echo "INFO: bigquery-transfer-sa not found in state. Checking GCP..."
+                                if gcloud iam service-accounts describe bigquery-transfer-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com --project=${DEV_GCP_PROJECT_ID} > /dev/null 2>&1; then
+                                    echo "INFO: Service account exists in GCP. Importing into Terraform state..."
+                                    terraform import \
+                                        google_service_account.transfer_sa \
+                                        "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/bigquery-transfer-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
+                                else
+                                    echo "INFO: Service account does not exist in GCP. Terraform will create it."
+                                fi
+                            else
+                                echo "INFO: bigquery-transfer-sa already in Terraform state."
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('Upload DAGs to GCS') {
             when {
                 expression { return env.DAG_CHANGES == "true" }
@@ -141,38 +186,6 @@ pipeline {
                                         -var="s3_bucket=${S3_BUCKET}" \
                                         module.airflow.google_service_account.scheduler_sa \
                                         "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/airflow-scheduler-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
-                                else
-                                    echo "Service account already in Terraform state"
-                                fi
-                            else
-                                echo "Service account does not exist in GCP, will be created by Terraform"
-                            fi
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Check and Import Transfer Service Account') {
-            steps {
-                dir('terraform') {
-                    script {
-                        // Check if service account exists in GCP
-                        sh '''
-                            echo "Checking if bigquery-transfer-sa exists in GCP..."
-                            if gcloud iam service-accounts describe bigquery-transfer-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com --project=${DEV_GCP_PROJECT_ID} > /dev/null 2>&1; then
-                                echo "Service account exists in GCP, checking Terraform state..."
-                                
-                                # Check if service account is in Terraform state at the new location
-                                if ! terraform state list | grep -q 'google_service_account.transfer_sa'; then
-                                    echo "Service account not in Terraform state at root level, importing..."
-                                    terraform import \
-                                        -var="project_id=${DEV_GCP_PROJECT_ID}" \
-                                        -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
-                                        -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
-                                        -var="s3_bucket=${S3_BUCKET}" \
-                                        google_service_account.transfer_sa \
-                                        "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/bigquery-transfer-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
                                 else
                                     echo "Service account already in Terraform state"
                                 fi
