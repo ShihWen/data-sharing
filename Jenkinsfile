@@ -185,121 +185,22 @@ pipeline {
             }
         }
         
-        stage('Check Airflow VM Status') {
-            steps {
-                script {
-                    // First, find the VM's zone
-                    def vmZone = sh(
-                        script: '''
-                            gcloud compute instances list \
-                                --project=${DEV_GCP_PROJECT_ID} \
-                                --filter="name=airflow-vm" \
-                                --format='get(zone)' 2>/dev/null || echo 'NOT_FOUND'
-                        ''',
-                        returnStdout: true
-                    ).trim()
-
-                    if (vmZone == 'NOT_FOUND') {
-                        echo "Airflow VM not found. Will create new VM."
-                        env.SKIP_VM_RECREATION = 'false'
-                    } else {
-                        // Extract zone name from full path
-                        vmZone = vmZone.split('/')[-1]
-                        echo "Found Airflow VM in zone: ${vmZone}"
-                        
-                        // Check VM status in the correct zone
-                        def vmStatus = sh(
-                            script: """
-                                gcloud compute instances describe airflow-vm \
-                                    --project=${DEV_GCP_PROJECT_ID} \
-                                    --zone=${vmZone} \
-                                    --format='get(status)' 2>/dev/null || echo 'NOT_FOUND'
-                            """,
-                            returnStdout: true
-                        ).trim()
-
-                        // Check if Airflow is healthy if VM is running
-                        if (vmStatus == 'RUNNING') {
-                            def vmIp = sh(
-                                script: """
-                                    gcloud compute instances describe airflow-vm \
-                                        --project=${DEV_GCP_PROJECT_ID} \
-                                        --zone=${vmZone} \
-                                        --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
-                                """,
-                                returnStdout: true
-                            ).trim()
-                            
-                            def airflowHealth = sh(
-                                script: "curl -s -o /dev/null -w '%{http_code}' http://${vmIp}:8081/health || echo '000'",
-                                returnStdout: true
-                            ).trim()
-
-                            if (airflowHealth == '200') {
-                                echo "Airflow VM is running and healthy. Will skip VM recreation but apply other changes."
-                                env.SKIP_VM_RECREATION = 'true'
-                            } else {
-                                echo "Airflow VM is running but not healthy. Will recreate VM."
-                                env.SKIP_VM_RECREATION = 'false'
-                            }
-                        } else {
-                            echo "Airflow VM exists but is not running (status: ${vmStatus}). Will recreate VM."
-                            env.SKIP_VM_RECREATION = 'false'
-                        }
-                    }
-                }
-            }
-        }
-        
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
                     script {
-                        if (env.SKIP_VM_RECREATION == 'true') {
-                            // Create a targeted plan that excludes the VM
-                            sh '''
-                                set -eu
-                                echo "Generating targeted plan excluding airflow VM..."
-
-                                # Get all resources except the VM
-                                RESOURCES=$(terraform state list | grep -v "module.airflow.google_compute_instance.airflow")
-                                
-                                # Create plan targeting all resources except the VM
-                                TARGET_ARGS=""
-                                echo "$RESOURCES" | while IFS= read -r resource; do
-                                    if [ -n "$resource" ]; then
-                                        echo "Including resource: $resource"
-                                        TARGET_ARGS="$TARGET_ARGS -target=$resource"
-                                    fi
-                                done
-                                
-                                # Build target args in a different way since while loop runs in subshell
-                                for resource in $RESOURCES; do
-                                    TARGET_ARGS="$TARGET_ARGS -target=$resource"
-                                done
-                                
-                                echo "Running terraform plan with targets: $TARGET_ARGS"
-                                terraform plan \\
-                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \\
-                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \\
-                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \\
-                                    -var="s3_bucket=${S3_BUCKET}" \\
-                                    $TARGET_ARGS \\
-                                    -out=tfplan
-                            '''
-                        } else {
-                            // Create a full plan including VM
-                            sh '''
-                                set -eu
-                                echo "Generating full terraform plan..."
-                                terraform plan \\
-                                    -var="project_id=${DEV_GCP_PROJECT_ID}" \\
-                                    -var="aws_access_key=${AWS_CREDENTIALS_USR}" \\
-                                    -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \\
-                                    -var="s3_bucket=${S3_BUCKET}" \\
-                                    -out=tfplan
-                            '''
-                        }
+                        // Create a full plan. Terraform is idempotent and will not recreate
+                        // resources that are already up-to-date.
+                        sh '''
+                            set -eu
+                            echo "Generating full terraform plan..."
+                            terraform plan \\
+                                -var="project_id=${DEV_GCP_PROJECT_ID}" \\
+                                -var="aws_access_key=${AWS_CREDENTIALS_USR}" \\
+                                -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \\
+                                -var="s3_bucket=${S3_BUCKET}" \\
+                                -out=tfplan
+                        '''
                         archiveArtifacts artifacts: 'tfplan'
                     }
                 }
