@@ -88,7 +88,7 @@ SELECT
     
     CASE 
         WHEN UpdateTime IS NOT NULL AND UpdateTime != '' 
-        TIMESTAMP(UpdateTime)
+        THEN TIMESTAMP(UpdateTime)
         ELSE NULL 
     END as update_time,
     
