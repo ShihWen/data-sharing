@@ -24,9 +24,7 @@ schema:
     fields:
       - {name: "postal_code", type: "STRING", mode: "NULLABLE", description: "Postal code"}
       - {name: "city",       type: "STRING", mode: "NULLABLE", description: "City where the station is located"}
-      - {name: "city_code",  type: "STRING", mode: "NULLABLE", description: "City code for the station location"}
       - {name: "town",       type: "STRING", mode: "NULLABLE", description: "Town/District where the station is located"}
-      - {name: "town_code",  type: "STRING", mode: "NULLABLE", description: "Town/District code for the station location"}
       - {name: "street_address", type: "STRING", mode: "NULLABLE", description: "Street address of the station"}
   - {name: "station_position",             type: "GEOGRAPHY", mode: "NULLABLE", description: "Geographic coordinates of the station"}
   - {name: "geohash",                      type: "STRING",    mode: "NULLABLE", description: "Geohash encoding of station location"}
