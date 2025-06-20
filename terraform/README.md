@@ -38,11 +38,9 @@ terraform/
 ├── bigquery_tables/          # 📋 Schema-driven table provisioning
 │   ├── main.tf              # Table module with dynamic configuration
 │   ├── tpe_mrt_bronze/      # Bronze tier: Raw Taipei MRT data
-│   ├── tpe_mrt_silver/      # Silver tier: Cleaned and validated data
-│   └── fruit/               # Example dataset for testing patterns
+│   └── tpe_mrt_silver/      # Silver tier: Cleaned and validated data
 └── transfer_jobs/           # 🔄 Automated S3 to BigQuery transfers
-    ├── main.tf             # Data transfer job configurations
-    └── outputs.tf          # Transfer job status and information
+    └── main.tf             # Data transfer job configurations
 ```
 
 ## 🎯 Key Features

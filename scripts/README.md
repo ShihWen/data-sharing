@@ -56,6 +56,18 @@ Syncs DAG files from local to GCS bucket for automatic VM pickup.
 ```
 Ensures all fixes persist through VM restarts and recreations.
 
+#### `setup_auto_connections.sh` - Automatic Connection Setup
+```bash
+./setup_auto_connections.sh
+```
+Sets up a systemd service on the Airflow VM to automatically create connections and variables on every VM restart, ensuring a consistent environment. It uses `airflow-manager.sh` to perform the actual configuration.
+
+#### `test-connection-check.sh` - Connection Check Demonstration
+```bash
+./test-connection-check.sh
+```
+A test script that demonstrates the time savings of checking for existing Airflow connections before attempting to create them. It is intended for demonstration purposes.
+
 ## 🔧 Jenkins Pipeline Integration
 
 ### **Fixed Pipeline Order**

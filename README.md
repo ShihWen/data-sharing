@@ -47,8 +47,7 @@ The project implements a modern data platform with the following components:
     ├── bigquery_tables/      # BigQuery table configurations
     │   ├── main.tf          # Table module
     │   ├── tpe_mrt_bronze/  # Bronze tier table definitions
-    │   ├── tpe_mrt_silver/  # Silver tier table definitions
-    │   └── fruit/           # Example dataset tables
+    │   └── tpe_mrt_silver/  # Silver tier table definitions
     └── transfer_jobs/       # S3 to BigQuery transfer jobs
         └── main.tf         # Transfer job configurations
 ```
@@ -145,7 +144,6 @@ The Jenkins pipeline (`Jenkinsfile`) includes:
 
 ### Current Datasets
 - **TPE MRT**: Taipei Metro system data (Bronze/Silver tiers)
-- **Fruit**: Example dataset for testing
 
 ### Data Flow
 ```
