@@ -42,11 +42,19 @@ resource "google_bigquery_table" "tables" {
 
   schema = jsonencode([
     for field in each.value.schema : {
-      name = field.name
-      type = field.type
-      mode = field.mode
-      # Only include description if it exists and is not empty
+      name        = field.name
+      type        = field.type
+      mode        = lookup(field, "mode", "NULLABLE") # Default to NULLABLE
       description = lookup(field, "description", "")
+      # Handle nested fields for RECORD types
+      fields = lookup(field, "fields", null) != null ? [
+        for sub_field in field.fields : {
+          name        = sub_field.name
+          type        = sub_field.type
+          mode        = lookup(sub_field, "mode", "NULLABLE")
+          description = lookup(sub_field, "description", "")
+        }
+      ] : null
     }
   ])
 } 
