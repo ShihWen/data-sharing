@@ -29,10 +29,10 @@ USING (
     -- Group 2 (city): (.*?市|.*?縣)
     -- Group 3 (town): (.*?區|.*?鄉|.*?鎮|.*?市)
     -- Group 4 (street_address): (.*)
-    REGEXP_EXTRACT(StationAddress, r'(\d{5, 6})') AS parsed_postal_code,
-    REGEXP_EXTRACT(StationAddress, r'\\d{5, 6}(.*?市|.*?縣)') AS parsed_city,
-    REGEXP_EXTRACT(StationAddress, r'\\d{5, 6}.*?[市縣](.*?區|.*?鄉|.*?鎮|.*?市)') AS parsed_town,
-    REGEXP_EXTRACT(StationAddress, r'\\d{5, 6}.*?[市縣].*?[區鄉鎮市](.*)') AS parsed_street_address
+    REGEXP_EXTRACT(StationAddress, r'(\d{5,6})') AS parsed_postal_code,
+    REGEXP_EXTRACT(StationAddress, r'\d{5,6}(.*?市|.*?縣)') AS parsed_city,
+    REGEXP_EXTRACT(StationAddress, r'\d{5,6}.*?[市縣](.*?區|.*?鄉|.*?鎮|.*?市)') AS parsed_town,
+    REGEXP_EXTRACT(StationAddress, r'\d{5,6}.*?[市縣].*?[區鄉鎮市](.*)') AS parsed_street_address
   FROM
     `{{ var.value.gcp_project_id }}.{{ params.bronze_dataset }}.mrt_station`
   WHERE VersionID NOT IN (SELECT DISTINCT version_id FROM `{{ var.value.gcp_project_id }}.{{ params.silver_dataset }}.mrt_station` WHERE version_id IS NOT NULL)
