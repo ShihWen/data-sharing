@@ -1235,6 +1235,40 @@ show_status() {
     fi
 }
 
+unpause_dags_from_file() {
+    local dags_file="$1"
+    if [ ! -f "$dags_file" ]; then
+        echo "DAGs file not found: $dags_file"
+        return 1
+    fi
+
+    echo "Unpausing DAGs based on configuration in $dags_file..."
+    
+    # Read the dags file
+    local dag_ids_to_unpause=$(cat "$dags_file")
+
+    if [ "$dag_ids_to_unpause" = "*" ]; then
+        echo "Wildcard '*' detected. Unpausing all DAGs."
+        # Get all DAG IDs from Airflow
+        local all_dags=$(airflow dags list | tail -n +3 | awk '{print $1}')
+        for dag_id in $all_dags; do
+            if [ -n "$dag_id" ]; then
+                echo "Unpausing DAG: $dag_id"
+                airflow dags unpause "$dag_id"
+            fi
+        done
+    else
+        echo "Unpausing specific DAGs listed in the file."
+        for dag_id in $dag_ids_to_unpause; do
+            if [ -n "$dag_id" ]; then
+                echo "Unpausing DAG: $dag_id"
+                airflow dags unpause "$dag_id"
+            fi
+        done
+    fi
+    echo "Finished unpausing DAGs."
+}
+
 # Main script logic
 case "${1:-help}" in
     validate)
@@ -1267,6 +1301,12 @@ case "${1:-help}" in
         ;;
     help|--help|-h)
         show_help
+        ;;
+    set_variables)
+        set_variables_from_file "airflow_variables"
+        ;;
+    unpause_dags)
+        unpause_dags_from_file "airflow_dags"
         ;;
     *)
         print_error "Unknown command: $1"

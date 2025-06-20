@@ -49,7 +49,7 @@ get_vm_ip() {
     gcloud compute instances describe $VM_NAME --zone=$ZONE --format="get(networkInterfaces[0].accessConfigs[0].natIP)" 2>/dev/null || echo ""
 }
 
-echo "1️⃣ Uploading airflow-manager.sh to GCS..."
+echo "1️⃣ Uploading scripts to GCS..."
 if [ -f "./airflow-manager.sh" ]; then
     print_info "Found airflow-manager.sh script locally, uploading to GCS..."
     gsutil cp ./airflow-manager.sh gs://$BUCKET_NAME/scripts/airflow-manager.sh
@@ -58,6 +58,14 @@ else
     print_error "airflow-manager.sh script not found in current directory"
     print_info "Please run this script from the scripts/ directory"
     exit 1
+fi
+
+if [ -f "../terraform/airflow/templates/airflow_dags" ]; then
+    print_info "Found airflow_dags configuration, uploading to GCS..."
+    gsutil cp ../terraform/airflow/templates/airflow_dags gs://$BUCKET_NAME/scripts/airflow_dags
+    print_status "Uploaded airflow_dags to GCS"
+else
+    print_warning "airflow_dags file not found at ../terraform/airflow/templates/airflow_dags"
 fi
 
 echo ""
@@ -125,6 +133,17 @@ FALLBACK_EOF
     echo "✅ Created fallback connections script"
 fi
 
+# Download airflow_dags from GCS
+echo "Downloading airflow_dags from GCS..."
+if gsutil cp gs://$BUCKET_NAME/scripts/airflow_dags ./airflow_dags; then
+    chown $AIRFLOW_UID:root ./airflow_dags
+    echo "✅ Downloaded airflow_dags"
+else
+    echo "⚠️ Failed to download airflow_dags. Creating default."
+    echo "*" > /opt/airflow/airflow_dags
+    chown $AIRFLOW_UID:root ./airflow_dags
+fi
+
 # Create systemd service for automatic connections creation
 cat > /etc/systemd/system/airflow-connections.service <<'SERVICE_EOF'
 [Unit]
@@ -142,7 +161,7 @@ Environment="ZONE=asia-east1-b"
 Environment="VM_NAME=airflow-vm"
 Environment="BUCKET_NAME=open-data-v2-cicd-airflow-storage"
 ExecStartPre=/bin/bash -c 'timeout=600; while [ $timeout -gt 0 ]; do if curl -s --connect-timeout 5 "http://localhost:8081/health" > /dev/null 2>&1; then echo "Airflow is ready"; break; fi; echo "Waiting for Airflow... $(($timeout / 30)) checks remaining"; sleep 30; timeout=$(($timeout - 30)); done'
-ExecStart=/bin/bash -c 'if [ -f /opt/airflow/airflow-manager.sh ]; then /opt/airflow/airflow-manager.sh connections; else /opt/airflow/create_connections_fallback.sh; fi'
+ExecStart=/bin/bash -c 'if [ -f /opt/airflow/airflow-manager.sh ]; then /opt/airflow/airflow-manager.sh connections && /opt/airflow/airflow-manager.sh unpause_dags; else /opt/airflow/create_connections_fallback.sh; fi'
 StandardOutput=journal
 StandardError=journal
 RemainAfterExit=yes

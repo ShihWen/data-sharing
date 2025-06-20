@@ -1,0 +1,4 @@
+# This file is used by airflow-manager.sh to control which DAGs to unpause.
+# Use a wildcard (*) to unpause all DAGs.
+# Or, list specific DAG IDs, one per line.
+* 
