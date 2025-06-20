@@ -57,8 +57,7 @@ def _check_for_new_data_func(**context):
     Executes a query to check for new versions and returns True if new data exists.
     The SQL is rendered using the task instance's context to resolve Jinja templates.
     """
-    sql_to_render = context["task"].sql
-    rendered_sql = context["task_instance"].render_template(sql_to_render)
+    rendered_sql = context["task_instance"].task.render_template(CHECK_NEW_VERSIONS_SQL)
     
     logging.info("Checking for new station versions...")
     logging.info(f"Executing query: {rendered_sql}")
@@ -94,7 +93,6 @@ with DAG(
     check_for_new_data = ShortCircuitOperator(
         task_id="check_for_new_data",
         python_callable=_check_for_new_data_func,
-        sql=CHECK_NEW_VERSIONS_SQL, # Pass SQL as a templated field
         doc_md="Checks if there are new `VersionID`s in the bronze table. Continues if count > 0, otherwise skips.",
     )
 
