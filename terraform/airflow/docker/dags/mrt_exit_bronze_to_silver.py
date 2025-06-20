@@ -63,10 +63,13 @@ def check_new_versions_and_decide(**context):
         location=BIGQUERY_LOCATION
     )
     
+    # Render the SQL to handle Jinja templating within the PythonOperator
+    rendered_query = context['task_instance'].render_template(CHECK_NEW_VERSIONS_QUERY)
+    
     # Execute the check query
     job_config = {
         'query': {
-            'query': CHECK_NEW_VERSIONS_QUERY,
+            'query': rendered_query,
             'useLegacySql': False
         }
     }
