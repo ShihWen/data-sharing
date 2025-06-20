@@ -4,6 +4,7 @@ from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
+from airflow.models import Variable
 from airflow.utils.trigger_rule import TriggerRule
 import logging
 
@@ -20,6 +21,9 @@ from utils.common_functions import (
     get_airflow_variable,
     send_notification
 )
+
+# Get the location at module level to use in operators
+BIGQUERY_LOCATION = Variable.get('bigquery_location', 'asia-east1')
 
 default_args = {
     'owner': 'data_engineering',
@@ -55,7 +59,8 @@ def check_new_versions_and_decide(**context):
     """
     hook = BigQueryHook(
         gcp_conn_id='google_cloud_default',
-        use_legacy_sql=False
+        use_legacy_sql=False,
+        location=BIGQUERY_LOCATION
     )
     
     # Execute the check query
@@ -68,7 +73,8 @@ def check_new_versions_and_decide(**context):
     
     query_job = hook.insert_job(
         configuration=job_config,
-        project_id=hook.project_id
+        project_id=hook.project_id,
+        location=BIGQUERY_LOCATION
     )
     
     results = query_job.result()
