@@ -1,0 +1,42 @@
+table_id: "mrt_station"
+dataset_id_var_name: "tpe_mrt_silver"
+description: "Cleansed and conformed MRT station information"
+labels:
+  data_source: "s3"
+  data_type: "station"
+  tier: "silver"
+
+schema:
+  - {name: "station_uid",                  type: "STRING",    mode: "REQUIRED", description: "Unique identifier for the station"}
+  - {name: "station_id",                   type: "STRING",    mode: "REQUIRED", description: "Station code used in the MRT system"}
+  - name: "station_name"
+    type: "RECORD"
+    mode: "NULLABLE"
+    description: "Station names in different languages"
+    fields:
+      - {name: "zh_tw", type: "STRING", mode: "NULLABLE", description: "Station name in Traditional Chinese"}
+      - {name: "en",    type: "STRING", mode: "NULLABLE", description: "Station name in English"}
+  - {name: "station_address",              type: "STRING",    mode: "NULLABLE", description: "Physical address of the station"}
+  - name: "location"
+    type: "RECORD"
+    mode: "NULLABLE"
+    description: "Location details of the station"
+    fields:
+      - {name: "city",       type: "STRING", mode: "NULLABLE", description: "City where the station is located"}
+      - {name: "city_code",  type: "STRING", mode: "NULLABLE", description: "City code for the station location"}
+      - {name: "town",       type: "STRING", mode: "NULLABLE", description: "Town/District where the station is located"}
+      - {name: "town_code",  type: "STRING", mode: "NULLABLE", description: "Town/District code for the station location"}
+  - {name: "station_position",             type: "GEOGRAPHY", mode: "NULLABLE", description: "Geographic coordinates of the station"}
+  - {name: "geohash",                      type: "STRING",    mode: "NULLABLE", description: "Geohash encoding of station location"}
+  - {name: "bike_allow_on_holiday",        type: "BOOLEAN",   mode: "NULLABLE", description: "Whether bikes are allowed on holidays"}
+  - {name: "src_update_time",              type: "TIMESTAMP", mode: "NULLABLE", description: "Last update time from source system"}
+  - {name: "update_time",                  type: "TIMESTAMP", mode: "NULLABLE", description: "Last update time in current system"}
+  - {name: "version_id",                   type: "INTEGER",   mode: "NULLABLE", description: "Version number of the record"}
+
+  # Data quality validation fields
+  - {name: "is_valid_location",     type: "BOOLEAN",   mode: "NULLABLE", description: "Whether coordinates are within expected geographical bounds"}
+  - {name: "is_complete_record",    type: "BOOLEAN",   mode: "NULLABLE", description: "Whether all required fields are populated"}
+  - {name: "data_quality_score",    type: "FLOAT",     mode: "NULLABLE", description: "Overall data quality score (0.0-1.0)"}
+
+  # Processing metadata
+  - {name: "processed_at",          type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp"} 
