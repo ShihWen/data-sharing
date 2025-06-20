@@ -1,3 +1,19 @@
+# -*- coding: utf-8 -*-
+"""
+SQL queries for the mrt_station_bronze_to_silver DAG.
+"""
+
+CHECK_NEW_VERSIONS_QUERY = """
+SELECT COUNT(b.VersionID)
+FROM `{{ var.value.gcp_project_id }}.tpe_mrt_bronze.mrt_station` b
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `{{ var.value.gcp_project_id }}.tpe_mrt_silver.mrt_station` s
+    WHERE s.version_id = b.VersionID
+);
+"""
+
+TRANSFORM_AND_LOAD_SQL = """
 /*
 This query transforms and inserts new MRT station data from the bronze layer
 into the silver layer. It ensures that only new versions are processed.
@@ -9,14 +25,14 @@ USING (
     *,
     -- Use a regex to parse the StationAddress
     -- Example: "105008臺北市松山區敦化北路338號"
-    -- Group 1 (postal_code): (\d{6})
+    -- Group 1 (postal_code): (\d{5, 6})
     -- Group 2 (city): (.*?市|.*?縣)
     -- Group 3 (town): (.*?區|.*?鄉|.*?鎮|.*?市)
     -- Group 4 (street_address): (.*)
-    REGEXP_EXTRACT(StationAddress, r'^(\d{6})') AS parsed_postal_code,
-    REGEXP_EXTRACT(StationAddress, r'^\d{6}(.*?市|.*?縣)') AS parsed_city,
-    REGEXP_EXTRACT(StationAddress, r'^\d{6}.*?[市縣](.*?區|.*?鄉|.*?鎮|.*?市)') AS parsed_town,
-    REGEXP_EXTRACT(StationAddress, r'^\d{6}.*?[市縣].*?[區鄉鎮市](.*)') AS parsed_street_address
+    REGEXP_EXTRACT(StationAddress, r'(\d{5, 6})') AS parsed_postal_code,
+    REGEXP_EXTRACT(StationAddress, r'\\d{5, 6}(.*?市|.*?縣)') AS parsed_city,
+    REGEXP_EXTRACT(StationAddress, r'\\d{5, 6}.*?[市縣](.*?區|.*?鄉|.*?鎮|.*?市)') AS parsed_town,
+    REGEXP_EXTRACT(StationAddress, r'\\d{5, 6}.*?[市縣].*?[區鄉鎮市](.*)') AS parsed_street_address
   FROM
     `{{ var.value.gcp_project_id }}.{{ params.bronze_dataset }}.mrt_station`
   WHERE VersionID NOT IN (SELECT DISTINCT version_id FROM `{{ var.value.gcp_project_id }}.{{ params.silver_dataset }}.mrt_station` WHERE version_id IS NOT NULL)
@@ -79,4 +95,5 @@ WHEN NOT MATCHED THEN
     END,
     -- Processing timestamp
     CURRENT_TIMESTAMP()
-  ) 
+  )
+""" 

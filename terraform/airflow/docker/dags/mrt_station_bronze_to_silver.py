@@ -23,6 +23,9 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQue
 from airflow.utils.dates import days_ago
 import logging
 
+# --- Import Queries ---
+from sql.mrt_station_queries import CHECK_NEW_VERSIONS_QUERY, TRANSFORM_AND_LOAD_SQL
+
 # --- DAG Configuration ---
 DAG_ID = "mrt_station_bronze_to_silver"
 DESCRIPTION = "Loads new MRT station data from bronze to silver, parsing and enriching it."
@@ -30,7 +33,6 @@ SCHEDULE_INTERVAL = "0 10 * * 6"  # Saturday at 10:00 AM
 START_DATE = pendulum.datetime(2023, 1, 1, tz="UTC")
 CATCHUP = False
 TAGS = ["mrt", "station", "bronze", "silver"]
-SQL_PATH = "sql/mrt_station_bronze_to_silver.sql"
 
 # --- BigQuery Configuration ---
 GCP_CONN_ID = "google_cloud_default"
@@ -38,18 +40,6 @@ GCP_CONN_ID = "google_cloud_default"
 BRONZE_DATASET = "tpe_mrt_bronze"
 SILVER_DATASET = "tpe_mrt_silver"
 BIGQUERY_LOCATION = "asia-east1"
-
-# --- SQL Query to Check for New Versions ---
-# This query returns a count of new VersionIDs in the bronze table that are not yet in the silver table.
-CHECK_NEW_VERSIONS_SQL = """
-SELECT COUNT(b.VersionID)
-FROM `{{ var.value.gcp_project_id }}.tpe_mrt_bronze.mrt_station` b
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM `{{ var.value.gcp_project_id }}.tpe_mrt_silver.mrt_station` s
-    WHERE s.version_id = b.VersionID
-);
-"""
 
 def _check_for_new_data_func(**context):
     """
@@ -97,7 +87,7 @@ with DAG(
     # Task 2: Execute the transformation and load into the silver table
     transform_and_load_to_silver = BigQueryExecuteQueryOperator(
         task_id="transform_and_load_to_silver",
-        sql=SQL_PATH,
+        sql=TRANSFORM_AND_LOAD_SQL,
         use_legacy_sql=False,
         gcp_conn_id=GCP_CONN_ID,
         location=BIGQUERY_LOCATION,
