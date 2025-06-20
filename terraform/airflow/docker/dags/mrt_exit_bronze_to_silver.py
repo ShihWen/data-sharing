@@ -64,7 +64,7 @@ def check_new_versions_and_decide(**context):
     )
     
     # Render the SQL to handle Jinja templating within the PythonOperator
-    rendered_query = context['task_instance'].render_template(CHECK_NEW_VERSIONS_QUERY)
+    rendered_query = context['task_instance'].task.render_template(CHECK_NEW_VERSIONS_QUERY, context)
     
     # Execute the check query
     job_config = {
