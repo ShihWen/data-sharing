@@ -45,7 +45,7 @@ def _check_for_new_data_func(**context):
     """
     Executes a query to check for new versions and returns True if new data exists.
     """
-    rendered_sql = context["task_instance"].task.render_template(CHECK_NEW_VERSIONS_SQL,context)
+    rendered_sql = context["task_instance"].task.render_template(CHECK_NEW_VERSIONS_QUERY, context)
     
     logging.info("Checking for new station versions...")
     logging.info(f"Executing query: {rendered_sql}")
