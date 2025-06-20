@@ -3,7 +3,7 @@ This query transforms and inserts new MRT station data from the bronze layer
 into the silver layer. It ensures that only new versions are processed.
 */
 
-MERGE `{{ params.project_id }}.{{ params.silver_dataset }}.mrt_station` AS T
+MERGE `{{ var.value.gcp_project_id }}.{{ params.silver_dataset }}.mrt_station` AS T
 USING (
   SELECT
     *,
@@ -18,8 +18,8 @@ USING (
     REGEXP_EXTRACT(StationAddress, r'^\d{6}.*?[市縣](.*?區|.*?鄉|.*?鎮|.*?市)') AS parsed_town,
     REGEXP_EXTRACT(StationAddress, r'^\d{6}.*?[市縣].*?[區鄉鎮市](.*)') AS parsed_street_address
   FROM
-    `{{ params.project_id }}.{{ params.bronze_dataset }}.mrt_station`
-  WHERE VersionID NOT IN (SELECT DISTINCT version_id FROM `{{ params.project_id }}.{{ params.silver_dataset }}.mrt_station` WHERE version_id IS NOT NULL)
+    `{{ var.value.gcp_project_id }}.{{ params.bronze_dataset }}.mrt_station`
+  WHERE VersionID NOT IN (SELECT DISTINCT version_id FROM `{{ var.value.gcp_project_id }}.{{ params.silver_dataset }}.mrt_station` WHERE version_id IS NOT NULL)
 ) AS S
 ON T.station_uid = S.StationUID AND T.version_id = S.VersionID
 

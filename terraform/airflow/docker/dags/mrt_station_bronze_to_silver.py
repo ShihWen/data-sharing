@@ -34,20 +34,19 @@ SQL_PATH = "sql/mrt_station_bronze_to_silver.sql"
 
 # --- BigQuery Configuration ---
 GCP_CONN_ID = "google_cloud_default"
-PROJECT_ID = "{{ var.value.gcp_project_id }}"
+# The project ID will be fetched from Airflow variables directly in the SQL templates.
 BRONZE_DATASET = "tpe_mrt_bronze"
 SILVER_DATASET = "tpe_mrt_silver"
 BIGQUERY_LOCATION = "asia-east1"
 
 # --- SQL Query to Check for New Versions ---
 # This query returns a count of new VersionIDs in the bronze table that are not yet in the silver table.
-# The ShortCircuitOperator will continue if the count > 0, and skip otherwise.
-CHECK_NEW_VERSIONS_SQL = f"""
+CHECK_NEW_VERSIONS_SQL = """
 SELECT COUNT(b.VersionID)
-FROM `{PROJECT_ID}.{BRONZE_DATASET}.mrt_station` b
+FROM `{{ var.value.gcp_project_id }}.tpe_mrt_bronze.mrt_station` b
 WHERE NOT EXISTS (
     SELECT 1
-    FROM `{PROJECT_ID}.{SILVER_DATASET}.mrt_station` s
+    FROM `{{ var.value.gcp_project_id }}.tpe_mrt_silver.mrt_station` s
     WHERE s.version_id = b.VersionID
 );
 """
@@ -55,7 +54,6 @@ WHERE NOT EXISTS (
 def _check_for_new_data_func(**context):
     """
     Executes a query to check for new versions and returns True if new data exists.
-    The SQL is rendered using the task instance's context to resolve Jinja templates.
     """
     rendered_sql = context["task_instance"].task.render_template(CHECK_NEW_VERSIONS_SQL,context)
     
@@ -102,8 +100,8 @@ with DAG(
         sql=SQL_PATH,
         use_legacy_sql=False,
         gcp_conn_id=GCP_CONN_ID,
+        location=BIGQUERY_LOCATION,
         params={
-            "project_id": PROJECT_ID,
             "bronze_dataset": BRONZE_DATASET,
             "silver_dataset": SILVER_DATASET,
         },
