@@ -18,8 +18,10 @@ import pendulum
 
 from airflow.models.dag import DAG
 from airflow.operators.python import ShortCircuitOperator
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator
 from airflow.utils.dates import days_ago
+import logging
 
 # --- DAG Configuration ---
 DAG_ID = "mrt_station_bronze_to_silver"
@@ -35,6 +37,7 @@ GCP_CONN_ID = "google_cloud_default"
 PROJECT_ID = "{{ var.value.gcp_project_id }}"
 BRONZE_DATASET = "tpe_mrt_bronze"
 SILVER_DATASET = "tpe_mrt_silver"
+BIGQUERY_LOCATION = "asia-east1"
 
 # --- SQL Query to Check for New Versions ---
 # This query returns a count of new VersionIDs in the bronze table that are not yet in the silver table.
@@ -49,6 +52,34 @@ WHERE NOT EXISTS (
 );
 """
 
+def _check_for_new_data_func(**context):
+    """
+    Executes a query to check for new versions and returns True if new data exists.
+    The SQL is rendered using the task instance's context to resolve Jinja templates.
+    """
+    sql_to_render = context["task"].sql
+    rendered_sql = context["task_instance"].render_template(sql_to_render)
+    
+    logging.info("Checking for new station versions...")
+    logging.info(f"Executing query: {rendered_sql}")
+    
+    hook = BigQueryHook(gcp_conn_id=GCP_CONN_ID
+                        , use_legacy_sql=False
+                        ,location=BIGQUERY_LOCATION)
+    
+    # get_first returns a tuple, e.g., (2,)
+    result = hook.get_first(rendered_sql)
+    
+    new_version_count = result[0] if result and result[0] is not None else 0
+    
+    logging.info(f"Found {new_version_count} new versions to process.")
+    
+    if new_version_count > 0:
+        return True
+    
+    logging.info("No new versions found. Skipping downstream tasks.")
+    return False
+
 with DAG(
     dag_id=DAG_ID,
     description=DESCRIPTION,
@@ -62,8 +93,8 @@ with DAG(
     # Task 1: Check if there is new data to process
     check_for_new_data = ShortCircuitOperator(
         task_id="check_for_new_data",
-        sql=CHECK_NEW_VERSIONS_SQL,
-        gcp_conn_id=GCP_CONN_ID,
+        python_callable=_check_for_new_data_func,
+        sql=CHECK_NEW_VERSIONS_SQL, # Pass SQL as a templated field
         doc_md="Checks if there are new `VersionID`s in the bronze table. Continues if count > 0, otherwise skips.",
     )
 
