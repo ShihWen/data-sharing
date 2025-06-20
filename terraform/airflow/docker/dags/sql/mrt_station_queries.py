@@ -70,9 +70,9 @@ WHEN NOT MATCHED THEN
     S.StationAddress,
     -- STRUCT for location details
     STRUCT(
+      S.parsed_postal_code AS postal_code,
       S.parsed_city AS city,  
       S.parsed_town AS town,
-      S.parsed_postal_code AS postal_code,
       S.parsed_street_address AS street_address
     ),
     -- Create GEOGRAPHY point from lat/lon
