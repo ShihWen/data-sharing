@@ -66,8 +66,8 @@ WHEN NOT MATCHED THEN
     S.StationPosition_GeoHash,
     S.BikeAllowOnHoliday,
     -- Cast update times to TIMESTAMP
-    SAFE.PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%S%z', S.SrcUpdateTime),
-    SAFE.PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%S%z', S.UpdateTime),
+    TIMESTAMP(S.SrcUpdateTime),
+    TIMESTAMP(S.UpdateTime),
     S.VersionID,
     -- Data quality checks
     (S.StationPosition_PositionLon BETWEEN 120 AND 122) AND (S.StationPosition_PositionLat BETWEEN 20 AND 26), -- Simple check for Taiwan area
