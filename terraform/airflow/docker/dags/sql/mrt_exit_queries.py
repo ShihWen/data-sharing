@@ -82,13 +82,13 @@ SELECT
     -- Convert string timestamps to TIMESTAMP type
     CASE 
         WHEN SrcUpdateTime IS NOT NULL AND SrcUpdateTime != '' 
-        THEN FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', TIMESTAMP(SrcUpdateTime),'Asia/Taipei')
+        THEN TIMESTAMP(SrcUpdateTime)
         ELSE NULL 
     END as src_update_time,
     
     CASE 
         WHEN UpdateTime IS NOT NULL AND UpdateTime != '' 
-        THEN FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', TIMESTAMP(UpdateTime),'Asia/Taipei')
+        TIMESTAMP(UpdateTime)
         ELSE NULL 
     END as update_time,
     
