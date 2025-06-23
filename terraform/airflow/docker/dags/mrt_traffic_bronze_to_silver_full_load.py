@@ -12,7 +12,8 @@ from sql.mrt_traffic_full_load_queries import (
     CHECK_PREREQUISITES_QUERY,
     FULL_LOAD_YEAR_BATCH_QUERY,
     FULL_LOAD_VALIDATION_QUERY,
-    COST_ESTIMATION_QUERY
+    COST_ESTIMATION_QUERY,
+    VALIDATE_STATION_NAMES_QUERY
 )
 
 # Import common functions
@@ -110,6 +111,53 @@ def check_prerequisites_with_hook(**context):
     context['task_instance'].xcom_push(key='load_info', value=dict(result))
     
     return f"Ready for full load: {result['load_status']}"
+
+def validate_station_names_with_hook(**context):
+    """
+    Validates station names in the bronze table for inconsistencies.
+    """
+    project_id = Variable.get('project_id')
+    location = Variable.get('bigquery_location', 'asia-east1')
+    bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
+    
+    logging.info("🔎 Validating station names for inconsistencies...")
+    
+    hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False,
+        location=location
+    )
+    
+    rendered_sql = VALIDATE_STATION_NAMES_QUERY.replace(
+        '{{ var.value.project_id }}', project_id
+    ).replace(
+        '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
+    )
+    
+    job_config = {
+        'query': {
+            'query': rendered_sql,
+            'useLegacySql': False
+        }
+    }
+    
+    query_job = hook.insert_job(
+        configuration=job_config,
+        project_id=project_id,
+        location=location
+    )
+    
+    results = list(query_job.result())
+    
+    if not results:
+        logging.info("✅ Station name validation passed. No inconsistencies found.")
+    else:
+        logging.warning("⚠️ Found station name inconsistencies. The transformation step will attempt to clean them.")
+        logging.warning("Mismatched names:")
+        for row in results:
+            logging.warning(f"  - Exit: {row['exit']}, Entrance: {row['entrance']}")
+            
+    return "Station name validation complete."
 
 def estimate_costs_with_hook(**context):
     """
@@ -386,6 +434,13 @@ check_prerequisites_task = PythonOperator(
     dag=dag,
 )
 
+# New Task: Validate station names
+validate_station_names_task = PythonOperator(
+    task_id='validate_station_names',
+    python_callable=validate_station_names_with_hook,
+    dag=dag,
+)
+
 # Task 2: Estimate costs using Python function with proper location
 estimate_costs_task = PythonOperator(
     task_id='estimate_costs',
@@ -408,4 +463,4 @@ final_validation_task = PythonOperator(
 )
 
 # Set up dependencies
-check_prerequisites_task >> estimate_costs_task >> process_full_load_task >> final_validation_task 
+check_prerequisites_task >> validate_station_names_task >> estimate_costs_task >> process_full_load_task >> final_validation_task 

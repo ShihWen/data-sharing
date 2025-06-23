@@ -50,7 +50,13 @@ SELECT
     dt,
     hour,
     entrance,
-    exit,
+    -- Clean up known exit name inconsistencies
+    CASE 
+        WHEN exit = 'G大坪林' THEN '大坪林'
+        WHEN exit = 'O景安' THEN '景安'
+        WHEN exit = 'O頭前庄' THEN '頭前庄'
+        ELSE exit 
+    END as exit,
     traffic,
     -- Basic validation: traffic should be non-negative
     traffic >= 0 as is_valid_traffic,
@@ -100,4 +106,26 @@ TRANSFORM_AND_LOAD_INCREMENTAL_QUERY = TRANSFORM_AND_LOAD_MONTH_QUERY
 CHECK_NEW_DATA_QUERY = CHECK_NEW_MONTH_QUERY
 TRANSFORM_AND_LOAD_QUERY = TRANSFORM_AND_LOAD_MONTH_QUERY
 GET_NEXT_BATCH_QUERY = CHECK_NEW_MONTH_QUERY
-GET_MISSING_MONTHS_QUERY = CHECK_NEW_MONTH_QUERY 
+GET_MISSING_MONTHS_QUERY = CHECK_NEW_MONTH_QUERY
+
+# Station name validation query
+VALIDATE_STATION_NAMES_QUERY = r"""
+-- This query checks for inconsistencies between station exit and entrance names
+-- in the bronze layer. It helps identify stations that don't have a matching
+-- entrance for an exit, which could indicate data entry errors.
+
+SELECT
+    A.exit,
+    B.entrance
+FROM (
+    SELECT DISTINCT exit
+    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+) AS A
+FULL JOIN (
+    SELECT DISTINCT entrance
+    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+) AS B
+    ON A.exit = B.entrance
+WHERE
+    A.exit IS NULL OR B.entrance IS NULL;
+""" 

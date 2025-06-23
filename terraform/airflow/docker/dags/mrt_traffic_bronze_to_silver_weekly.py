@@ -5,13 +5,15 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQue
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
 from airflow.utils.trigger_rule import TriggerRule
+from airflow.models import Variable
 import logging
 
 # Import SQL queries from separate file
 from sql.mrt_traffic_queries import (
     CHECK_NEW_MONTH_QUERY,
     TRANSFORM_AND_LOAD_MONTH_QUERY,
-    VALIDATE_PROCESSING_QUERY
+    VALIDATE_PROCESSING_QUERY,
+    VALIDATE_STATION_NAMES_QUERY
 )
 
 # Import common functions
@@ -46,6 +48,53 @@ def notify_failure(context):
         email_list=default_args['email'],
         include_exception=True
     )
+
+def validate_station_names_with_hook(**context):
+    """
+    Validates station names in the bronze table for inconsistencies.
+    """
+    project_id = Variable.get('project_id')
+    location = Variable.get('bigquery_location', 'asia-east1')
+    bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
+    
+    logging.info("🔎 Validating station names for inconsistencies...")
+    
+    hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False,
+        location=location
+    )
+    
+    rendered_sql = VALIDATE_STATION_NAMES_QUERY.replace(
+        '{{ var.value.project_id }}', project_id
+    ).replace(
+        '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
+    )
+    
+    job_config = {
+        'query': {
+            'query': rendered_sql,
+            'useLegacySql': False
+        }
+    }
+    
+    query_job = hook.insert_job(
+        configuration=job_config,
+        project_id=project_id,
+        location=location
+    )
+    
+    results = list(query_job.result())
+    
+    if not results:
+        logging.info("✅ Station name validation passed. No inconsistencies found.")
+    else:
+        logging.warning("⚠️ Found station name inconsistencies. The transformation step will attempt to clean them.")
+        logging.warning("Mismatched names:")
+        for row in results:
+            logging.warning(f"  - Exit: {row['exit']}, Entrance: {row['entrance']}")
+            
+    return "Station name validation complete."
 
 def check_and_decide(**context):
     """
@@ -103,6 +152,13 @@ dag = DAG(
     max_active_runs=1
 )
 
+# Task 0: Validate station names before processing
+validate_station_names_task = PythonOperator(
+    task_id='validate_station_names',
+    python_callable=validate_station_names_with_hook,
+    dag=dag,
+)
+
 # Task 1: Check for new month and decide next step
 check_and_branch = BranchPythonOperator(
     task_id='check_and_branch',
@@ -137,5 +193,5 @@ no_processing_needed = PythonOperator(
 )
 
 # Simple task dependencies
-check_and_branch >> [process_month, no_processing_needed]
+validate_station_names_task >> check_and_branch >> [process_month, no_processing_needed]
 process_month >> validate_processing 
