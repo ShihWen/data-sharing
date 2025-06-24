@@ -77,5 +77,5 @@ resource "google_cloud_run_service_iam_member" "invoker" {
   project  = google_cloudfunctions2_function.function.project
   service  = google_cloudfunctions2_function.function.name
   role     = "roles/run.invoker"
-  member   = var.invoker_service_account_email
+  member   = "serviceAccount:${var.invoker_service_account_email}"
 } 
