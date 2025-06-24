@@ -39,6 +39,7 @@ def mrt_station_ntmc_ingestion_dag():
         project_id=gcp_project_id,
         location=function_location,
         function_id=function_name,
+        input_data={},
         gcp_conn_id="google_cloud_default",
     )
 
