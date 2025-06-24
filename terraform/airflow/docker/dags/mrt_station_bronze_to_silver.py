@@ -32,7 +32,7 @@ DESCRIPTION = "Loads new MRT station data from bronze to silver, parsing and enr
 SCHEDULE_INTERVAL = "0 10 * * 6"  # Saturday at 10:00 AM
 START_DATE = pendulum.datetime(2023, 1, 1, tz="UTC")
 CATCHUP = False
-TAGS = ["mrt", "station", "bronze", "silver", "incremental-load"]
+TAGS = ["mrt", "station", "bronze", "silver", "incremental-load", "trtc"]
 
 # --- BigQuery Configuration ---
 GCP_CONN_ID = "google_cloud_default"
