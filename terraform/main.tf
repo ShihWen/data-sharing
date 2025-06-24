@@ -145,6 +145,14 @@ resource "google_secret_manager_secret_version" "tdx_client_secret_version" {
   secret_data = var.tdx_client_secret
 }
 
+# Grant the Airflow SA permission to invoke Cloud Functions.
+# This is required for the CloudFunctionInvokeFunctionOperator.
+resource "google_project_iam_member" "airflow_sa_cloudfunctions_invoker" {
+  project = var.project_id
+  role    = "roles/cloudfunctions.invoker"
+  member  = "serviceAccount:${module.airflow.airflow_service_account_email}"
+}
+
 module "airflow" {
   source = "./airflow"
 
