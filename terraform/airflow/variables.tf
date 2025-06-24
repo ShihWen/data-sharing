@@ -10,9 +10,8 @@ variable "region" {
 }
 
 variable "zone" {
-  description = "The GCP zone"
+  description = "The GCP zone for the Airflow VM."
   type        = string
-  default     = "asia-east1-b"
 }
 
 variable "environment" {
@@ -37,4 +36,9 @@ variable "dataset_ids" {
   description = "Map of dataset IDs to their BigQuery dataset IDs"
   type        = map(string)
   default     = {}
+}
+
+variable "mrt_station_ntmc_function_uri" {
+  description = "The trigger URI for the MRT Station NTMC Cloud Function."
+  type        = string
 } 

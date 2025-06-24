@@ -167,8 +167,9 @@ resource "google_compute_instance" "airflow" {
       project_id = var.project_id
     })
     airflow-variables = templatefile("${path.module}/templates/airflow_variables.sh.tpl", {
-      project_id = var.project_id
-      region     = var.region
+      project_id                  = var.project_id
+      region                      = var.region
+      mrt_station_ntmc_function_uri = var.mrt_station_ntmc_function_uri
     })
   }
 }

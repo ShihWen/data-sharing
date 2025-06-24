@@ -37,4 +37,7 @@ airflow variables set "tpe_mrt_gold_dataset_id" "tpe_mrt_gold"
 # Datalake bucket
 airflow variables set "gcs_data_lake_bucket" "open-data-v2-cicd-data-lake"
 
+# Cloud Function URLs
+airflow variables set "mrt_station_ntmc_function_uri" "${mrt_station_ntmc_function_uri}"
+
 echo "✅ All Airflow variables have been set successfully!" 

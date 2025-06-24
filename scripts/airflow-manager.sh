@@ -981,6 +981,9 @@ echo "✅ Set tpe_mrt_gold_dataset_id"
 docker-compose exec -T airflow-webserver airflow variables set "gcs_data_lake_bucket" "open-data-v2-cicd-data-lake"
 echo "✅ Set gcs_data_lake_bucket"
 
+docker-compose exec -T airflow-webserver airflow variables set "mrt_station_ntmc_function_uri" "https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt_station_ntmc"
+echo "✅ Set mrt_station_ntmc_function_uri"
+
 # List all variables to verify
 echo ""
 echo "=== Verifying Variables ==="

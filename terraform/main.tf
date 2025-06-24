@@ -169,6 +169,7 @@ module "airflow" {
   project_id   = var.project_id
   region       = var.region
   zone         = var.zone
+  mrt_station_ntmc_function_uri = module.mrt_station_ntmc_function.function_uri
   depends_on = [
     google_project_service.enable_secretmanager,
     google_secret_manager_secret_version.tdx_client_id_version,
