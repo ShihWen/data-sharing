@@ -5,7 +5,7 @@
 
 # Project-specific variables
 airflow variables set "gcp_project_id" "${project_id}"
-airflow variables set "project_id" "${project_id}"
+airflow variables set "gcp_region" "${region}"
 airflow variables set "bigquery_location" "asia-east1"
 airflow variables set "environment" "dev"
 
@@ -33,5 +33,8 @@ airflow variables set "max_processing_hours" "24"
 airflow variables set "tpe_mrt_bronze_dataset_id" "tpe_mrt_bronze"
 airflow variables set "tpe_mrt_silver_dataset_id" "tpe_mrt_silver"
 airflow variables set "tpe_mrt_gold_dataset_id" "tpe_mrt_gold"
+
+# Datalake bucket
+airflow variables set "gcs_data_lake_bucket" "open-data-v2-cicd-data-lake"
 
 echo "✅ All Airflow variables have been set successfully!" 

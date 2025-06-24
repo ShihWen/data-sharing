@@ -950,8 +950,8 @@ echo "Creating Airflow variables..."
 docker-compose exec -T airflow-webserver airflow variables set "gcp_project_id" "open-data-v2-cicd"
 echo "✅ Set gcp_project_id"
 
-docker-compose exec -T airflow-webserver airflow variables set "project_id" "open-data-v2-cicd"
-echo "✅ Set project_id"
+docker-compose exec -T airflow-webserver airflow variables set "gcp_region" "asia-east1"
+echo "✅ Set gcp_region"
 
 docker-compose exec -T airflow-webserver airflow variables set "notification_email" '["admin@example.com"]'
 echo "✅ Set notification_email"
@@ -977,6 +977,9 @@ echo "✅ Set tpe_mrt_silver_dataset_id"
 
 docker-compose exec -T airflow-webserver airflow variables set "tpe_mrt_gold_dataset_id" "tpe_mrt_gold"
 echo "✅ Set tpe_mrt_gold_dataset_id"
+
+docker-compose exec -T airflow-webserver airflow variables set "gcs_data_lake_bucket" "open-data-v2-cicd-data-lake"
+echo "✅ Set gcs_data_lake_bucket"
 
 # List all variables to verify
 echo ""
@@ -1091,7 +1094,7 @@ echo "=== Checking Variables ==="
 # Required variables
 declare -A REQUIRED_VARIABLES=(
     ["gcp_project_id"]="open-data-v2-cicd"
-    ["project_id"]="open-data-v2-cicd"
+    ["gcp_region"]="asia-east1"
     ["bigquery_location"]="asia-east1"
     ["environment"]="dev"
     ["data_retention_days"]="30"
@@ -1099,6 +1102,7 @@ declare -A REQUIRED_VARIABLES=(
     ["tpe_mrt_bronze_dataset_id"]="tpe_mrt_bronze"
     ["tpe_mrt_silver_dataset_id"]="tpe_mrt_silver"
     ["tpe_mrt_gold_dataset_id"]="tpe_mrt_gold"
+    ["gcs_data_lake_bucket"]="open-data-v2-cicd-data-lake"
 )
 
 missing_variables=0

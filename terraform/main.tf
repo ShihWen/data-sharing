@@ -38,6 +38,15 @@ resource "google_project_service" "enable_cloudfunctions" {
   disable_on_destroy = false
 }
 
+# A dedicated bucket for storing data lake files.
+resource "google_storage_bucket" "data_lake" {
+  name          = var.gcs_data_lake_bucket
+  location      = var.region
+  project       = var.project_id
+  force_destroy = false # Set to true only in non-prod environments if you want to delete non-empty buckets
+  uniform_bucket_level_access = true
+}
+
 # Get project information
 data "google_project" "current" {
   project_id = var.project_id
@@ -235,6 +244,7 @@ module "mrt_station_ntmc_function" {
     module.airflow,
     google_project_service.enable_cloudbuild,
     google_project_service.enable_cloudrun,
-    google_project_service.enable_cloudfunctions
+    google_project_service.enable_cloudfunctions,
+    google_storage_bucket.data_lake
   ]
 }

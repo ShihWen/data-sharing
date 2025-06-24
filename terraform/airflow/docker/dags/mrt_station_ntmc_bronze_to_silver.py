@@ -1,14 +1,15 @@
 import os
 from datetime import datetime, timedelta
 from airflow.decorators import dag, task
+from airflow.models import Variable
 from airflow.providers.google.cloud.operators.functions import CloudFunctionInvokeFunctionOperator
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
 
-# Get environment variables
-gcp_project_id = os.environ.get("GCP_PROJECT_ID", "your-gcp-project-id")
-gcs_bucket = os.environ.get("GCS_BUCKET", "your-gcs-bucket")
+# Get Airflow variables. This is the recommended way to manage configuration.
+gcp_project_id = Variable.get("gcp_project_id")
+gcs_bucket = Variable.get("gcs_data_lake_bucket")
+function_location = Variable.get("gcp_region")
 function_name = "mrt-station-ntmc-fetcher"
-function_location = os.environ.get("GCP_REGION", "your-gcp-region")
 bq_dataset = "tpe_mrt_bronze"
 bq_table = "mrt_station_ntmc"
 
