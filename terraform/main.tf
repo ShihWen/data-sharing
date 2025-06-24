@@ -26,6 +26,18 @@ resource "google_project_service" "enable_cloudbuild" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "enable_cloudrun" {
+  project            = var.project_id
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "enable_cloudfunctions" {
+  project            = var.project_id
+  service            = "cloudfunctions.googleapis.com"
+  disable_on_destroy = false
+}
+
 # Get project information
 data "google_project" "current" {
   project_id = var.project_id
@@ -213,6 +225,8 @@ module "mrt_station_ntmc_function" {
 
   depends_on = [
     module.airflow,
-    google_project_service.enable_cloudbuild
+    google_project_service.enable_cloudbuild,
+    google_project_service.enable_cloudrun,
+    google_project_service.enable_cloudfunctions
   ]
 }
