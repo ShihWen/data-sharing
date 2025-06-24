@@ -5,6 +5,7 @@ labels:
   data_source: "s3"
   data_type: "station"
   tier: "bronze"
+  company: "trtc"
 
 schema:
   - {name: "StationUID",                   type: "STRING",  mode: "NULLABLE", description: "Unique identifier for the station"}
