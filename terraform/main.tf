@@ -155,10 +155,11 @@ resource "google_secret_manager_secret_version" "tdx_client_secret_version" {
 }
 
 # Grant the Airflow SA permission to invoke Cloud Functions.
-# This is required for the CloudFunctionInvokeFunctionOperator.
+# This is required for the CloudFunctionInvokeFunctionOperator, which uses the
+# 'cloudfunctions.functions.call' permission, found in the developer role.
 resource "google_project_iam_member" "airflow_sa_cloudfunctions_invoker" {
   project = var.project_id
-  role    = "roles/cloudfunctions.invoker"
+  role    = "roles/cloudfunctions.developer"
   member  = "serviceAccount:${module.airflow.airflow_service_account_email}"
 }
 
