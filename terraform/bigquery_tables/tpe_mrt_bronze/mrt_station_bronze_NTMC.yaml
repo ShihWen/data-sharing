@@ -1,4 +1,4 @@
-table_id: "mrt_station_NTMC"
+table_id: "mrt_station_ntmc"
 dataset_id_var_name: "tpe_mrt_bronze"
 description: "Raw MRT station NTMC (MRT company in New Taipei City) information from S3"
 labels:
