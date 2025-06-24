@@ -20,6 +20,12 @@ resource "google_project_service" "enable_transfer" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "enable_cloudbuild" {
+  project            = var.project_id
+  service            = "cloudbuild.googleapis.com"
+  disable_on_destroy = false
+}
+
 # Get project information
 data "google_project" "current" {
   project_id = var.project_id
@@ -201,9 +207,12 @@ module "mrt_station_ntmc_function" {
 
   environment_variables = {
     GCP_PROJECT   = var.project_id
-    GCS_BUCKET    = var.s3_bucket
+    GCS_BUCKET    = var.gcs_data_lake_bucket
     TDX_AUTH_URL  = "https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token"
   }
 
-  depends_on = [module.airflow]
+  depends_on = [
+    module.airflow,
+    google_project_service.enable_cloudbuild
+  ]
 }

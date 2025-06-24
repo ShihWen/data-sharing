@@ -42,4 +42,9 @@ variable "tdx_client_secret" {
 variable "s3_bucket" {
   description = "AWS S3 bucket name containing the MRT data"
   type        = string
+}
+
+variable "gcs_data_lake_bucket" {
+  description = "GCS bucket for storing data lake files (e.g., Parquet files from Cloud Functions)."
+  type        = string
 } 

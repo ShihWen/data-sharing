@@ -14,6 +14,7 @@ pipeline {
         TDX_API_CREDENTIALS = credentials('tdx-api-credentials')
         S3_BUCKET = 'online-data-lake-thirty-three'  // You might want to make this configurable per environment
         AIRFLOW_BUCKET = 'open-data-v2-cicd-airflow-storage'  // Add this for Airflow GCS bucket
+        GCS_DATA_LAKE_BUCKET = env.AIRFLOW_BUCKET // Use the airflow bucket by default for data files
     }
     
     stages {
@@ -195,6 +196,7 @@ pipeline {
                                         -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
                                         -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
                                         -var="s3_bucket=${S3_BUCKET}" \
+                                        -var="gcs_data_lake_bucket=${GCS_DATA_LAKE_BUCKET}" \
                                         -var="tdx_client_id=${TDX_API_CREDENTIALS_USR}" \
                                         -var="tdx_client_secret=${TDX_API_CREDENTIALS_PSW}" \
                                         module.airflow.google_service_account.scheduler_sa \
@@ -225,6 +227,7 @@ pipeline {
                                 -var="aws_access_key=${AWS_CREDENTIALS_USR}" \\
                                 -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \\
                                 -var="s3_bucket=${S3_BUCKET}" \\
+                                -var="gcs_data_lake_bucket=${GCS_DATA_LAKE_BUCKET}" \\
                                 -var="tdx_client_id=${TDX_API_CREDENTIALS_USR}" \\
                                 -var="tdx_client_secret=${TDX_API_CREDENTIALS_PSW}" \\
                                 -out=tfplan
