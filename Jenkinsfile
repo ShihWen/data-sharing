@@ -19,19 +19,23 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 checkout scm
+                // Unshallow the clone to ensure we can diff against previous commits.
+                // Some git servers don't support --unshallow, so we fall back to fetching more history.
+                sh 'git fetch --unshallow || git fetch --depth=100'
             }
         }
         
         stage('Detect DAG Changes') {
             steps {
                 script {
-                    def changedFilesScript = ""
+                    def changedFilesScript
                     if (env.GIT_PREVIOUS_SUCCESSFUL_COMMIT) {
                         echo "Comparing changes between previous successful commit (${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT}) and current commit (${env.GIT_COMMIT})"
                         changedFilesScript = "git diff --name-only ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} ${env.GIT_COMMIT}"
                     } else {
                         echo "No previous successful commit found. Checking for changes in the current commit (${env.GIT_COMMIT})."
-                        changedFilesScript = 'git show --name-only --pretty="" HEAD'
+                        // This is more reliable for different commit types (e.g., merge commits)
+                        changedFilesScript = 'git diff-tree --no-commit-id --name-only -r HEAD'
                     }
 
                     def changedFiles = sh(script: changedFilesScript, returnStdout: true).trim()
