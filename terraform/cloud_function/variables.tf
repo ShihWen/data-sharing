@@ -27,9 +27,4 @@ variable "environment_variables" {
   description = "A map of environment variables to pass to the Cloud Function."
   type        = map(string)
   default     = {}
-}
-
-variable "invoker_service_account_email" {
-  description = "The service account email that will be granted invoker permissions."
-  type        = string
 } 

@@ -69,13 +69,4 @@ resource "google_cloudfunctions2_function" "function" {
     google_project_iam_member.function_sa_secret_accessor,
     google_project_iam_member.function_sa_storage_admin
   ]
-}
-
-# Allows the Cloud Function to be invoked by Cloud Scheduler or other services
-resource "google_cloud_run_service_iam_member" "invoker" {
-  location = google_cloudfunctions2_function.function.location
-  project  = google_cloudfunctions2_function.function.project
-  service  = google_cloudfunctions2_function.function.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.invoker_service_account_email}"
 } 

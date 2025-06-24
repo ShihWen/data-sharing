@@ -163,6 +163,15 @@ resource "google_project_iam_member" "airflow_sa_cloudfunctions_invoker" {
   member  = "serviceAccount:${module.airflow.airflow_service_account_email}"
 }
 
+# Grant the Airflow SA permission to invoke the Cloud Function.
+resource "google_cloud_run_service_iam_member" "airflow_invokes_mrt_station_ntmc" {
+  location = module.mrt_station_ntmc_function.function_location
+  project  = module.mrt_station_ntmc_function.function_project
+  service  = module.mrt_station_ntmc_function.function_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${module.airflow.airflow_service_account_email}"
+}
+
 module "airflow" {
   source = "./airflow"
 
@@ -234,7 +243,6 @@ module "mrt_station_ntmc_function" {
   function_name               = "mrt-station-ntmc-fetcher"
   source_dir                  = "${path.module}/../gcp/cloud_functions/mrt_station_ntmc"
   entry_point                 = "main"
-  invoker_service_account_email = module.airflow.airflow_service_account_email
 
   environment_variables = {
     GCP_PROJECT   = var.project_id
@@ -243,7 +251,6 @@ module "mrt_station_ntmc_function" {
   }
 
   depends_on = [
-    module.airflow,
     google_project_service.enable_cloudbuild,
     google_project_service.enable_cloudrun,
     google_project_service.enable_cloudfunctions,
