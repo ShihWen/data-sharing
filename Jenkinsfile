@@ -25,19 +25,25 @@ pipeline {
         stage('Detect DAG Changes') {
             steps {
                 script {
-                    // Check if there are any changes in the DAGs directory
+                    def changedFilesScript = ""
+                    if (env.GIT_PREVIOUS_SUCCESSFUL_COMMIT) {
+                        echo "Comparing changes between previous successful commit (${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT}) and current commit (${env.GIT_COMMIT})"
+                        changedFilesScript = "git diff --name-only ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} ${env.GIT_COMMIT}"
+                    } else {
+                        echo "No previous successful commit found. Checking for changes in the current commit (${env.GIT_COMMIT})."
+                        changedFilesScript = 'git show --name-only --pretty="" HEAD'
+                    }
+
+                    def changedFiles = sh(script: changedFilesScript, returnStdout: true).trim()
+                    echo "Files changed:\n${changedFiles}"
+
                     def dagChanges = sh(
-                        script: '''
-                            if git diff --name-only HEAD~1 HEAD | grep -q "terraform/airflow/docker/dags/"; then
-                                echo "true"
-                            else
-                                echo "false"
-                            fi
-                        ''',
+                        script: """
+                            echo '${changedFiles}' | grep -q "terraform/airflow/docker/dags/" && echo "true" || echo "false"
+                        """,
                         returnStdout: true
                     ).trim()
 
-                    // Set environment variable for later stages
                     env.DAG_CHANGES = dagChanges
                     
                     if (dagChanges == "true") {
