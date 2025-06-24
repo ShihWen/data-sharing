@@ -14,7 +14,7 @@ pipeline {
         TDX_API_CREDENTIALS = credentials('tdx-api-credentials')
         S3_BUCKET = 'online-data-lake-thirty-three'  // You might want to make this configurable per environment
         AIRFLOW_BUCKET = 'open-data-v2-cicd-airflow-storage'  // Add this for Airflow GCS bucket
-        GCS_DATA_LAKE_BUCKET = env.AIRFLOW_BUCKET // Use the airflow bucket by default for data files
+        GCS_DATA_LAKE_BUCKET = 'open-data-v2-cicd-airflow-storage'
     }
     
     stages {
