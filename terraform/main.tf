@@ -98,13 +98,46 @@ resource "google_secret_manager_secret_version" "aws_credentials_version" {
   })
 }
 
+# Secrets for the TDX API
+resource "google_secret_manager_secret" "tdx_client_id" {
+  secret_id = "tdx_client_id"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "tdx_client_id_version" {
+  secret      = google_secret_manager_secret.tdx_client_id.id
+  secret_data = var.tdx_client_id
+}
+
+resource "google_secret_manager_secret" "tdx_client_secret" {
+  secret_id = "tdx_client_secret"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "tdx_client_secret_version" {
+  secret      = google_secret_manager_secret.tdx_client_secret.id
+  secret_data = var.tdx_client_secret
+}
+
 module "airflow" {
   source = "./airflow"
 
   project_id   = var.project_id
   region       = var.region
   zone         = var.zone
-  depends_on = [google_project_service.enable_secretmanager]
+  depends_on = [
+    google_project_service.enable_secretmanager,
+    google_secret_manager_secret_version.tdx_client_id_version,
+    google_secret_manager_secret_version.tdx_client_secret_version
+  ]
 }
 
 module "bigquery_datasets" {
@@ -154,4 +187,23 @@ module "transfer_jobs" {
     google_secret_manager_secret_version.aws_credentials_version,
     google_project_service.enable_transfer
   ]
+}
+
+module "mrt_station_ntmc_function" {
+  source = "./cloud_function"
+
+  project_id                  = var.project_id
+  region                      = var.region
+  function_name               = "mrt-station-ntmc-fetcher"
+  source_dir                  = "${path.module}/../gcp/cloud_functions/mrt_station_ntmc"
+  entry_point                 = "main"
+  invoker_service_account_email = module.airflow.airflow_service_account_email
+
+  environment_variables = {
+    GCP_PROJECT   = var.project_id
+    GCS_BUCKET    = var.s3_bucket
+    TDX_AUTH_URL  = "https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token"
+  }
+
+  depends_on = [module.airflow]
 }

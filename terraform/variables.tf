@@ -16,13 +16,25 @@ variable "zone" {
 }
 
 variable "aws_access_key" {
-  description = "AWS access key for S3 access"
+  description = "The AWS access key for S3."
   type        = string
   sensitive   = true
 }
 
 variable "aws_secret_key" {
-  description = "AWS secret key for S3 access"
+  description = "The AWS secret key for S3."
+  type        = string
+  sensitive   = true
+}
+
+variable "tdx_client_id" {
+  description = "The client ID for the TDX API."
+  type        = string
+  sensitive   = true
+}
+
+variable "tdx_client_secret" {
+  description = "The client secret for the TDX API."
   type        = string
   sensitive   = true
 }

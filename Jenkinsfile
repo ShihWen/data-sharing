@@ -11,6 +11,7 @@ pipeline {
         DEV_SA_CREDENTIAL_ID = 'gcp-sa-dev'  // This will be configured in Jenkins credentials
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa-dev')
         AWS_CREDENTIALS = credentials('aws-s3-credentials')  // Add this credential in Jenkins
+        TDX_API_CREDENTIALS = credentials('tdx-api-credentials')
         S3_BUCKET = 'online-data-lake-thirty-three'  // You might want to make this configurable per environment
         AIRFLOW_BUCKET = 'open-data-v2-cicd-airflow-storage'  // Add this for Airflow GCS bucket
     }
@@ -194,6 +195,8 @@ pipeline {
                                         -var="aws_access_key=${AWS_CREDENTIALS_USR}" \
                                         -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \
                                         -var="s3_bucket=${S3_BUCKET}" \
+                                        -var="tdx_client_id=${TDX_API_CREDENTIALS_USR}" \
+                                        -var="tdx_client_secret=${TDX_API_CREDENTIALS_PSW}" \
                                         module.airflow.google_service_account.scheduler_sa \
                                         "projects/${DEV_GCP_PROJECT_ID}/serviceAccounts/airflow-scheduler-sa@${DEV_GCP_PROJECT_ID}.iam.gserviceaccount.com"
                                 else
@@ -222,6 +225,8 @@ pipeline {
                                 -var="aws_access_key=${AWS_CREDENTIALS_USR}" \\
                                 -var="aws_secret_key=${AWS_CREDENTIALS_PSW}" \\
                                 -var="s3_bucket=${S3_BUCKET}" \\
+                                -var="tdx_client_id=${TDX_API_CREDENTIALS_USR}" \\
+                                -var="tdx_client_secret=${TDX_API_CREDENTIALS_PSW}" \\
                                 -out=tfplan
                         '''
                         archiveArtifacts artifacts: 'tfplan'
