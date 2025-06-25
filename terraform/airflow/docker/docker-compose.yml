@@ -101,4 +101,5 @@ services:
     restart: "no"
 
 volumes:
-  postgres-db-volume: 
+  postgres-db-volume:
+    driver: local 
