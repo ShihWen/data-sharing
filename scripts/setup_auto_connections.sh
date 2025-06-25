@@ -95,6 +95,13 @@ PROJECT_ID="open-data-v2-cicd"
 BUCKET_NAME="open-data-v2-cicd-airflow-storage"
 AIRFLOW_UID=50000
 LOG_FILE="/opt/airflow/logs/auto_setup.log"
+SUCCESS_FLAG_FILE="/opt/airflow/auto_setup_completed.flag"
+
+# If setup has already run successfully, exit.
+if [ -f "$SUCCESS_FLAG_FILE" ]; then
+    echo "========== Auto Setup has already been completed. Exiting. ==========" >> $LOG_FILE
+    exit 0
+fi
 
 # Ensure log file exists and has correct permissions
 mkdir -p /opt/airflow/logs
@@ -141,7 +148,10 @@ echo "Running connections setup..." >> $LOG_FILE
 echo "Unpausing DAGs..." >> $LOG_FILE
 ./airflow-manager.sh unpause_dags >> $LOG_FILE 2>&1
 
-echo "========== Airflow Auto Setup Finished: $(date) ==========" >> $LOG_FILE
+echo "========== Airflow Auto Setup Finished Successfully: $(date) ==========" >> $LOG_FILE
+# Create the success flag file to prevent this script from running again.
+touch $SUCCESS_FLAG_FILE
+chown $AIRFLOW_UID:root $SUCCESS_FLAG_FILE
 EOF
 
 echo "DEBUG: About to copy the setup script to the VM. The next lines will show the exact commands being run."
