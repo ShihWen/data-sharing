@@ -876,17 +876,12 @@ EOF
     print_status "Emergency fix completed!"
 }
 
-# Function to create Airflow connections
-create_connections() {
-    echo "=== Creating Airflow Connections and Variables (VM-Internal Mode) ==="
-    echo "Timestamp: $(date)"
-    echo ""
+# ==============================================================================
+# INTERNAL FUNCTIONS (to be run only on the Airflow VM)
+# ==============================================================================
 
-    if ! command -v docker-compose &> /dev/null; then
-        print_error "docker-compose could not be found. This script must run on the Airflow VM."
-        return 1
-    fi
-
+create_connections_internal() {
+    echo "=== Creating Airflow Connections and Variables (Internal VM Mode) ==="
     cd /opt/airflow || { print_error "Could not change to /opt/airflow directory."; return 1; }
 
     print_info "Waiting for Airflow services to stabilize..."
@@ -930,32 +925,18 @@ create_connections() {
             print_error "Failed to set variable: $key"
         fi
     done
-
-    echo ""
-    print_info "Verifying variables..."
-    docker-compose exec -T airflow-webserver airflow variables list
     
     print_status "Connections and variables setup completed!"
 }
 
-# Function to check if connections and variables already exist
-check_connections_and_variables() {
-    echo "=== Checking Airflow Connections and Variables (VM-Internal Mode) ==="
-    echo "Timestamp: $(date)"
-    echo ""
-
-    if ! command -v docker-compose &> /dev/null; then
-        print_error "docker-compose could not be found. This script must run on the Airflow VM."
-        return 1
-    fi
-
+check_connections_and_variables_internal() {
+    echo "=== Checking Airflow Connections and Variables (Internal VM Mode) ==="
     cd /opt/airflow || { print_error "Could not change to /opt/airflow directory."; return 1; }
     
     print_info "Waiting for Airflow services to stabilize..."
     sleep 5
 
     missing_items=0
-
     print_info "Checking connection: google_cloud_default"
     if docker-compose exec -T airflow-webserver airflow connections get 'google_cloud_default' > /dev/null 2>&1; then
         print_status "Connection 'google_cloud_default' exists."
@@ -966,7 +947,6 @@ check_connections_and_variables() {
 
     echo ""
     print_info "Checking essential variables..."
-    
     vars_to_check=("gcp_project_id" "environment" "gcs_data_lake_bucket")
     for var in "${vars_to_check[@]}"; do
         if docker-compose exec -T airflow-webserver airflow variables get "$var" > /dev/null 2>&1; then
@@ -983,6 +963,74 @@ check_connections_and_variables() {
         return 0
     else
         print_error "Some connections or variables are missing."
+        return 1
+    fi
+}
+
+# ==============================================================================
+# EXTERNAL FUNCTIONS (to be run from Cloud Shell or CI/CD)
+# ==============================================================================
+
+create_connections_external() {
+    echo "=== Creating Airflow Connections (External Mode) ==="
+    current_status=$(check_vm_status)
+    if [ "$current_status" != "RUNNING" ]; then
+        print_error "VM is not running (status: $current_status)"
+        return 1
+    fi
+
+    print_info "Uploading latest airflow-manager.sh to VM..."
+    gcloud compute scp ./airflow-manager.sh "$VM_NAME:/tmp/airflow-manager.sh" --zone="$ZONE"
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="sudo mv /tmp/airflow-manager.sh /usr/local/bin/airflow-manager && sudo chmod +x /usr/local/bin/airflow-manager"
+
+    print_info "Triggering internal connection setup on VM..."
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="sudo airflow-manager connections-internal"
+}
+
+check_connections_and_variables_external() {
+    echo "=== Checking Airflow Connections (External Mode) ==="
+    current_status=$(check_vm_status)
+    if [ "$current_status" != "RUNNING" ]; then
+        print_error "VM is not running (status: $current_status)"
+        return 1
+    fi
+
+    print_info "Uploading latest airflow-manager.sh to VM to ensure check is accurate..."
+    gcloud compute scp ./airflow-manager.sh "$VM_NAME:/tmp/airflow-manager.sh" --zone="$ZONE"
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="sudo mv /tmp/airflow-manager.sh /usr/local/bin/airflow-manager && sudo chmod +x /usr/local/bin/airflow-manager"
+
+    print_info "Triggering internal connection check on VM..."
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="sudo airflow-manager check-connections-internal"
+}
+
+# ==============================================================================
+# DISPATCHER FUNCTIONS (environment-aware)
+# ==============================================================================
+
+# Function to create Airflow connections
+create_connections() {
+    # Check if we are running inside the VM
+    if [ -f /opt/airflow/docker-compose.yml ]; then
+        create_connections_internal
+    # Check if we are running externally with gcloud
+    elif command -v gcloud &> /dev/null; then
+        create_connections_external
+    else
+        print_error "Cannot determine environment. Neither '/opt/airflow/docker-compose.yml' nor 'gcloud' command found."
+        return 1
+    fi
+}
+
+# Function to check if connections and variables already exist
+check_connections_and_variables() {
+    # Check if we are running inside the VM
+    if [ -f /opt/airflow/docker-compose.yml ]; then
+        check_connections_and_variables_internal
+    # Check if we are running externally with gcloud
+    elif command -v gcloud &> /dev/null; then
+        check_connections_and_variables_external
+    else
+        print_error "Cannot determine environment. Neither '/opt/airflow/docker-compose.yml' nor 'gcloud' command found."
         return 1
     fi
 }
@@ -1016,8 +1064,8 @@ show_help() {
     echo "  restart            - Restart the Airflow VM (auto-applies emergency fix if needed)"
     echo "  fix                - Apply permanent fixes to prevent restart issues"
     echo "  emergency-fix      - Apply comprehensive emergency fixes for severe issues"
-    echo "  connections        - Create Airflow Google Cloud connections and variables"
-    echo "  check-connections  - Check if connections and variables already exist (for CI/CD optimization)"
+    echo "  connections        - Create/update Airflow connections and variables (works from anywhere)"
+    echo "  check-connections  - Check if connections/variables exist (works from anywhere)"
     echo "  upload             - Upload DAGs to GCS bucket"
     echo "  status             - Show current VM and service status"
     echo "  help               - Show this help message"
@@ -1121,6 +1169,12 @@ case "${1:-help}" in
         ;;
     check-connections)
         check_connections_and_variables
+        ;;
+    connections-internal)
+        create_connections_internal
+        ;;
+    check-connections-internal)
+        check_connections_and_variables_internal
         ;;
     upload)
         upload_dags
