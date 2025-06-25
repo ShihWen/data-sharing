@@ -878,291 +878,111 @@ EOF
 
 # Function to create Airflow connections
 create_connections() {
-    echo "=== Creating Airflow Connections and Variables ==="
+    echo "=== Creating Airflow Connections and Variables (VM-Internal Mode) ==="
     echo "Timestamp: $(date)"
     echo ""
 
-    # Check VM status
-    current_status=$(check_vm_status)
-    if [ "$current_status" != "RUNNING" ]; then
-        print_error "VM is not running (status: $current_status)"
+    if ! command -v docker-compose &> /dev/null; then
+        print_error "docker-compose could not be found. This script must run on the Airflow VM."
         return 1
     fi
 
-    VM_IP=$(get_vm_ip)
-    if [ -z "$VM_IP" ]; then
-        print_error "Could not get VM IP"
-        return 1
-    fi
+    cd /opt/airflow || { print_error "Could not change to /opt/airflow directory."; return 1; }
 
-    print_info "VM IP: $VM_IP"
+    print_info "Waiting for Airflow services to stabilize..."
+    sleep 15
 
-    # Test if Airflow is accessible
-    echo "1️⃣ Testing Airflow accessibility..."
-    if ! curl -s --connect-timeout 10 "http://$VM_IP:8081/health" > /dev/null 2>&1; then
-        print_error "Airflow is not accessible. Please ensure it's running first."
-        echo "Try: $0 validate"
-        return 1
-    fi
-    print_status "Airflow is accessible"
+    print_info "Creating Airflow Google Cloud connection..."
+    docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true
+    docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \
+        --conn-type 'google_cloud_platform' \
+        --conn-extra '{"project": "open-data-v2-cicd", "key_path": "/opt/airflow/config/service-account.json"}'
 
-    # Create the connections and variables script
-    echo ""
-    echo "2️⃣ Creating connections and variables script..."
-    cat > /tmp/create_airflow_connections.sh <<'EOF'
-#!/bin/bash
-set -e
-
-echo "Creating Airflow Google Cloud connection and variables..."
-
-# Change to airflow directory
-cd /opt/airflow
-
-# Wait a bit for services to be stable
-echo "Waiting for services to stabilize..."
-sleep 10
-
-echo "=== Creating Connections ==="
-# Delete existing connection (ignore errors)
-echo "Removing existing google_cloud_default connection..."
-docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true
-
-# Create new Google Cloud connection
-echo "Creating new google_cloud_default connection..."
-docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \
-    --conn-type 'google_cloud_platform' \
-    --conn-extra '{"project": "open-data-v2-cicd", "key_path": "/opt/airflow/config/service-account.json"}'
-
-# Verify connection was created
-echo "Verifying connection..."
-if docker-compose exec -T airflow-webserver airflow connections get 'google_cloud_default' > /dev/null 2>&1; then
-    echo "✅ Google Cloud connection created successfully!"
-else
-    echo "❌ Failed to verify connection"
-    exit 1
-fi
-
-echo ""
-echo "=== Creating Variables ==="
-# Create common Airflow variables
-echo "Creating Airflow variables..."
-
-docker-compose exec -T airflow-webserver airflow variables set "gcp_project_id" "open-data-v2-cicd"
-echo "✅ Set gcp_project_id"
-
-docker-compose exec -T airflow-webserver airflow variables set "gcp_region" "asia-east1"
-echo "✅ Set gcp_region"
-
-docker-compose exec -T airflow-webserver airflow variables set "notification_email" '["admin@example.com"]'
-echo "✅ Set notification_email"
-
-docker-compose exec -T airflow-webserver airflow variables set "bigquery_location" "asia-east1"
-echo "✅ Set bigquery_location"
-
-docker-compose exec -T airflow-webserver airflow variables set "data_retention_days" "30"
-echo "✅ Set data_retention_days"
-
-docker-compose exec -T airflow-webserver airflow variables set "max_parallel_tasks" "5"
-echo "✅ Set max_parallel_tasks"
-
-docker-compose exec -T airflow-webserver airflow variables set "environment" "dev"
-echo "✅ Set environment"
-
-# Dataset configurations (used in SQL queries)
-docker-compose exec -T airflow-webserver airflow variables set "tpe_mrt_bronze_dataset_id" "tpe_mrt_bronze"
-echo "✅ Set tpe_mrt_bronze_dataset_id"
-
-docker-compose exec -T airflow-webserver airflow variables set "tpe_mrt_silver_dataset_id" "tpe_mrt_silver"
-echo "✅ Set tpe_mrt_silver_dataset_id"
-
-docker-compose exec -T airflow-webserver airflow variables set "tpe_mrt_gold_dataset_id" "tpe_mrt_gold"
-echo "✅ Set tpe_mrt_gold_dataset_id"
-
-docker-compose exec -T airflow-webserver airflow variables set "gcs_data_lake_bucket" "open-data-v2-cicd-data-lake"
-echo "✅ Set gcs_data_lake_bucket"
-
-docker-compose exec -T airflow-webserver airflow variables set "mrt_station_ntmc_function_uri" "https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt_station_ntmc"
-echo "✅ Set mrt_station_ntmc_function_uri"
-
-# List all variables to verify
-echo ""
-echo "=== Verifying Variables ==="
-echo "Current Airflow variables:"
-docker-compose exec -T airflow-webserver airflow variables list
-
-echo ""
-echo "✅ Connections and variables creation completed!"
-EOF
-
-    chmod +x /tmp/create_airflow_connections.sh
-
-    # Copy and execute the script on the VM
-    echo ""
-    echo "3️⃣ Copying and executing connections and variables script on VM..."
-    gcloud compute scp /tmp/create_airflow_connections.sh $VM_NAME:/tmp/create_airflow_connections.sh --zone=$ZONE
-
-    # Execute the script
-    if gcloud compute ssh $VM_NAME --zone=$ZONE --command="chmod +x /tmp/create_airflow_connections.sh && sudo /tmp/create_airflow_connections.sh"; then
-        print_status "Connections and variables created successfully!"
+    if docker-compose exec -T airflow-webserver airflow connections get 'google_cloud_default' > /dev/null 2>&1; then
+        print_status "Google Cloud connection created successfully!"
     else
-        print_error "Failed to create connections or variables"
-        echo ""
-        print_info "Checking creation logs..."
-        gcloud compute ssh $VM_NAME --zone=$ZONE --command="tail -50 /var/log/airflow-connections.log" 2>/dev/null || true
-        return 1
+        print_error "Failed to create or verify Google Cloud connection."
     fi
 
-    # Cleanup
     echo ""
-    echo "4️⃣ Cleaning up temporary files..."
-    rm -f /tmp/create_airflow_connections.sh
-    gcloud compute ssh $VM_NAME --zone=$ZONE --command="rm -f /tmp/create_airflow_connections.sh" 2>/dev/null || true
-
-    # Final verification
-    echo ""
-    echo "5️⃣ Final verification..."
-    echo "🌐 Access Airflow UI: http://$VM_IP:8081"
-    echo "👤 Username: admin"
-    echo "🔑 Password: admin"
-    echo ""
-    print_info "Check the following in Airflow UI:"
-    echo "  • Admin -> Connections -> Verify 'google_cloud_default' exists"
-    echo "  • Admin -> Variables -> Verify variables are set"
+    print_info "Creating Airflow variables..."
     
-    print_status "Connections and variables creation completed!"
+    variables_to_set=(
+        "gcp_project_id open-data-v2-cicd"
+        "gcp_region asia-east1"
+        "notification_email '[\"admin@example.com\"]'"
+        "bigquery_location asia-east1"
+        "data_retention_days 30"
+        "max_parallel_tasks 5"
+        "environment dev"
+        "tpe_mrt_bronze_dataset_id tpe_mrt_bronze"
+        "tpe_mrt_silver_dataset_id tpe_mrt_silver"
+        "tpe_mrt_gold_dataset_id tpe_mrt_gold"
+        "gcs_data_lake_bucket open-data-v2-cicd-data-lake"
+        "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt_station_ntmc"
+    )
+
+    for var_pair in "${variables_to_set[@]}"; do
+        read -r key value <<<"$var_pair"
+        if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
+            print_status "Set variable: $key"
+        else
+            print_error "Failed to set variable: $key"
+        fi
+    done
+
+    echo ""
+    print_info "Verifying variables..."
+    docker-compose exec -T airflow-webserver airflow variables list
+    
+    print_status "Connections and variables setup completed!"
 }
 
 # Function to check if connections and variables already exist
 check_connections_and_variables() {
-    echo "=== Checking Airflow Connections and Variables ==="
+    echo "=== Checking Airflow Connections and Variables (VM-Internal Mode) ==="
     echo "Timestamp: $(date)"
     echo ""
 
-    # Check VM status
-    current_status=$(check_vm_status)
-    if [ "$current_status" != "RUNNING" ]; then
-        print_error "VM is not running (status: $current_status)"
+    if ! command -v docker-compose &> /dev/null; then
+        print_error "docker-compose could not be found. This script must run on the Airflow VM."
         return 1
     fi
 
-    VM_IP=$(get_vm_ip)
-    if [ -z "$VM_IP" ]; then
-        print_error "Could not get VM IP"
-        return 1
-    fi
+    cd /opt/airflow || { print_error "Could not change to /opt/airflow directory."; return 1; }
+    
+    print_info "Waiting for Airflow services to stabilize..."
+    sleep 5
 
-    print_info "VM IP: $VM_IP"
+    missing_items=0
 
-    # Test if Airflow is accessible
-    echo "1️⃣ Testing Airflow accessibility..."
-    if ! curl -s --connect-timeout 10 "http://$VM_IP:8081/health" > /dev/null 2>&1; then
-        print_error "Airflow is not accessible. Please ensure it's running first."
-        return 1
-    fi
-    print_status "Airflow is accessible"
-
-    # Create the check script
-    echo ""
-    echo "2️⃣ Checking existing connections and variables..."
-    cat > /tmp/check_airflow_connections.sh <<'EOF'
-#!/bin/bash
-set -e
-
-echo "Checking Airflow connections and variables..."
-
-# Change to airflow directory
-cd /opt/airflow
-
-# Wait a bit for services to be stable
-echo "Waiting for services to stabilize..."
-sleep 5
-
-echo "=== Checking Connections ==="
-# Required connections
-REQUIRED_CONNECTIONS=("google_cloud_default")
-missing_connections=0
-
-for conn in "${REQUIRED_CONNECTIONS[@]}"; do
-    echo "Checking connection: $conn"
-    if docker-compose exec -T airflow-webserver airflow connections get "$conn" > /dev/null 2>&1; then
-        echo "✅ Connection '$conn' exists"
+    print_info "Checking connection: google_cloud_default"
+    if docker-compose exec -T airflow-webserver airflow connections get 'google_cloud_default' > /dev/null 2>&1; then
+        print_status "Connection 'google_cloud_default' exists."
     else
-        echo "❌ Connection '$conn' is missing"
-        missing_connections=$((missing_connections + 1))
+        print_warning "Connection 'google_cloud_default' is missing."
+        missing_items=$((missing_items + 1))
     fi
-done
 
-echo ""
-echo "=== Checking Variables ==="
-# Required variables
-declare -A REQUIRED_VARIABLES=(
-    ["gcp_project_id"]="open-data-v2-cicd"
-    ["gcp_region"]="asia-east1"
-    ["bigquery_location"]="asia-east1"
-    ["environment"]="dev"
-    ["data_retention_days"]="30"
-    ["max_parallel_tasks"]="5"
-    ["tpe_mrt_bronze_dataset_id"]="tpe_mrt_bronze"
-    ["tpe_mrt_silver_dataset_id"]="tpe_mrt_silver"
-    ["tpe_mrt_gold_dataset_id"]="tpe_mrt_gold"
-    ["gcs_data_lake_bucket"]="open-data-v2-cicd-data-lake"
-)
-
-missing_variables=0
-
-for var in "${!REQUIRED_VARIABLES[@]}"; do
-    echo "Checking variable: $var"
-    if docker-compose exec -T airflow-webserver airflow variables get "$var" > /dev/null 2>&1; then
-        echo "✅ Variable '$var' exists"
-    else
-        echo "❌ Variable '$var' is missing"
-        missing_variables=$((missing_variables + 1))
-    fi
-done
-
-echo ""
-echo "=== Summary ==="
-echo "Missing connections: $missing_connections"
-echo "Missing variables: $missing_variables"
-
-# Return appropriate exit code
-if [ $missing_connections -eq 0 ] && [ $missing_variables -eq 0 ]; then
-    echo "✅ All connections and variables are properly configured!"
-    exit 0
-else
-    echo "❌ Some connections or variables are missing and need to be created"
-    exit 1
-fi
-EOF
-
-    chmod +x /tmp/check_airflow_connections.sh
-
-    # Copy and execute the script on the VM
     echo ""
-    echo "3️⃣ Copying and executing check script on VM..."
-    gcloud compute scp /tmp/check_airflow_connections.sh $VM_NAME:/tmp/check_airflow_connections.sh --zone=$ZONE
+    print_info "Checking essential variables..."
+    
+    vars_to_check=("gcp_project_id" "environment" "gcs_data_lake_bucket")
+    for var in "${vars_to_check[@]}"; do
+        if docker-compose exec -T airflow-webserver airflow variables get "$var" > /dev/null 2>&1; then
+            print_status "Variable '$var' exists."
+        else
+            print_warning "Variable '$var' is missing."
+            missing_items=$((missing_items + 1))
+        fi
+    done
 
-    # Execute the script and capture result
-    if gcloud compute ssh $VM_NAME --zone=$ZONE --command="chmod +x /tmp/check_airflow_connections.sh && sudo /tmp/check_airflow_connections.sh"; then
-        print_status "All connections and variables are already configured!"
-        CONNECTIONS_EXIST=true
-    else
-        print_warning "Some connections or variables are missing"
-        CONNECTIONS_EXIST=false
-    fi
-
-    # Cleanup
     echo ""
-    echo "4️⃣ Cleaning up temporary files..."
-    rm -f /tmp/check_airflow_connections.sh
-    gcloud compute ssh $VM_NAME --zone=$ZONE --command="rm -f /tmp/check_airflow_connections.sh" 2>/dev/null || true
-
-    # Return appropriate exit code for Jenkins
-    if [ "$CONNECTIONS_EXIST" = true ]; then
-        print_status "Check completed: Connections and variables are properly configured"
+    if [ $missing_items -eq 0 ]; then
+        print_status "All required connections and variables are configured."
         return 0
     else
-        print_info "Check completed: Connections and variables need to be created"
+        print_error "Some connections or variables are missing."
         return 1
     fi
 }
