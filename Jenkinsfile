@@ -106,6 +106,18 @@ pipeline {
             }
         }
 
+        stage('Upload Airflow Configuration') {
+            steps {
+                script {
+                    sh '''
+                        echo "Uploading core Airflow configuration files to GCS..."
+                        gsutil cp terraform/airflow/docker/docker-compose.yml gs://${AIRFLOW_BUCKET}/docker/docker-compose.yml
+                        echo "✅ Core configuration uploaded."
+                    '''
+                }
+            }
+        }
+
         stage('Upload DAGs to GCS') {
             when {
                 expression { return env.DAG_CHANGES == "true" }
