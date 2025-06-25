@@ -1250,6 +1250,8 @@ unpause_dags_from_file() {
     fi
 
     echo "Unpausing DAGs based on configuration in $dags_file..."
+
+    cd /opt/airflow || { echo "Could not cd to /opt/airflow"; return 1; }
     
     # Read the dags file
     local dag_ids_to_unpause=$(cat "$dags_file")
@@ -1257,11 +1259,11 @@ unpause_dags_from_file() {
     if [ "$dag_ids_to_unpause" = "*" ]; then
         echo "Wildcard '*' detected. Unpausing all DAGs."
         # Get all DAG IDs from Airflow
-        local all_dags=$(airflow dags list | tail -n +3 | awk '{print $1}')
+        local all_dags=$(docker-compose exec -T airflow-webserver airflow dags list | tail -n +3 | awk '{print $1}')
         for dag_id in $all_dags; do
             if [ -n "$dag_id" ]; then
                 echo "Unpausing DAG: $dag_id"
-                airflow dags unpause "$dag_id"
+                docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id"
             fi
         done
     else
@@ -1269,7 +1271,7 @@ unpause_dags_from_file() {
         for dag_id in $dag_ids_to_unpause; do
             if [ -n "$dag_id" ]; then
                 echo "Unpausing DAG: $dag_id"
-                airflow dags unpause "$dag_id"
+                docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id"
             fi
         done
     fi
