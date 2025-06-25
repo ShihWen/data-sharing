@@ -144,10 +144,14 @@ echo "Unpausing DAGs..." >> $LOG_FILE
 echo "========== Airflow Auto Setup Finished: $(date) ==========" >> $LOG_FILE
 EOF
 
+echo "DEBUG: About to copy the setup script to the VM. The next lines will show the exact commands being run."
+set -x
+
 # Copy the new setup script to the VM by staging it in /tmp first
 gcloud compute scp /tmp/setup_auto_connections.sh $VM_NAME:/tmp/auto_setup.sh --zone=$ZONE
 gcloud compute ssh $VM_NAME --zone=$ZONE --command="sudo mv /tmp/auto_setup.sh /opt/airflow/auto_setup.sh && sudo chmod +x /opt/airflow/auto_setup.sh && sudo chown root:root /opt/airflow/auto_setup.sh"
 
+set +x
 
 # Create a new, more robust systemd service on the VM
 cat > /tmp/airflow-auto-setup.service <<'SERVICE_EOF'
