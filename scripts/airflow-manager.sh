@@ -1120,26 +1120,32 @@ unpause_dags_from_file() {
     echo "Unpausing DAGs based on configuration in $dags_file..."
 
     cd /opt/airflow || { echo "Could not cd to /opt/airflow"; return 1; }
-    
-    # Read the dags file
-    local dag_ids_to_unpause=$(cat "$dags_file")
 
-    if [ "$dag_ids_to_unpause" = "*" ]; then
+    # Read the file, excluding comments and empty lines, and trim whitespace
+    local clean_dags_list
+    clean_dags_list=$(grep -v '^[[:space:]]*#' "$dags_file" | grep -v '^[[:space:]]*$' | xargs)
+
+    if [[ "$clean_dags_list" == "*" ]]; then
         echo "Wildcard '*' detected. Unpausing all DAGs."
         # Get all DAG IDs from Airflow
-        local all_dags=$(docker-compose exec -T airflow-webserver airflow dags list | tail -n +3 | awk '{print $1}')
+        local all_dags
+        all_dags=$(docker-compose exec -T airflow-webserver airflow dags list | tail -n +3 | awk '{print $1}')
         for dag_id in $all_dags; do
             if [ -n "$dag_id" ]; then
                 echo "Unpausing DAG: $dag_id"
-                docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id"
+                # Add || true to prevent script from exiting on non-critical errors
+                docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id" || true
             fi
         done
     else
         echo "Unpausing specific DAGs listed in the file."
-        for dag_id in $dag_ids_to_unpause; do
+        echo "$clean_dags_list" | while IFS= read -r dag_id; do
+            # Trim whitespace from dag_id
+            dag_id=$(echo "$dag_id" | xargs)
             if [ -n "$dag_id" ]; then
                 echo "Unpausing DAG: $dag_id"
-                docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id"
+                # Add || true to prevent script from exiting on non-critical errors
+                docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id" || true
             fi
         done
     fi
