@@ -77,16 +77,17 @@ def get_tdx_result(app_id, app_key, auth_url, url):
 def get_existing_station_file_versions(bucket_name, prefix):
     """
     Lists all file versions from a GCS bucket based on blob names.
-    e.g. mrt_station_ntmc_V1_... -> V1
+    e.g. mrt_station_ntmc/mrt_station_ntmc_V1_... -> V1
     """
     storage_client = storage.Client()
     blobs = storage_client.list_blobs(bucket_name, prefix=prefix)
     
     versions = set()
     for blob in blobs:
-        # e.g. mrt_station_ntmc_V22.0_xxxx.parquet -> V22.0
+        # e.g. mrt_station_ntmc/mrt_station_ntmc_V22.0_xxxx.parquet -> V22.0
         try:
-            version = blob.name.split('_')[3]
+            filename = blob.name.split('/')[-1]
+            version = filename.split('_')[3]
             versions.add(version)
         except IndexError:
             # Ignore files that don't match the expected format
@@ -129,7 +130,7 @@ def main(request):
         station_version_id = f"V{jdata_station[0]['VersionID']}"
         logging.info(f"Current station data version from TDX: {station_version_id}")
 
-        existing_versions = get_existing_station_file_versions(gcs_bucket, prefix='mrt_station_ntmc/mrt_station_ntmc')
+        existing_versions = get_existing_station_file_versions(gcs_bucket, prefix='mrt_station_ntmc/')
 
         if station_version_id not in existing_versions:
             logging.info(f"New station data version {station_version_id} found. Processing and uploading to GCS.")
