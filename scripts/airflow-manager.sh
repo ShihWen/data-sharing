@@ -914,7 +914,7 @@ create_connections_internal() {
         "tpe_mrt_silver_dataset_id tpe_mrt_silver"
         "tpe_mrt_gold_dataset_id tpe_mrt_gold"
         "gcs_data_lake_bucket open-data-v2-cicd-data-lake"
-        "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt_station_ntmc"
+        "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt-station-ntmc-fetcher"
     )
 
     for var_pair in "${variables_to_set[@]}"; do
