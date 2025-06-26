@@ -68,13 +68,13 @@ locals {
       destination_dataset = "tpe_mrt_bronze"
       schedule            = "every saturday 00:30"
     }
-    # mrt_station = {
-    #   display_name        = "MRT Station Data Transfer"
-    #   destination_table   = "mrt_station"
-    #   data_path           = "s3://${var.s3_bucket}/mrt-station/mrt_station*"
-    #   destination_dataset = "tpe_mrt_bronze"
-    #   schedule            = "every saturday 01:00"
-    # }
+    mrt_station = {
+      display_name        = "MRT Station Data Transfer"
+      destination_table   = "mrt_station"
+      data_path           = "s3://${var.s3_bucket}/mrt-station/mrt_station*"
+      destination_dataset = "tpe_mrt_bronze"
+      schedule            = "every saturday 01:00"
+    }
     mrt_exit = {
       display_name        = "MRT Exit Data Transfer"
       destination_table   = "mrt_exit"
