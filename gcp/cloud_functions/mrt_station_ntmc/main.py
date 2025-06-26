@@ -94,9 +94,13 @@ def get_existing_station_file_versions(bucket_name, prefix):
             
     return versions
 
-def main(event, context):
+def main(request):
     """
     Cloud Function entry point.
+    
+    Args:
+        request (flask.Request): The request object. Not used in this function,
+                                 but required for HTTP-triggered Cloud Functions.
     """
     try:
         project_id = os.environ['GCP_PROJECT']
