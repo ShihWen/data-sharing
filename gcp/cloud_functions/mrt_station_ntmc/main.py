@@ -53,8 +53,12 @@ def get_tdx_result(app_id, app_key, auth_url, url):
         a = Auth(app_id, app_key)
         
         # Get token
-        auth_response = requests.post(auth_url, data=a.get_auth_data(), headers=a.get_auth_header())
+        auth_data = a.get_auth_data()
+        auth_header = a.get_auth_header()
+        logging.info("Requesting TDX access token...")
+        auth_response = requests.post(auth_url, data=auth_data, headers=auth_header)
         auth_response.raise_for_status()
+        logging.info("Successfully received TDX access token.")
         
         d = Data(auth_response)
         
