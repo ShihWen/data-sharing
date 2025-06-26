@@ -211,6 +211,14 @@ module "bigquery_tables" {
   depends_on   = [module.bigquery_datasets]
 }
 
+module "bigquery_views" {
+  source = "./bigquery_views"
+
+  project_id  = var.project_id
+  dataset_ids = local.dataset_outputs
+  depends_on  = [module.bigquery_datasets]
+}
+
 module "transfer_jobs" {
   source   = "./transfer_jobs"
   for_each = local.transfer_jobs

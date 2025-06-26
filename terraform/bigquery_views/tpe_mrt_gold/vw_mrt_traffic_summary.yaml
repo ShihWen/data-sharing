@@ -1,0 +1,6 @@
+view_id: "vw_mrt_dummy_view"
+dataset_id_var_name: "tpe_mrt_gold"
+description: "A dummy view of MRT traffic, demonstrating a gold-layer view."
+labels:
+  owner: "data-engineering"
+  layer: "gold" 
