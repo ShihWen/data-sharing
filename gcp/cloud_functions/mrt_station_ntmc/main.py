@@ -3,6 +3,10 @@ import json
 import requests
 import pandas as pd
 from google.cloud import storage, secretmanager
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 def get_secret(secret_id, project_id, version_id="latest"):
     """
@@ -19,11 +23,13 @@ class Auth:
         self.app_key = app_key
 
     def get_auth_header(self):
-        content_type = 'application/x-www-form-urlencoded'
-        grant_type = 'client_credentials'
         return {
-            'content-type': content_type,
-            'grant_type': grant_type,
+            'content-type': 'application/x-www-form-urlencoded',
+        }
+
+    def get_auth_data(self):
+        return {
+            'grant_type': 'client_credentials',
             'client_id': self.app_id,
             'client_secret': self.app_key
         }
@@ -43,12 +49,26 @@ def get_tdx_result(app_id, app_key, auth_url, url):
     """
     Authenticates with TDX and fetches data from the specified URL.
     """
-    a = Auth(app_id, app_key)
-    auth_response = requests.post(auth_url, a.get_auth_header())
-    d = Data(auth_response)
-    data_response = requests.get(url, headers=d.get_data_header())
-    data_response.raise_for_status() # Raise an exception for bad status codes
-    return data_response.json()
+    try:
+        a = Auth(app_id, app_key)
+        
+        # Get token
+        auth_response = requests.post(auth_url, data=a.get_auth_data(), headers=a.get_auth_header())
+        auth_response.raise_for_status()
+        
+        d = Data(auth_response)
+        
+        # Get data
+        data_response = requests.get(url, headers=d.get_data_header())
+        data_response.raise_for_status()
+        
+        return data_response.json()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error during TDX API request: {e}")
+        if e.response:
+            logging.error(f"Response status: {e.response.status_code}")
+            logging.error(f"Response text: {e.response.text}")
+        raise
 
 def get_existing_station_file_versions(bucket_name, prefix):
     """
@@ -74,44 +94,55 @@ def main(event, context):
     """
     Cloud Function entry point.
     """
-    project_id = os.environ['GCP_PROJECT']
-    gcs_bucket = os.environ['GCS_BUCKET']
-    
-    tdx_client_id = get_secret("tdx_client_id", project_id)
-    tdx_client_secret = get_secret("tdx_client_secret", project_id)
-    tdx_auth_url = os.environ['TDX_AUTH_URL']
-    station_url = "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/NTMC?%24top=300&%24format=JSON"
-
-    print("Fetching data from TDX...")
-    jdata_station = get_tdx_result(
-        app_id=tdx_client_id,
-        app_key=tdx_client_secret,
-        auth_url=tdx_auth_url,
-        url=station_url
-    )
-
-    if not jdata_station:
-        print("No station data received from TDX.")
-        return
-
-    station_version_id = f"V{jdata_station[0]['VersionID']}"
-    
-    print(f"Current station data version from TDX: {station_version_id}")
-
-    existing_versions = get_existing_station_file_versions(gcs_bucket, prefix='mrt_station_ntmc/mrt_station_ntmc')
-
-    if station_version_id not in existing_versions:
-        print(f"New station data version {station_version_id} found. Processing and uploading to GCS.")
+    try:
+        project_id = os.environ['GCP_PROJECT']
+        gcs_bucket = os.environ['GCS_BUCKET']
+        tdx_auth_url = os.environ['TDX_AUTH_URL']
         
-        df_station = pd.json_normalize(jdata_station, sep='_')
-        
-        # Define GCS path and file name
-        file_name = f'mrt_station_ntmc_{station_version_id}_{pd.Timestamp.now().strftime("%Y%m%d%H%M%S")}.parquet'
-        gcs_path = f"gs://{gcs_bucket}/mrt_station_ntmc/{file_name}"
+        logging.info(f"Project ID: {project_id}, GCS Bucket: {gcs_bucket}")
 
-        print(f"Writing data to {gcs_path}...")
-        df_station.to_parquet(gcs_path)
+        tdx_client_id = get_secret("tdx_client_id", project_id)
+        tdx_client_secret = get_secret("tdx_client_secret", project_id)
         
-        print("Upload complete.")
-    else:
-        print(f"Station data version {station_version_id} already exists in GCS. No action taken.") 
+        station_url = "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/NTMC?%24top=300&%24format=JSON"
+
+        logging.info("Fetching data from TDX...")
+        jdata_station = get_tdx_result(
+            app_id=tdx_client_id,
+            app_key=tdx_client_secret,
+            auth_url=tdx_auth_url,
+            url=station_url
+        )
+
+        if not jdata_station:
+            logging.info("No station data received from TDX.")
+            return "No data from TDX", 200
+
+        station_version_id = f"V{jdata_station[0]['VersionID']}"
+        logging.info(f"Current station data version from TDX: {station_version_id}")
+
+        existing_versions = get_existing_station_file_versions(gcs_bucket, prefix='mrt_station_ntmc/mrt_station_ntmc')
+
+        if station_version_id not in existing_versions:
+            logging.info(f"New station data version {station_version_id} found. Processing and uploading to GCS.")
+            
+            df_station = pd.json_normalize(jdata_station, sep='_')
+            
+            file_name = f'mrt_station_ntmc_{station_version_id}_{pd.Timestamp.now().strftime("%Y%m%d%H%M%S")}.parquet'
+            gcs_path = f"gs://{gcs_bucket}/mrt_station_ntmc/{file_name}"
+
+            logging.info(f"Writing data to {gcs_path}...")
+            df_station.to_parquet(gcs_path)
+            
+            logging.info("Upload complete.")
+            return "Upload complete.", 200
+        else:
+            logging.info(f"Station data version {station_version_id} already exists in GCS. No action taken.")
+            return "Data already exists", 200
+            
+    except KeyError as e:
+        logging.error(f"Missing environment variable: {e}")
+        return f"Missing environment variable: {e}", 500
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}", exc_info=True)
+        return "Internal Server Error", 500 
