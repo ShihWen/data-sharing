@@ -3,10 +3,10 @@ from datetime import datetime, timedelta
 from airflow.decorators import dag, task
 from airflow.models import Variable
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
-from airflow.providers.http.operators.http import SimpleHttpOperator
 import google.auth
 import google.auth.transport.requests
 from google.oauth2 import id_token
+import requests
 
 # Get Airflow variables. This is the recommended way to manage configuration.
 gcp_project_id = Variable.get("gcp_project_id")
@@ -44,19 +44,21 @@ def mrt_station_ntmc_ingestion_dag():
         fetched_id_token = id_token.fetch_id_token(auth_req, mrt_station_ntmc_function_uri)
         return fetched_id_token
 
-    invoke_cloud_function = SimpleHttpOperator(
-        task_id="invoke_mrt_station_ntmc_fetcher",
-        http_conn_id="google_cloud_default",
-        endpoint=mrt_station_ntmc_function_uri,
-        method="POST",
-        headers={
+    @task
+    def invoke_cloud_function(id_token: str):
+        """
+        Invokes the Cloud Function to fetch MRT station data.
+        """
+        headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer {{ ti.xcom_pull(task_ids='get_id_token') }}",
-        },
-        data='{}',
-    )
+            "Authorization": f"Bearer {id_token}",
+        }
+        response = requests.post(mrt_station_ntmc_function_uri, headers=headers, json={}, timeout=30)
+        response.raise_for_status()
+        return response.text
 
-    get_id_token() >> invoke_cloud_function
+    id_token_task = get_id_token()
+    invoke_cloud_function_task = invoke_cloud_function(id_token=id_token_task)
 
     load_gcs_to_bigquery = GCSToBigQueryOperator(
         task_id="load_station_data_to_bigquery",
@@ -69,6 +71,6 @@ def mrt_station_ntmc_ingestion_dag():
         gcp_conn_id="google_cloud_default",
     )
 
-    invoke_cloud_function >> load_gcs_to_bigquery
+    invoke_cloud_function_task >> load_gcs_to_bigquery
 
 mrt_station_ntmc_ingestion_dag() 
