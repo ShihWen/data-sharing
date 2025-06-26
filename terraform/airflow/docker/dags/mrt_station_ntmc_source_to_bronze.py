@@ -27,11 +27,11 @@ default_args = {
 }
 
 @dag(
-    dag_id="mrt_station_ntmc_bronze_to_silver",
+    dag_id="mrt_station_ntmc_source_to_bronze",
     default_args=default_args,
     schedule_interval="0 10 * * 6",  # Saturday at 10:00 AM
     catchup=False,
-    tags=["mrt", "ntmc", "station", "bronze", "silver", "incremental-load"],
+    tags=["mrt", "ntmc", "station", "bronze", "source", "incremental-load"],
 )
 def mrt_station_ntmc_ingestion_dag():
     """
