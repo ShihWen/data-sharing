@@ -24,14 +24,14 @@ This query transforms and inserts new MRT station data from the bronze layer
 into the silver layer. It ensures that only new versions are processed.
 */
 
-WITH bronze_stations AS (
-  SELECT * FROM `{{ var.value.gcp_project_id }}.{{ params.bronze_dataset }}.mrt_station`
-  UNION ALL
-  SELECT * FROM `{{ var.value.gcp_project_id }}.{{ params.bronze_dataset }}.mrt_station_ntmc`
-)
 
 MERGE `{{ var.value.gcp_project_id }}.{{ params.silver_dataset }}.mrt_station` AS T
 USING (
+  WITH bronze_stations AS (
+    SELECT * FROM `{{ var.value.gcp_project_id }}.{{ params.bronze_dataset }}.mrt_station`
+    UNION ALL
+    SELECT * FROM `{{ var.value.gcp_project_id }}.{{ params.bronze_dataset }}.mrt_station_ntmc`
+  )
   SELECT
     *,
     -- Use a regex to parse the StationAddress
