@@ -4,8 +4,13 @@ SQL queries for the mrt_station_bronze_to_silver DAG.
 """
 
 CHECK_NEW_VERSIONS_QUERY = """
-SELECT COUNT(b.VersionID)
-FROM `{{ var.value.gcp_project_id }}.tpe_mrt_bronze.mrt_station` b
+WITH bronze_versions AS (
+    SELECT VersionID FROM `{{ var.value.gcp_project_id }}.tpe_mrt_bronze.mrt_station`
+    UNION ALL
+    SELECT VersionID FROM `{{ var.value.gcp_project_id }}.tpe_mrt_bronze.mrt_station_ntmc`
+)
+SELECT COUNT(DISTINCT b.VersionID)
+FROM bronze_versions b
 WHERE NOT EXISTS (
     SELECT 1
     FROM `{{ var.value.gcp_project_id }}.tpe_mrt_silver.mrt_station` s
