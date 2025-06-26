@@ -6,6 +6,7 @@ from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQue
 from airflow.providers.http.operators.http import SimpleHttpOperator
 import google.auth
 import google.auth.transport.requests
+from google.oauth2 import id_token
 
 # Get Airflow variables. This is the recommended way to manage configuration.
 gcp_project_id = Variable.get("gcp_project_id")
@@ -40,8 +41,8 @@ def mrt_station_ntmc_ingestion_dag():
     @task
     def get_id_token():
         auth_req = google.auth.transport.requests.Request()
-        id_token = google.auth.id_token.fetch_id_token(auth_req, mrt_station_ntmc_function_uri)
-        return id_token
+        fetched_id_token = id_token.fetch_id_token(auth_req, mrt_station_ntmc_function_uri)
+        return fetched_id_token
 
     invoke_cloud_function = SimpleHttpOperator(
         task_id="invoke_mrt_station_ntmc_fetcher",
