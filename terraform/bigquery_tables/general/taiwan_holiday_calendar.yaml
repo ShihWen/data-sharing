@@ -1,0 +1,17 @@
+table_id: "taiwan_holiday_calendar"
+dataset_id_var_name: "general"
+description: "Raw Taiwan official public holiday calendar from 2017 to present"
+labels:
+  data_source: "gov_open_data"
+  data_type: "calendar"
+  tier: "none"
+
+schema:
+  - {name: "Date",              type: "DATE",     mode: "REQUIRED",  description: "Gregorian calendar date of the record"}
+  - {name: "Year",              type: "INTEGER",  mode: "REQUIRED",  description: "Year in Gregorian calendar"}
+  - {name: "HolidayName",       type: "STRING",   mode: "NULLABLE",  description: "Name of the holiday or special day"}
+  - {name: "IsHoliday",         type: "BOOLEAN",  mode: "REQUIRED",  description: "Whether the date is an official public holiday"}
+  - {name: "HolidayType",       type: "STRING",   mode: "NULLABLE",  description: "Type of holiday (e.g., national holiday, make-up holiday, adjusted working day)"}
+  - {name: "Note",              type: "STRING",   mode: "NULLABLE",  description: "Additional note or remark for this date"}
+  - {name: "Source",            type: "STRING",   mode: "NULLABLE",  description: "Original data source reference"}
+  - {name: "UpdateTime",        type: "TIMESTAMP",mode: "NULLABLE",  description: "Last update time in current system"}
