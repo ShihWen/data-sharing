@@ -1152,6 +1152,22 @@ unpause_dags_from_file() {
     echo "Finished unpausing DAGs."
 }
 
+# Function to restart the Airflow scheduler
+restart_scheduler_internal() {
+    echo "=== Restarting Airflow Scheduler (Internal VM Mode) ==="
+    cd /opt/airflow || { print_error "Could not change to /opt/airflow directory."; return 1; }
+    
+    print_info "Restarting the scheduler to re-parse DAGs..."
+    if docker-compose restart airflow-scheduler; then
+        print_status "Scheduler restart command issued successfully."
+        print_info "Waiting 20 seconds for it to stabilize..."
+        sleep 20
+    else
+        print_error "Failed to restart the scheduler."
+        return 1
+    fi
+}
+
 # Main script logic
 case "${1:-help}" in
     validate)
@@ -1187,6 +1203,9 @@ case "${1:-help}" in
         ;;
     status)
         show_status
+        ;;
+    restart-scheduler-internal)
+        restart_scheduler_internal
         ;;
     help|--help|-h)
         show_help
