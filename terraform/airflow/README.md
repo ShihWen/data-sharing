@@ -1,104 +1,117 @@
-# Airflow Infrastructure
+# Airflow Infrastructure on GCP
 
-This module creates and manages a complete Apache Airflow orchestration platform on Google Cloud Platform with automated DAG synchronization, robust connection management, and seamless Jenkins CI/CD integration.
+This document provides a comprehensive guide to the Apache Airflow platform deployed on Google Cloud Platform. It covers architecture, CI/CD integration, automated setup, and operational procedures.
 
 ## 🏗️ Architecture Overview
 
-The Airflow infrastructure is designed as a production-ready orchestration platform:
+The Airflow infrastructure is a robust, production-ready orchestration platform:
 
-- **Compute**: Debian 11 VM with optimized Docker containerization
-- **Services**: Multi-container Airflow deployment (webserver, scheduler, PostgreSQL)
-- **Storage**: GCS bucket integration for DAG files, logs, and configuration
-- **Networking**: Secure VM networking with external IP for web access
-- **Automation**: Comprehensive startup scripts and health monitoring
-- **CI/CD**: Seamless Jenkins pipeline integration with intelligent deployment
+-   **Compute**: A dedicated Google Compute Engine (GCE) VM running Debian 11, hosting Airflow services within Docker containers.
+-   **Services**: A multi-container Docker Compose setup including the Airflow webserver, scheduler, and a PostgreSQL metadata database.
+-   **Storage**: A Google Cloud Storage (GCS) bucket for synchronizing DAGs, storing logs, and managing configuration files.
+-   **Automation**: A comprehensive set of scripts and systemd services to automate VM startup, health checks, and the configuration of connections and variables.
+-   **CI/CD**: Seamless integration with a Jenkins pipeline for intelligent, automated deployments.
 
-### Infrastructure Components
+---
 
-```
-🏗️ Infrastructure Stack
-├── 🖥️  Compute Engine VM (airflow-vm)
-│   ├── 🐧 Debian 11 base image
-│   ├── 🐳 Docker & Docker Compose
-│   └── 🔧 Automated startup scripts
-├── 🗄️  PostgreSQL Database
-│   ├── 📊 Airflow metadata storage
-│   └── 🔒 Local container deployment
-├── 🌐 Airflow Services
-│   ├── 🖥️  Webserver (Port 8081)
-│   ├── ⚡ Scheduler (background)
-│   └── 👤 Admin user management
-├── ☁️  GCS Integration
-│   ├── 📁 DAG file synchronization
-│   ├── 📝 Log file storage
-│   └── 🔧 Configuration management
-└── 🔐 Security Layer
-    ├── 🔑 Service account authentication
-    ├── 🛡️  IAM role management
-    └── 🔒 Secret management
-```
+## 🔄 Automated Setup and Configuration
 
-## 🔗 Jenkins CI/CD Integration
+A key feature of this platform is its ability to automatically configure itself on startup, ensuring a consistent state after every VM reboot or recreation.
 
-### Pipeline Architecture
+### How It Works
 
-The module is tightly integrated with the Jenkins pipeline for automated deployments:
+1.  **VM Startup**: When the VM starts, systemd services are initiated.
+2.  **Health Checks**: A service waits for the Airflow webserver to become healthy.
+3.  **Script Execution**: Once Airflow is ready, the `auto_setup.sh` script is executed.
+4.  **Configuration**: This script performs the following actions:
+    *   Creates the `google_cloud_default` connection.
+    *   Sets all required Airflow Variables from a dedicated script.
+    *   Unpauses DAGs based on the `airflow_dags` configuration file.
 
-```
-Jenkins Pipeline Flow:
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Code Changes   │───▶│   DAG Detection  │───▶│   GCS Upload    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ Terraform Init  │───▶│  VM Health Check │───▶│ Smart Planning  │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ Infrastructure  │───▶│ Connection Setup │───▶│   Validation    │
-│    Deployment   │    │   & Variables    │    │   & Testing     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
+This ensures the environment is always ready for operation without manual intervention. All logs for this process are stored in `/opt/airflow/logs/auto_setup.log` on the VM.
 
-### Smart VM Management
+---
 
-The pipeline implements intelligent VM lifecycle management:
+## 🔧 Managing Connections, Variables, and DAGs
 
-#### Scenario 1: Healthy VM (Skip Recreation)
-```groovy
-// Pipeline detects healthy VM
-env.SKIP_VM_RECREATION = 'true'
+This section details the standard operating procedures for managing your Airflow environment. The key principle is to **modify the configuration files first**, then run a script to apply the changes.
 
-// Benefits:
-✅ Faster deployment (30s vs 5+ minutes)
-✅ Zero downtime for running DAGs
-✅ Preserves VM customizations
-✅ Reduces GCP compute costs
-```
+### 1. Managing Airflow Variables
 
-#### Scenario 2: New/Unhealthy VM (Full Recreation)
-```groovy
-// Pipeline detects VM needs recreation
-env.SKIP_VM_RECREATION = 'false'
+All Airflow variables are defined in a single script.
 
-// Process:
-🔄 Terraform creates new VM
-⏳ Wait for Docker containers (3+ minutes)  
-🏥 Health check until Airflow responds
-✅ Proceed with configuration
+-   **File to Edit**: `terraform/airflow/templates/airflow_variables.sh`
+-   **Procedure**:
+    1.  Add, modify, or remove `airflow variables set "key" "value"` commands in the file.
+    2.  Save the file.
+    3.  Run the deployment script (see below).
+
+### 2. Managing Airflow Connections
+
+Connections are managed within the main Airflow manager script.
+
+-   **File to Edit**: `scripts/airflow-manager.sh`
+-   **Function to Edit**: `create_connections_internal()`
+-   **Procedure**:
+    1.  Locate the `create_connections_internal` function in the script.
+    2.  Add or modify `airflow connections add ...` or `airflow connections delete ...` commands as needed. The existing `google_cloud_default` connection serves as a template.
+    3.  Save the file.
+    4.  Run the deployment script.
+
+### 3. Managing DAG Pause/Unpause State
+
+The unpaused status of DAGs on startup is controlled by a simple text file.
+
+-   **File to Edit**: `terraform/airflow/templates/airflow_dags`
+-   **Procedure**:
+    1.  To unpause **all** DAGs, ensure the file contains a single asterisk (`*`).
+    2.  To unpause **specific** DAGs, list each `dag_id` on a new line.
+    3.  Save the file.
+    4.  Run the deployment script.
+
+### 🚀 Applying Your Changes
+
+After modifying any of the configuration files mentioned above, you must run the following script from the `scripts/` directory to deploy your changes to the VM:
+
+```bash
+cd scripts/
+./setup_auto_connections.sh
 ```
 
-### Pipeline Stages Integration
+This script uploads your updated configuration to the GCS bucket, where the VM's auto-setup service will use it on the next startup. To apply changes immediately without a restart, you can run the `connections` command:
 
-Each pipeline stage has specific Airflow integration:
+```bash
+./airflow-manager.sh connections
+```
 
-1. **DAG Change Detection**: Only uploads DAGs when actual changes detected
-2. **VM Health Assessment**: Determines optimal deployment strategy
-3. **Targeted Planning**: Avoids unnecessary VM recreation
-4. **Automated Connections**: Post-deployment connection setup
-5. **Health Validation**: Ensures Airflow is ready before completion
+---
+
+## 🔗 CI/CD Integration
+
+The platform is tightly integrated with a Jenkins pipeline for automated deployments. The pipeline is "smart" and can detect if the Airflow VM is healthy.
+
+-   **Healthy VM**: If the VM is running, the pipeline skips recreation, applies new configurations, and completes in **under a minute**.
+-   **New or Unhealthy VM**: If the VM doesn't exist or is unhealthy, the pipeline performs a full recreation, which takes approximately **10 minutes**.
+
+This intelligent design minimizes downtime and deployment time.
+
+---
+
+## 📊 Monitoring and Health
+
+-   **Health Endpoint**: Check the live status of Airflow's core components.
+    ```bash
+    curl http://<VM_IP>:8081/health
+    ```
+-   **Service Logs**: View logs for any Airflow service running in Docker.
+    ```bash
+    # Run from within the VM after SSHing
+    cd /opt/airflow
+    docker-compose logs -f airflow-webserver
+    ```
+
+---
+*This README provides a consolidated overview. For detailed infrastructure code, refer to the `.tf` files in this directory.*
 
 ## 🎯 Production Features
 
@@ -525,7 +538,7 @@ cd scripts
   - Project: `open-data-v2-cicd`
   - Key Path: `/opt/airflow/config/service-account.json`
 
-#### **�� Variables**
+#### **Variables**
 - `gcp_project_id`: `open-data-v2-cicd`
 - `project_id`: `open-data-v2-cicd`
 - `bigquery_location`: `asia-east1` (Taiwan region)
