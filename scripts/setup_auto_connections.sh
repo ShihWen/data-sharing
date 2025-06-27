@@ -115,23 +115,12 @@ echo "Downloading airflow_dags from GCS..." >> $LOG_FILE
 gsutil cp gs://$BUCKET_NAME/scripts/airflow_dags ./airflow_dags || echo "*" > ./airflow_dags
 chown $AIRFLOW_UID:root ./airflow_dags
 
-# Wait for Airflow to be healthy and stable
-echo "Waiting for Airflow to stabilize..." >> $LOG_FILE
-if ! ./airflow-manager.sh wait-for-services-internal >> $LOG_FILE 2>&1; then
-    echo "ERROR: Airflow services did not stabilize. The setup cannot continue." >> $LOG_FILE
+# Run the entire setup process with a single, robust command
+echo "Running the complete, consolidated Airflow setup..." >> $LOG_FILE
+if ! ./airflow-manager.sh setup-all-internal >> $LOG_FILE 2>&1; then
+    echo "ERROR: The consolidated setup script failed. Check the detailed logs above." >> $LOG_FILE
     exit 1
 fi
-
-# Run setup using airflow-manager
-echo "Running connections setup..." >> $LOG_FILE
-./airflow-manager.sh connections-internal >> $LOG_FILE 2>&1
-
-# Restart the scheduler to ensure it re-parses DAGs with the newly created variables.
-echo "Restarting scheduler to re-process DAGs..." >> $LOG_FILE
-./airflow-manager.sh restart-scheduler-internal >> $LOG_FILE 2>&1
-
-echo "Unpausing DAGs..." >> $LOG_FILE
-./airflow-manager.sh unpause_dags >> $LOG_FILE 2>&1
 
 echo "========== Airflow Auto Setup Finished Successfully: $(date) ==========" >> $LOG_FILE
 EOF

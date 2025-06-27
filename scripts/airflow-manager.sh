@@ -967,6 +967,44 @@ check_connections_and_variables_internal() {
     fi
 }
 
+setup_all_internal() {
+    echo "=== Running Full Internal Airflow Setup ==="
+    cd /opt/airflow || { print_error "Could not change to /opt/airflow directory."; return 1; }
+
+    # 1. Wait for services to become stable
+    echo "STEP 1: Waiting for services to become stable..."
+    local max_attempts=18 # Wait up to 9 minutes
+    local attempt=1
+    while ! docker-compose exec -T airflow-webserver airflow version > /dev/null 2>&1; do
+        if [ $attempt -gt $max_attempts ]; then
+            print_error "Service stability check failed after $max_attempts attempts. Aborting."
+            docker-compose ps
+            return 1
+        fi
+        print_info "Attempt ${attempt}/${max_attempts}: Waiting for Airflow service to be ready for commands..."
+        sleep 30
+        ((attempt++))
+    done
+    print_status "✅ Services are stable."
+
+    # 2. Create connections and variables
+    echo ""
+    echo "STEP 2: Creating connections and variables..."
+    create_connections_internal
+
+    # 3. Restart the scheduler to ensure it re-parses DAGs
+    echo ""
+    echo "STEP 3: Restarting scheduler to re-parse DAGs..."
+    restart_scheduler_internal
+
+    # 4. Unpause all dags
+    echo ""
+    echo "STEP 4: Unpausing DAGs..."
+    unpause_dags_from_file "airflow_dags"
+
+    print_status "✅ Full internal setup completed successfully."
+}
+
 # ==============================================================================
 # EXTERNAL FUNCTIONS (to be run from Cloud Shell or CI/CD)
 # ==============================================================================
@@ -1244,11 +1282,8 @@ case "${1:-help}" in
     status)
         show_status
         ;;
-    restart-scheduler-internal)
-        restart_scheduler_internal
-        ;;
-    wait-for-services-internal)
-        wait_for_services_internal
+    setup-all-internal)
+        setup_all_internal
         ;;
     help|--help|-h)
         show_help
