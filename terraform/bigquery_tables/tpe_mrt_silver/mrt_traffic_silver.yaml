@@ -22,7 +22,7 @@ schema:
   - {name: "exit",             type: "STRING",    mode: "NULLABLE", description: "Exit station code (出站站名)"}
   - {name: "traffic",          type: "INTEGER",   mode: "NULLABLE", description: "Passenger count (人流)"}
   - {name: "is_valid_traffic", type: "BOOLEAN",   mode: "NULLABLE", description: "人流是否有效"}
-  - {name: "day_of_week",      type: "INTEGER",   mode: "NULLABLE", description: "星期幾"}
+  - {name: "day_of_week",      type: "INTEGER",   mode: "NULLABLE", description: "星期幾(星期日為1；六為7)"}
   - {name: "day_type",         type: "STRING",    mode: "NULLABLE", description: "日期類型"}
   - {name: "peak_period",      type: "STRING",    mode: "NULLABLE", description: "尖峰時段"}
   - {name: "processed_at",     type: "TIMESTAMP", mode: "NULLABLE", description: "資料處理時間"}
