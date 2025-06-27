@@ -139,6 +139,12 @@ sleep 15 # Extra wait time for services to be fully responsive
 echo "Running connections setup..." >> $LOG_FILE
 ./airflow-manager.sh connections-internal >> $LOG_FILE 2>&1
 
+# Restart the scheduler to ensure it re-parses DAGs with the newly created variables.
+echo "Restarting scheduler to re-process DAGs..." >> $LOG_FILE
+docker-compose restart airflow-scheduler >> $LOG_FILE 2>&1
+echo "Waiting 15s for scheduler to stabilize after restart..." >> $LOG_FILE
+sleep 15
+
 echo "Unpausing DAGs..." >> $LOG_FILE
 ./airflow-manager.sh unpause_dags >> $LOG_FILE 2>&1
 
