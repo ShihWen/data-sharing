@@ -1168,6 +1168,46 @@ restart_scheduler_internal() {
     fi
 }
 
+wait_for_services_internal() {
+    echo "=== Waiting for Airflow services to become stable ==="
+    cd /opt/airflow || { print_error "Could not cd to /opt/airflow directory."; return 1; }
+
+    local max_attempts=12 # Wait up to 6 minutes (12 * 30s)
+    local attempt=1
+    
+    echo "Performing initial health check via HTTP..."
+    while ! curl -s --fail "http://localhost:8081/health" > /dev/null 2>&1; do
+        if [ $attempt -gt $max_attempts ]; then
+            print_error "Health check failed after $max_attempts attempts. Aborting."
+            return 1
+        fi
+        print_info "Attempt ${attempt}/${max_attempts}: Waiting for Airflow webserver to respond to health check..."
+        sleep 30
+        ((attempt++))
+    done
+    print_status "✅ Initial health check passed."
+
+    # Reset attempt counter for stability check
+    attempt=1
+    
+    echo "Performing service stability check via docker-compose..."
+    while ! docker-compose exec -T airflow-webserver airflow version > /dev/null 2>&1; do
+        if [ $attempt -gt $max_attempts ]; then
+            print_error "Service stability check failed after $max_attempts attempts. Aborting."
+            print_error "The webserver is responding to health checks, but docker-compose exec commands are failing."
+            print_error "This could indicate a problem with Docker or the container is crash-looping."
+            docker-compose ps >> /opt/airflow/logs/auto_setup.log
+            return 1
+        fi
+        print_info "Attempt ${attempt}/${max_attempts}: Waiting for Airflow service to become stable for exec commands..."
+        sleep 30
+        ((attempt++))
+    done
+    
+    print_status "✅ Airflow services are stable and responsive."
+    return 0
+}
+
 # Main script logic
 case "${1:-help}" in
     validate)
@@ -1206,6 +1246,9 @@ case "${1:-help}" in
         ;;
     restart-scheduler-internal)
         restart_scheduler_internal
+        ;;
+    wait-for-services-internal)
+        wait_for_services_internal
         ;;
     help|--help|-h)
         show_help

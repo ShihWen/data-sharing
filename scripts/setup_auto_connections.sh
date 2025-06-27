@@ -115,25 +115,12 @@ echo "Downloading airflow_dags from GCS..." >> $LOG_FILE
 gsutil cp gs://$BUCKET_NAME/scripts/airflow_dags ./airflow_dags || echo "*" > ./airflow_dags
 chown $AIRFLOW_UID:root ./airflow_dags
 
-# Wait for Airflow to be healthy
-echo "Waiting for Airflow health check..." >> $LOG_FILE
-timeout=600 # 10 minutes
-while [ $timeout -gt 0 ]; do
-    if curl -s --fail --connect-timeout 5 "http://localhost:8081/health" > /dev/null 2>&1; then
-        echo "Airflow is ready!" >> $LOG_FILE
-        break
-    fi
-    echo "Waiting for Airflow... $(($timeout / 10))s remaining" >> $LOG_FILE
-    sleep 10
-    timeout=$(($timeout - 10))
-done
-
-if [ $timeout -le 0 ]; then
-    echo "ERROR: Airflow did not become healthy in time." >> $LOG_FILE
+# Wait for Airflow to be healthy and stable
+echo "Waiting for Airflow to stabilize..." >> $LOG_FILE
+if ! ./airflow-manager.sh wait-for-services-internal >> $LOG_FILE 2>&1; then
+    echo "ERROR: Airflow services did not stabilize. The setup cannot continue." >> $LOG_FILE
     exit 1
 fi
-
-sleep 15 # Extra wait time for services to be fully responsive
 
 # Run setup using airflow-manager
 echo "Running connections setup..." >> $LOG_FILE
