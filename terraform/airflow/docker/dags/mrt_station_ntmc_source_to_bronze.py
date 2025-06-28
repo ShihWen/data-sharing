@@ -29,7 +29,7 @@ default_args = {
 @dag(
     dag_id="mrt_station_ntmc_source_to_bronze",
     default_args=default_args,
-    schedule_interval="0 10 * * 6",  # Saturday at 10:00 AM
+    schedule_interval='0 2 * * 6',  # Run at 10 AM every Saturday on Taiwan time
     catchup=False,
     tags=["mrt", "ntmc", "station", "bronze", "source", "incremental-load"],
 )

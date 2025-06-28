@@ -124,7 +124,7 @@ dag = DAG(
     'mrt_exit_bronze_to_silver',
     default_args=default_args,
     description='Transform MRT exit data from bronze to silver layer with version-based incremental processing',
-    schedule_interval='0 10 * * 6',  # Run at 10 AM every Saturday
+    schedule_interval='0 2 * * 6',  # Run at 10 AM every Saturday on Taiwan time
     start_date=days_ago(1),
     catchup=False,
     tags=['mrt', 'exit', 'bronze', 'silver', 'incremental-load'],

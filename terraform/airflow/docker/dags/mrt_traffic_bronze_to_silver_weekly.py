@@ -143,7 +143,7 @@ dag = DAG(
     'mrt_traffic_bronze_to_silver_weekly',
     default_args=default_args,
     description='SIMPLIFIED: MRT traffic data transfer from bronze to silver (one month at a time)',
-    schedule_interval='0 10 * * 6',  # Run at 10 AM every Saturday
+    schedule_interval='0 2 * * 6',  # Run at 10 AM every Saturday on Taiwan time
     start_date=days_ago(1),
     catchup=False,
     tags=['mrt', 'traffic', 'bronze', 'silver', 'incremental-load'],

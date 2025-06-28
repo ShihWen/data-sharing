@@ -29,7 +29,7 @@ from sql.mrt_station_queries import CHECK_NEW_VERSIONS_QUERY, TRANSFORM_AND_LOAD
 # --- DAG Configuration ---
 DAG_ID = "mrt_station_bronze_to_silver"
 DESCRIPTION = "Loads new MRT station data from bronze to silver, parsing and enriching it."
-SCHEDULE_INTERVAL = "0 10 * * 6"  # Saturday at 10:00 AM
+SCHEDULE_INTERVAL = '0 2 * * 6',  # Run at 10 AM every Saturday on Taiwan time
 START_DATE = pendulum.datetime(2023, 1, 1, tz="UTC")
 CATCHUP = False
 TAGS = ["mrt", "station", "bronze", "silver", "incremental-load", "trtc"]
