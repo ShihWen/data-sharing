@@ -142,6 +142,8 @@ pipeline {
                         rm -rf .terraform .terraform.lock.hcl
                         echo "Running Terraform init..."
                         terraform init -reconfigure -upgrade -backend-config="bucket=${DEV_TF_STATE_BUCKET}"
+                        echo "Verifying provider versions after init..."
+                        terraform providers
                     '''
                 }
             }
@@ -235,6 +237,8 @@ pipeline {
                         // resources that are already up-to-date.
                         sh '''
                             set -eu
+                            echo "Verifying provider versions before plan..."
+                            terraform providers
                             echo "Generating full terraform plan..."
                             terraform plan \\
                                 -var="project_id=${DEV_GCP_PROJECT_ID}" \\
