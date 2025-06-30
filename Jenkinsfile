@@ -138,6 +138,8 @@ pipeline {
                 dir('terraform') {
                     // Run terraform init with reconfigure flag
                     sh '''
+                        echo "Cleaning up previous Terraform state..."
+                        rm -rf .terraform .terraform.lock.hcl
                         echo "Running Terraform init..."
                         terraform init -reconfigure -upgrade -backend-config="bucket=${DEV_TF_STATE_BUCKET}"
                     '''
