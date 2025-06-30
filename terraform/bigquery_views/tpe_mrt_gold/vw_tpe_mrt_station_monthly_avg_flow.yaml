@@ -1,6 +1,6 @@
 view_id: "vw_tpe_mrt_station_monthly_avg_flow"
 dataset_id_var_name: "tpe_mrt_gold"
-description: "Average flow of MRT station in a month"
+description: "Optimized view for monthly average station traffic flow for Taipei MRT. Reduces scans on the source table."
 labels:
   owner: "data-engineering"
   layer: "gold" 

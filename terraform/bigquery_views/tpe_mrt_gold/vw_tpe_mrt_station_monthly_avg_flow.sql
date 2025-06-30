@@ -1,4 +1,10 @@
+-- This query calculates the monthly average traffic for each MRT station.
+-- It is optimized to reduce the number of scans on the large `tpe_mrt_silver.mrt_traffic` table.
+
 WITH
+  -- Step 1: Aggregate traffic for both entrances and exits in a single pass.
+  -- The UNNEST function is used to unpivot the entrance and exit columns,
+  -- which is more efficient than scanning the table twice and joining the results.
   traffic_agg AS (
     SELECT
       FORMAT_DATE('%Y-%m', dt) AS year_month,
@@ -13,6 +19,9 @@ WITH
       1,
       2
   ),
+
+  -- Step 2: Calculate the number of weekdays and weekend days for each month.
+  -- This requires a separate scan to correctly count distinct days.
   day_counts AS (
     SELECT
       FORMAT_DATE('%Y-%m', dt) AS year_month,
@@ -29,6 +38,9 @@ WITH
     GROUP BY
       1
   ),
+
+  -- Step 3: Join traffic data with day counts and calculate raw averages.
+  -- SAFE_DIVIDE is used to prevent division-by-zero errors if a month has no weekdays or weekends.
   draft AS (
     SELECT
       A.year_month,
@@ -40,10 +52,11 @@ WITH
       traffic_agg AS A
       LEFT JOIN day_counts AS B ON A.year_month = B.year_month
   ),
+
+  -- Step 4: Format the final output, including percentage change calculations.
   monthly_output AS (
     SELECT
       year_month,
-      PARSE_DATE('%Y-%m', year_month) as year_month_date,
       station,
       ROUND(avg_traffic_all_raw, 0) as avg_traffic_all,
       ROUND(avg_traffic_weekday_raw, 0) as avg_traffic_weekday,
@@ -65,6 +78,8 @@ WITH
     FROM
       draft
   ),
+
+  -- Step 5: Get station metadata for joining.
   station_table AS (
     SELECT
       join_key,
@@ -84,8 +99,9 @@ WITH
     GROUP BY
       join_key
   )
+
+-- Final SELECT statement to assemble the view.
 SELECT
-  A.year_month_date,
   A.year_month,
   C.station_id,
   A.station,
@@ -96,4 +112,5 @@ SELECT
   A.pct_change_sym
 FROM
   monthly_output AS A
-  LEFT JOIN station_table AS C ON A.station = C.join_key 
+  LEFT JOIN station_table AS C ON A.station = C.join_key
+ORDER BY PARSE_DATE('%Y-%m', A.year_month), A.avg_traffic_all DESC; 
