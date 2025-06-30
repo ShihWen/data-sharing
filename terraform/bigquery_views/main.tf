@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = ">= 4.40.0, < 5.0.0"
+    }
+  }
+}
+
 locals {
   # Find all .yaml files that define views or materialized views
   all_yaml_files = fileset(path.module, "**/*.yaml")
