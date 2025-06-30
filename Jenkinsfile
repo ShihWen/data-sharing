@@ -184,7 +184,7 @@ pipeline {
                     // Run terraform init with reconfigure flag
                     sh '''
                         echo "Running Terraform init..."
-                        terraform init -reconfigure -backend-config="bucket=${DEV_TF_STATE_BUCKET}"
+                        terraform init -reconfigure -upgrade -backend-config="bucket=${DEV_TF_STATE_BUCKET}"
                     '''
                 }
             }
