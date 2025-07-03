@@ -12,8 +12,9 @@ time_partitioning:
   field: "dt"
 
 # Clustering helps with query performance
-# clustering:
-#   - "data_source"
+clustering:
+  - "entrance"
+  - "exit"
 
 schema:  
   - {name: "dt",               type: "DATE",      mode: "NULLABLE", description: "Date of the record (日期)"}
