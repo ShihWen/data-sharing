@@ -1,0 +1,12 @@
+table_id: "mrt_station_display"
+dataset_id_var_name: "tpe_mrt_gold"
+description: "報表用站名代碼，例:台北車站的代碼以BL12/R10來表示"
+labels:
+  data_source: "silver"
+  data_type: "station"
+  tier: "gold"
+
+schema:
+  - {name: "station_name",    type: "STRING",    mode: "REQUIRED", description: "來自mrt_traffic的站名"}
+  - {name: "station_id",      type: "STRING",    mode: "REQUIRED", description: "轉運站以'/'合併，例:台北車站以BL12/R10來表示"}
+  - {name: "processed_at",    type: "TIMESTAMP", mode: "NULLABLE", description: "處理時間"} 

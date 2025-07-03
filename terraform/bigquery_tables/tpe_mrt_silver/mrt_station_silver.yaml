@@ -2,7 +2,7 @@ table_id: "mrt_station"
 dataset_id_var_name: "tpe_mrt_silver"
 description: "Cleansed and conformed MRT station information"
 labels:
-  data_source: "s3"
+  data_source: "bronze"
   data_type: "station"
   tier: "silver"
 
