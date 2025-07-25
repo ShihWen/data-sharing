@@ -1,0 +1,28 @@
+table_id: "road_network"
+dataset_id_var_name: "osm_silver"
+description: "Cleaned, validated, and current road network data from OpenStreetMap"
+labels:
+  data_source: "openstreetmap"
+  data_type: "road_network"
+  tier: "silver"
+
+schema:
+  - {name: "u", type: "INTEGER", mode: "NULLABLE", description: "The starting node ID of the edge."}
+  - {name: "v", type: "INTEGER", mode: "NULLABLE", description: "The ending node ID of the edge."}
+  - {name: "osmid", type: "INTEGER", mode: "REQUIRED", description: "The OpenStreetMap ID of the way. This is the primary key."}
+  - {name: "highway", type: "STRING", mode: "NULLABLE", description: "The type of highway (e.g., 'tertiary', 'secondary')."}
+  - {name: "lanes", type: "INTEGER", mode: "NULLABLE", description: "The number of lanes on the road."}
+  - {name: "name", type: "STRING", mode: "NULLABLE", description: "The name of the road."}
+  - {name: "oneway", type: "BOOLEAN", mode: "NULLABLE", description: "Indicates if the road is one-way."}
+  - {name: "reversed", type: "BOOLEAN", mode: "NULLABLE", description: "Indicates if the direction of the way is reversed."}
+  - {name: "length", type: "FLOAT", mode: "NULLABLE", description: "The length of the road segment in meters."}
+  - {name: "geometry", type: "GEOGRAPHY", mode: "NULLABLE", description: "The linestring geometry of the road segment."}
+  - {name: "bridge", type: "STRING", mode: "NULLABLE", description: "Indicates if the road is on a bridge."}
+  - {name: "maxspeed", type: "INTEGER", mode: "NULLABLE", description: "The maximum speed limit on the road."}
+  - {name: "ref", type: "STRING", mode: "NULLABLE", description: "A reference number for the road."}
+  - {name: "service", type: "STRING", mode: "NULLABLE", description: "The type of service road."}
+  - {name: "width", type: "FLOAT", mode: "NULLABLE", description: "The width of the road in meters."}
+  - {name: "access", type: "STRING", mode: "NULLABLE", description: "The access restrictions on the road."}
+  - {name: "tunnel", type: "STRING", mode: "NULLABLE", description: "Indicates if the road is in a tunnel."}
+  - {name: "junction", type: "STRING", mode: "NULLABLE", description: "The type of junction."}
+  - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp."} 
