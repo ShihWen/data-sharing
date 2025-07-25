@@ -10,6 +10,9 @@ RUN apt-get update \
         pkg-config \
         gcc \
         git \
+        # Add new dependencies for GeoPandas
+        gdal-bin \
+        libgdal-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
