@@ -18,7 +18,8 @@ services:
     restart: always
 
   airflow-webserver:
-    image: apache/airflow:2.7.1
+    build: .
+    image: custom-airflow:latest
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,7 +52,8 @@ services:
     restart: always
 
   airflow-scheduler:
-    image: apache/airflow:2.7.1
+    build: .
+    image: custom-airflow:latest
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,7 +75,8 @@ services:
     restart: always
 
   airflow-init:
-    image: apache/airflow:2.7.1
+    build: .
+    image: custom-airflow:latest
     depends_on:
       postgres:
         condition: service_healthy
