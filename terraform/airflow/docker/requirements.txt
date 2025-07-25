@@ -7,4 +7,6 @@ gcsfs
 requests
 osmium
 pandas
-pandas-gbq 
+pandas-gbq
+geopandas
+shapely 
