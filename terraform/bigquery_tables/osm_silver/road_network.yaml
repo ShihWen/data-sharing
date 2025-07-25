@@ -1,6 +1,6 @@
 table_id: "road_network"
 dataset_id_var_name: "osm_silver"
-description: "Cleaned, validated, and current road network data from OpenStreetMap"
+description: "Type 2 Slowly Changing Dimension table for road network data from OpenStreetMap, tracking historical changes."
 labels:
   data_source: "openstreetmap"
   data_type: "road_network"
@@ -9,7 +9,9 @@ labels:
 schema:
   - {name: "u", type: "INTEGER", mode: "NULLABLE", description: "The starting node ID of the edge."}
   - {name: "v", type: "INTEGER", mode: "NULLABLE", description: "The ending node ID of the edge."}
-  - {name: "osmid", type: "INTEGER", mode: "REQUIRED", description: "The OpenStreetMap ID of the way. This is the primary key."}
+  - {name: "osmid", type: "INTEGER", mode: "REQUIRED", description: "The OpenStreetMap ID of the way. This is the natural key for the road."}
+  - {name: "city", type: "STRING", mode: "NULLABLE", description: "The city the road segment belongs to (e.g., 'Taipei City')."}
+  - {name: "district", type: "STRING", mode: "NULLABLE", description: "The district the road segment belongs to (e.g., 'Songshan District')."}
   - {name: "highway", type: "STRING", mode: "NULLABLE", description: "The type of highway (e.g., 'tertiary', 'secondary')."}
   - {name: "lanes", type: "INTEGER", mode: "NULLABLE", description: "The number of lanes on the road."}
   - {name: "name", type: "STRING", mode: "NULLABLE", description: "The name of the road."}
@@ -25,4 +27,7 @@ schema:
   - {name: "access", type: "STRING", mode: "NULLABLE", description: "The access restrictions on the road."}
   - {name: "tunnel", type: "STRING", mode: "NULLABLE", description: "Indicates if the road is in a tunnel."}
   - {name: "junction", type: "STRING", mode: "NULLABLE", description: "The type of junction."}
-  - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp."} 
+  - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp."}
+  - {name: "valid_from_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record became valid."}
+  - {name: "valid_to_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record expired. A future date indicates the current version."}
+  - {name: "is_current", type: "BOOLEAN", mode: "NULLABLE", description: "Flag to easily identify the current version of the record (TRUE for current)."} 
