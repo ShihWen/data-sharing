@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import pendulum
+import requests
+from pathlib import Path
+import tempfile
 
 from airflow.models.dag import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 
 from sql.osm_road_network_queries import MERGE_SCD2_ROAD_NETWORK
+from utils.osm_processing import process_pbf_to_dataframe
 
 # Constants
 GCS_BUCKET = "{{ var.value.gcs_data_lake_bucket }}"
@@ -20,46 +25,95 @@ GEOFABRIK_TAIWAN_URL = "https://download.geofabrik.de/asia/taiwan-latest.osm.pbf
 
 def download_osm_data_to_gcs(**context):
     """
-    Downloads the latest OSM data for Taiwan from Geofabrik and uploads it to GCS.
-    A real implementation would download diffs, but for this initial setup,
-    we download the full file.
+    Downloads the latest OSM PBF data for Taiwan from Geofabrik and uploads it to GCS.
     """
     execution_date = context["ds"]
     gcs_hook = GCSHook()
-    # In a real scenario, we would use a library like `requests` to download the file.
-    # To keep this example simple, we'll simulate the download.
-    # This function would need to be expanded with actual download logic.
-    print(f"Simulating download of {GEOFABRIK_TAIWAN_URL} for execution date {execution_date}")
     
-    # Placeholder for the downloaded file content
-    dummy_content = b"dummy osm pbf data"
     file_name = f"osm/bronze/pbf/taiwan-latest-{execution_date}.osm.pbf"
     
-    gcs_hook.upload(
-        bucket_name=GCS_BUCKET,
-        object_name=file_name,
-        data=dummy_content,
-    )
-    
-    context["ti"].xcom_push(key="gcs_object_path", value=file_name)
-    print(f"Successfully uploaded to gs://{GCS_BUCKET}/{file_name}")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        local_file_path = Path(tmpdir) / "taiwan-latest.osm.pbf"
+        
+        print(f"Downloading data from {GEOFABRIK_TAIWAN_URL} to {local_file_path}")
+        
+        try:
+            with requests.get(GEOFABRIK_TAIWAN_URL, stream=True) as r:
+                r.raise_for_status()
+                with open(local_file_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            
+            print("Download complete. Uploading to GCS...")
+            
+            gcs_hook.upload(
+                bucket_name=GCS_BUCKET,
+                object_name=file_name,
+                filename=str(local_file_path),
+            )
+            
+            context["ti"].xcom_push(key="gcs_object_path", value=file_name)
+            print(f"Successfully uploaded to gs://{GCS_BUCKET}/{file_name}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading file: {e}")
+            raise
 
 
 def process_osm_data_and_load_to_staging(**context):
     """
-    This is a placeholder function.
-    In a real implementation, this function would:
-    1. Download the PBF file from GCS.
-    2. Use a library like `pyosmium` to parse the file.
-    3. For each road, perform a reverse geocode to get city/district if needed.
-    4. Transform the data to match the BigQuery schema.
-    5. Load the transformed data into the staging BigQuery table.
+    Downloads the PBF file from GCS, processes it into a DataFrame,
+    and uploads it to a staging table in BigQuery.
     """
     gcs_object_path = context["ti"].xcom_pull(task_ids="download_osm_data", key="gcs_object_path")
-    print(f"Placeholder: Processing data from {gcs_object_path} and loading to staging table.")
-    # Here you would implement the logic using pandas, pyosmium, etc.
-    # and the BigQuery client library to load data to the staging table.
-    print(f"Data loaded to BigQuery table: {GCP_PROJECT_ID}.{SILVER_DATASET}.{STAGING_TABLE}")
+    gcs_hook = GCSHook()
+    bq_hook = BigQueryHook()
+    credentials = bq_hook.get_credentials()
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        local_file_path = Path(tmpdir) / "data.osm.pbf"
+        
+        print(f"Downloading {gcs_object_path} from GCS to {local_file_path}...")
+        gcs_hook.download(
+            bucket_name=GCS_BUCKET,
+            object_name=gcs_object_path,
+            filename=str(local_file_path),
+        )
+        
+        print("Processing PBF file into DataFrame...")
+        df = process_pbf_to_dataframe(str(local_file_path))
+        
+        print(f"Uploading {len(df)} records to staging table: {GCP_PROJECT_ID}.{SILVER_DATASET}.{STAGING_TABLE}")
+        
+        df.to_gbq(
+            destination_table=f"{SILVER_DATASET}.{STAGING_TABLE}",
+            project_id=GCP_PROJECT_ID,
+            credentials=credentials,
+            if_exists='replace',
+            table_schema=[
+                {'name': 'osmid', 'type': 'INTEGER'},
+                {'name': 'highway', 'type': 'STRING'},
+                {'name': 'name', 'type': 'STRING'},
+                {'name': 'lanes', 'type': 'INTEGER'},
+                {'name': 'oneway', 'type': 'STRING'},
+                {'name': 'reversed', 'type': 'STRING'},
+                {'name': 'length', 'type': 'FLOAT'},
+                {'name': 'bridge', 'type': 'STRING'},
+                {'name': 'maxspeed', 'type': 'INTEGER'},
+                {'name': 'ref', 'type': 'STRING'},
+                {'name': 'service', 'type': 'STRING'},
+                {'name': 'width', 'type': 'FLOAT'},
+                {'name': 'access', 'type': 'STRING'},
+                {'name': 'tunnel', 'type': 'STRING'},
+                {'name': 'junction', 'type': 'STRING'},
+                {'name': 'city', 'type': 'STRING'},
+                {'name': 'district', 'type': 'STRING'},
+                {'name': 'geometry', 'type': 'GEOGRAPHY'},
+                {'name': 'u', 'type': 'INTEGER'},
+                {'name': 'v', 'type': 'INTEGER'},
+            ]
+        )
+        print("Upload to staging table complete.")
 
 
 with DAG(
