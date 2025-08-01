@@ -15,6 +15,9 @@ from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from sql.osm_road_network_queries import MERGE_SCD2_ROAD_NETWORK
 from utils.osm_processing import process_pbf_to_dataframe
 
+import logging
+logging.info("DAG file osm_road_network_bronze_to_silver_weekly.py parsed at startup.")
+
 # Constants
 GCP_PROJECT_ID = "{{ var.value.gcp_project_id }}"
 SILVER_DATASET = "osm_silver"
