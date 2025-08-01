@@ -5,7 +5,7 @@ from shapely.geometry import LineString
 import requests
 import json
 
-TAIPEI_BOUNDARY_URL = "https://raw.githubusercontent.com/gipong/p2p-gis/master/taipei.json"
+TAIPEI_BOUNDARY_URL = "https://raw.githubusercontent.com/dnow-00/data-warehouse-for-beginners/main/data/taipei.json"
 
 def get_taipei_boundary() -> gpd.GeoDataFrame:
     """
