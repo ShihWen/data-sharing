@@ -66,8 +66,10 @@ pipeline {
                 script {
                     sh '''
                         echo "Uploading core Airflow configuration files to GCS..."
-                        gsutil cp terraform/airflow/docker/docker-compose.yml gs://${AIRFLOW_BUCKET}/docker/docker-compose.yml
-                        echo "✅ Core configuration uploaded."
+                        # Use rsync to sync the entire docker config directory, which is more robust
+                        # and includes Dockerfile, requirements.txt, and docker-compose.yml
+                        gsutil -m rsync -r -d terraform/airflow/docker/ gs://${AIRFLOW_BUCKET}/docker/
+                        echo "✅ Core configuration directory synced."
                     '''
                 }
             }
