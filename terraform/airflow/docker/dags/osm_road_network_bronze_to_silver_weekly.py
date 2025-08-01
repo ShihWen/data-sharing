@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 
 from airflow.models.dag import DAG
+from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
@@ -15,7 +16,6 @@ from sql.osm_road_network_queries import MERGE_SCD2_ROAD_NETWORK
 from utils.osm_processing import process_pbf_to_dataframe
 
 # Constants
-GCS_BUCKET = "{{ var.value.gcs_data_lake_bucket }}"
 GCP_PROJECT_ID = "{{ var.value.gcp_project_id }}"
 SILVER_DATASET = "osm_silver"
 SILVER_TABLE = "road_network"
@@ -29,6 +29,7 @@ def download_osm_data_to_gcs(**context):
     """
     execution_date = context["ds"]
     gcs_hook = GCSHook()
+    bucket_name = Variable.get("gcs_data_lake_bucket")
     
     file_name = f"osm/bronze/pbf/taiwan-latest-{execution_date}.osm.pbf"
     
@@ -47,13 +48,13 @@ def download_osm_data_to_gcs(**context):
             print("Download complete. Uploading to GCS...")
             
             gcs_hook.upload(
-                bucket_name=GCS_BUCKET,
+                bucket_name=bucket_name,
                 object_name=file_name,
                 filename=str(local_file_path),
             )
             
             context["ti"].xcom_push(key="gcs_object_path", value=file_name)
-            print(f"Successfully uploaded to gs://{GCS_BUCKET}/{file_name}")
+            print(f"Successfully uploaded to gs://{bucket_name}/{file_name}")
 
         except requests.exceptions.RequestException as e:
             print(f"Error downloading file: {e}")
@@ -69,13 +70,14 @@ def process_osm_data_and_load_to_staging(**context):
     gcs_hook = GCSHook()
     bq_hook = BigQueryHook()
     credentials = bq_hook.get_credentials()
+    bucket_name = Variable.get("gcs_data_lake_bucket")
     
     with tempfile.TemporaryDirectory() as tmpdir:
         local_file_path = Path(tmpdir) / "data.osm.pbf"
         
         print(f"Downloading {gcs_object_path} from GCS to {local_file_path}...")
         gcs_hook.download(
-            bucket_name=GCS_BUCKET,
+            bucket_name=bucket_name,
             object_name=gcs_object_path,
             filename=str(local_file_path),
         )
