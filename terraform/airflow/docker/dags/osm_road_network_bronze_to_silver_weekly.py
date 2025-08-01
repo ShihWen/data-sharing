@@ -121,7 +121,7 @@ def process_osm_data_and_load_to_staging(**context):
 with DAG(
     dag_id="osm_road_network_bronze_to_silver_weekly",
     start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
-    schedule="0 10 * * 6",  # Saturday at 10:00 AM
+    schedule="0 2 * * 6",  # Saturday at 10:00 AM
     catchup=False,
     tags=["osm", "silver"],
     default_args={
