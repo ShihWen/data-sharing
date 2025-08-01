@@ -47,6 +47,13 @@ resource "google_storage_bucket" "data_lake" {
   uniform_bucket_level_access = true
 }
 
+# Grant the Airflow SA permission to create and manage objects in the data lake bucket.
+resource "google_storage_bucket_iam_member" "airflow_sa_data_lake_admin" {
+  bucket = google_storage_bucket.data_lake.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${module.airflow.airflow_service_account_email}"
+}
+
 # Get project information
 data "google_project" "current" {
   project_id = var.project_id
