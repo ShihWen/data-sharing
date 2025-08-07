@@ -127,7 +127,7 @@ with DAG(
     default_args={
         "owner": "data_engineering",
         "retries": 1,
-        "retry_delay": pendulum.duration(minutes=10),
+        "retry_delay": pendulum.duration(minutes=5),
     },
 ) as dag:
 
