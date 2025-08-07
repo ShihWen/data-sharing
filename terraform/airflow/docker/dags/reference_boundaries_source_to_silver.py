@@ -8,8 +8,10 @@ from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 
 from utils.boundary_processing import process_city_boundaries
+from sql.boundary_queries import MERGE_SCD2_CITIES, INSERT_UPDATED_CITIES
 
 # This is a placeholder for the TDX API fetching logic you provided
 def get_tdx_result(app_id, app_key, auth_url, url):
@@ -69,10 +71,10 @@ def fetch_and_save_boundaries_to_gcs(**context):
     context["ti"].xcom_push(key="gcs_paths", value=gcs_paths)
 
 
-def process_boundaries_to_silver(**context):
+def process_boundaries_to_staging(**context):
     """
     Reads the raw city boundary JSON file from GCS, transforms it,
-    and loads it into the reference.dim_cities table.
+    and loads it into a staging table in the reference dataset.
     """
     gcs_paths = context["ti"].xcom_pull(task_ids="fetch_and_save_boundaries_to_gcs", key="gcs_paths")
     city_gcs_path = gcs_paths.get("city")
@@ -99,14 +101,14 @@ def process_boundaries_to_silver(**context):
         print("No city data to upload. Skipping.")
         return
 
-    print(f"Uploading {len(gdf)} records to reference.dim_cities...")
+    print(f"Uploading {len(gdf)} records to reference.dim_cities_staging...")
     gdf.to_gbq(
-        destination_table="reference.dim_cities",
+        destination_table="reference.dim_cities_staging",
         project_id=project_id,
         credentials=credentials,
         if_exists='replace'
     )
-    print("Successfully loaded data into reference.dim_cities.")
+    print("Successfully loaded data into reference.dim_cities_staging.")
 
 
 with DAG(
@@ -127,9 +129,39 @@ with DAG(
         python_callable=fetch_and_save_boundaries_to_gcs,
     )
 
-    process_silver_data = PythonOperator(
-        task_id="process_boundaries_to_silver",
-        python_callable=process_boundaries_to_silver,
+    process_silver_staging = PythonOperator(
+        task_id="process_boundaries_to_staging",
+        python_callable=process_boundaries_to_staging,
+    )
+    
+    merge_into_silver_scd2 = BigQueryInsertJobOperator(
+        task_id="merge_into_silver_scd2",
+        configuration={
+            "query": {
+                "query": MERGE_SCD2_CITIES.format(
+                    project_id="{{ var.value.gcp_project_id }}",
+                    dataset_id="reference",
+                    table_id="dim_cities",
+                    staging_table_id="dim_cities_staging",
+                ),
+                "useLegacySql": False,
+            }
+        },
     )
 
-    fetch_bronze_data >> process_silver_data 
+    insert_updated_records = BigQueryInsertJobOperator(
+        task_id="insert_updated_records",
+        configuration={
+            "query": {
+                "query": INSERT_UPDATED_CITIES.format(
+                    project_id="{{ var.value.gcp_project_id }}",
+                    dataset_id="reference",
+                    table_id="dim_cities",
+                    staging_table_id="dim_cities_staging",
+                ),
+                "useLegacySql": False,
+            }
+        },
+    )
+
+    fetch_bronze_data >> process_silver_staging >> merge_into_silver_scd2 >> insert_updated_records 

@@ -17,8 +17,8 @@ def process_city_boundaries(raw_data: str) -> gpd.GeoDataFrame:
         geom = shape(feature['geometry'])
         
         records.append({
-            'city_id': properties['City'],
-            'city_name': properties['CityName'],
+            'city_name_en': properties['City'],
+            'city_name_zh': properties['CityName'],
             'update_date': pd.to_datetime(properties['UpdateDate']),
             'check_date': pd.to_datetime(properties['CheckDate']),
             'geometry': geom
