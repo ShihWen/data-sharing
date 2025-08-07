@@ -28,8 +28,11 @@ def get_tdx_result(app_id, app_key, auth_url, url):
                 'coordinates': [[[[121.569, 25.197], [121.637, 25.173], [121.61, 25.108], [121.583, 24.993], [121.465, 25.048], [121.52, 25.195], [121.569, 25.197]]]]
             },
             'properties': {
-                'City': 'Taipei',
-                'CityName': '臺北市'
+                'model': {
+                    'City': 'LienchiangCounty', 
+                    'CityName': '連江縣', 
+                    'UpdateDate': '2024-05-20T00:00:00', 
+                    'CheckDate': '2024-05-20T00:00:00'}
             }
         }]
     }

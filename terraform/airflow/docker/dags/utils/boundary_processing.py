@@ -11,7 +11,7 @@ def process_city_boundaries(raw_data: str) -> gpd.GeoDataFrame:
     
     records = []
     for feature in data['features']:
-        properties = feature['properties']
+        properties = feature['properties']['model']
         
         # Create a shapely geometry object from the GeoJSON geometry
         geom = shape(feature['geometry'])
