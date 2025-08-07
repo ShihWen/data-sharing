@@ -94,6 +94,10 @@ def process_boundaries_to_staging(**context):
         object_name=city_gcs_path,
     ).decode('utf-8')
     
+    print("================== RAW BOUNDARY DATA FROM GCS ==================")
+    print(raw_data)
+    print("================================================================")
+    
     print("Transforming city boundaries...")
     gdf = process_city_boundaries(raw_data)
 
