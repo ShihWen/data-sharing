@@ -82,6 +82,9 @@ def process_pbf_to_dataframe(pbf_file_path: str) -> pd.DataFrame:
     # Convert the list of dictionaries to a GeoDataFrame
     gdf = gpd.GeoDataFrame(handler.ways, geometry='geometry', crs="EPSG:4326")
 
+    # Filter out any invalid or empty geometries that may have been created
+    gdf = gdf[gdf.geometry.is_valid & ~gdf.geometry.is_empty]
+
     print("Clipping road network to the precise Taipei boundary...")
     # Perform a spatial join (intersection) to keep only roads that are within the Taipei polygon
     clipped_gdf = gpd.sjoin(gdf, taipei_boundary, how="inner", predicate='intersects')

@@ -81,6 +81,7 @@ def process_osm_data_and_load_to_staging(**context):
     bq_hook = BigQueryHook()
     credentials = bq_hook.get_credentials()
     bucket_name = Variable.get("gcs_data_lake_bucket")
+    project_id = Variable.get("gcp_project_id")
     
     with tempfile.TemporaryDirectory() as tmpdir:
         local_file_path = Path(tmpdir) / "data.osm.pbf"
@@ -95,11 +96,15 @@ def process_osm_data_and_load_to_staging(**context):
         print("Processing PBF file into DataFrame...")
         df = process_pbf_to_dataframe(str(local_file_path))
         
-        print(f"Uploading {len(df)} records to staging table: {GCP_PROJECT_ID}.{SILVER_DATASET}.{STAGING_TABLE}")
+        if df.empty:
+            print("Skipping upload to BigQuery as the DataFrame is empty.")
+            return
+
+        print(f"Uploading {len(df)} records to staging table: {project_id}.{SILVER_DATASET}.{STAGING_TABLE}")
         
         df.to_gbq(
             destination_table=f"{SILVER_DATASET}.{STAGING_TABLE}",
-            project_id=GCP_PROJECT_ID,
+            project_id=project_id,
             credentials=credentials,
             if_exists='replace',
             table_schema=[
@@ -156,7 +161,7 @@ with DAG(
         configuration={
             "query": {
                 "query": MERGE_SCD2_ROAD_NETWORK.format(
-                    project_id=GCP_PROJECT_ID,
+                    project_id="{{ var.value.gcp_project_id }}",
                     dataset_id=SILVER_DATASET,
                     table_id=SILVER_TABLE,
                     staging_table_id=STAGING_TABLE,
