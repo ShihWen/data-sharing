@@ -110,6 +110,13 @@ def process_pbf_to_dataframe(pbf_file_path: str) -> pd.DataFrame:
     clipped_gdf['maxspeed'] = pd.to_numeric(clipped_gdf['maxspeed'], errors='coerce').astype('Int64')
     clipped_gdf['length'] = pd.to_numeric(clipped_gdf['length'], errors='coerce').astype('float')
     clipped_gdf['width'] = pd.to_numeric(clipped_gdf['width'], errors='coerce').astype('float')
+
+    # Standardize boolean-like columns to actual booleans
+    # The 'oneway' and 'reversed' tags can have values like 'yes', 'no', 'true', 'false', '1', '0'.
+    # This mapping handles the common cases and defaults any other value to False.
+    bool_map = {'yes': True, 'true': True, '1': True, 'no': False, 'false': False, '0': False}
+    clipped_gdf['oneway'] = clipped_gdf['oneway'].str.lower().map(bool_map).fillna(False).astype(bool)
+    clipped_gdf['reversed'] = clipped_gdf['reversed'].str.lower().map(bool_map).fillna(False).astype(bool)
     
     # Convert the shapely geometry objects to Well-Known Text (WKT) strings,
     # which is the format BigQuery expects for GEOGRAPHY data.
