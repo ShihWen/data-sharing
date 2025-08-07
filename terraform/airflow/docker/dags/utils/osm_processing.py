@@ -70,8 +70,8 @@ def process_pbf_to_dataframe(pbf_file_path: str) -> pd.DataFrame:
     
     print("Processing PBF file...")
     handler = WayHandler()
-    # Use the boundary's bounding box to pre-filter ways, which is more efficient
-    handler.apply_file(pbf_file_path, locations=True, box=taipei_boundary.total_bounds)
+    # The PBF file is parsed in its entirety. The clipping to the boundary happens later.
+    handler.apply_file(pbf_file_path, locations=True)
     
     if not handler.ways:
         print("Warning: No ways were processed. The PBF file might not cover the Taipei area.")
