@@ -1,0 +1,16 @@
+table_id: "dim_cities"
+dataset_id_var_name: "reference"
+description: "Dimension table containing the official administrative boundaries and names for cities in Taiwan."
+labels:
+  data_source: "tdx"
+  data_type: "boundaries"
+  tier: "silver"
+  granularity: "city"
+
+schema:
+  - {name: "city_id", type: "STRING", mode: "REQUIRED", description: "The English identifier for the city (e.g., 'LienchiangCounty')."}
+  - {name: "city_name", type: "STRING", mode: "NULLABLE", description: "The traditional Chinese name of the city (e.g., '連江縣')."}
+  - {name: "geometry", type: "GEOGRAPHY", mode: "NULLABLE", description: "The MultiPolygon geometry representing the boundary of the city."}
+  - {name: "update_date", type: "TIMESTAMP", mode: "NULLABLE", description: "The date the source data was last updated."}
+  - {name: "check_date", type: "TIMESTAMP", mode: "NULLABLE", description: "The date the source data was last checked."}
+  - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."} 
