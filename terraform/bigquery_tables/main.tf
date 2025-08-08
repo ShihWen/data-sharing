@@ -20,12 +20,12 @@ output "table_configs" {
 resource "google_bigquery_table" "tables" {
   for_each = local.table_configs
 
-  dataset_id  = var.dataset_ids[each.value.dataset_id_var_name]
+  dataset_id  = each.value.dataset_id
   table_id    = each.value.table_id
   project     = var.project_id
   description = each.value.description
 
-  labels = each.value.labels
+  labels = lookup(each.value, "labels", {})
 
   deletion_protection = false
 

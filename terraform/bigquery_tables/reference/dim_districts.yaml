@@ -2,6 +2,11 @@ dataset_id: reference
 table_id: dim_districts
 friendly_name: "Dimension: Districts"
 description: "SCD Type 2 table for administrative districts in Taiwan. Contains district code, names, and boundary geometry."
+labels:
+  environment: "development"
+  domain: "reference"
+  data_tier: "silver"
+  owner: "data_engineering"
 schema:
   - name: "district_code"
     type: "STRING"
