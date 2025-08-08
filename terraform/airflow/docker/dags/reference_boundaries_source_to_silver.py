@@ -11,31 +11,9 @@ from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 
 from utils.boundary_processing import process_city_boundaries
+from utils.tdx_api import get_tdx_data
 from sql.boundary_queries import MERGE_SCD2_CITIES, INSERT_UPDATED_CITIES
 
-# This is a placeholder for the TDX API fetching logic you provided
-def get_tdx_result(app_id, app_key, auth_url, url):
-    # In a real implementation, the Auth and Data classes would be here
-    # or in a shared utility file. For simplicity, we simulate the output.
-    print(f"Simulating API call to {url}")
-    # This is a simplified version of the real API output
-    return {
-        'type': 'FeatureCollection',
-        'features': [{
-            'type': 'Feature',
-            'geometry': {
-                'type': 'MultiPolygon',
-                'coordinates': [[[[121.569, 25.197], [121.637, 25.173], [121.61, 25.108], [121.583, 24.993], [121.465, 25.048], [121.52, 25.195], [121.569, 25.197]]]]
-            },
-            'properties': {
-                'model': {
-                    'City': 'LienchiangCounty', 
-                    'CityName': '連江縣', 
-                    'UpdateDate': '2024-05-20T00:00:00', 
-                    'CheckDate': '2024-05-20T00:00:00'}
-            }
-        }]
-    }
 
 def fetch_and_save_boundaries_to_gcs(**context):
     """
@@ -46,10 +24,10 @@ def fetch_and_save_boundaries_to_gcs(**context):
     bucket_name = Variable.get("gcs_data_lake_bucket")
     gcs_hook = GCSHook()
     
-    # In a real implementation, these would be fetched from Airflow Variables/Secrets
-    app_id = "YOUR_APP_ID"
-    app_key = "YOUR_APP_KEY"
-    auth_url = "YOUR_TDX_AUTH_URL"
+    # Fetch TDX credentials from Airflow Variables (which should be stored in Secret Manager)
+    app_id = Variable.get("tdx_client_id")
+    app_key = Variable.get("tdx_client_secret")
+    auth_url = "https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token"
     
     urls = {
         "city": "https://tdx.transportdata.tw/api/basic/V3/Map/District/Boundary/City?%24format=GEOJSON",
@@ -59,8 +37,8 @@ def fetch_and_save_boundaries_to_gcs(**context):
     
     gcs_paths = {}
     for level, url in urls.items():
-        print(f"Fetching {level} boundaries...")
-        data = get_tdx_result(app_id, app_key, auth_url, url)
+        print(f"Fetching {level} boundaries from real TDX API...")
+        data = get_tdx_data(app_id, app_key, auth_url, url)
         
         file_name = f"reference/bronze/boundaries/{level}_{execution_date}.json"
         gcs_hook.upload(
