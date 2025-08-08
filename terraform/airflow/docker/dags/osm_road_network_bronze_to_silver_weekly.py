@@ -85,7 +85,7 @@ def process_osm_data_and_load_to_staging(**context):
     project_id = Variable.get("gcp_project_id")
     
     # For now, we hardcode Taipei City. This can be parameterized later.
-    clip_city_name_en = "TaipeiCity"
+    clip_city_name_en = "Taipei"
 
     logging.info(f"Fetching boundary for '{clip_city_name_en}' from reference.dim_cities...")
     
