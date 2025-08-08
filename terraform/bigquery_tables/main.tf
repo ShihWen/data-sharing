@@ -20,7 +20,7 @@ output "table_configs" {
 resource "google_bigquery_table" "tables" {
   for_each = local.table_configs
 
-  dataset_id  = each.value.dataset_id
+  dataset_id  = dirname(each.key)
   table_id    = each.value.table_id
   project     = var.project_id
   description = each.value.description

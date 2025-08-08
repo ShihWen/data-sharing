@@ -1,5 +1,4 @@
 table_id: "dim_cities"
-dataset_id_var_name: "reference"
 description: "Dimension table containing the official administrative boundaries and names for cities in Taiwan. Tracks historical changes (SCD Type 2)."
 labels:
   data_source: "tdx"
