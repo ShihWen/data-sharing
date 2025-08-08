@@ -73,34 +73,58 @@ def download_osm_data_to_gcs(**context):
 
 def process_osm_data_and_load_to_staging(**context):
     """
-    Downloads the PBF file from GCS, processes it into a DataFrame,
-    and uploads it to a staging table in BigQuery.
+    Downloads the PBF file from GCS, processes it into a DataFrame using a
+    boundary from the reference.dim_cities table, and uploads it to a 
+    staging table in BigQuery.
     """
     gcs_object_path = context["ti"].xcom_pull(task_ids="download_osm_data", key="gcs_object_path")
     gcs_hook = GCSHook()
-    bq_hook = BigQueryHook()
+    bq_hook = BigQueryHook(use_legacy_sql=False)
     credentials = bq_hook.get_credentials()
     bucket_name = Variable.get("gcs_data_lake_bucket")
     project_id = Variable.get("gcp_project_id")
     
+    # For now, we hardcode Taipei City. This can be parameterized later.
+    clip_city_name_en = "TaipeiCity"
+
+    logging.info(f"Fetching boundary for '{clip_city_name_en}' from reference.dim_cities...")
+    
+    boundary_query = f"""
+        SELECT ST_ASTEXT(geometry) as wkt
+        FROM `{project_id}.reference.dim_cities`
+        WHERE city_name_en = '{clip_city_name_en}' AND is_current = TRUE
+        LIMIT 1
+    """
+
+    df_boundary = bq_hook.get_pandas_df(sql=boundary_query, dialect="standard")
+
+    if df_boundary.empty:
+        raise ValueError(f"Could not find a current boundary for city: {clip_city_name_en}")
+
+    boundary_wkt = df_boundary['wkt'][0]
+    logging.info("Boundary successfully fetched from BigQuery.")
+
     with tempfile.TemporaryDirectory() as tmpdir:
         local_file_path = Path(tmpdir) / "data.osm.pbf"
         
-        print(f"Downloading {gcs_object_path} from GCS to {local_file_path}...")
+        logging.info(f"Downloading {gcs_object_path} from GCS to {local_file_path}...")
         gcs_hook.download(
             bucket_name=bucket_name,
             object_name=gcs_object_path,
             filename=str(local_file_path),
         )
         
-        print("Processing PBF file into DataFrame...")
-        df = process_pbf_to_dataframe(str(local_file_path))
+        logging.info("Processing PBF file into DataFrame...")
+        df = process_pbf_to_dataframe(
+            pbf_file_path=str(local_file_path),
+            boundary_wkt=boundary_wkt
+        )
         
         if df.empty:
-            print("Skipping upload to BigQuery as the DataFrame is empty.")
+            logging.info("Skipping upload to BigQuery as the DataFrame is empty.")
             return
 
-        print(f"Uploading {len(df)} records to staging table: {project_id}.{SILVER_DATASET}.{STAGING_TABLE}")
+        logging.info(f"Uploading {len(df)} records to staging table: {project_id}.{SILVER_DATASET}.{STAGING_TABLE}")
         
         df.to_gbq(
             destination_table=f"{SILVER_DATASET}.{STAGING_TABLE}",
@@ -130,7 +154,7 @@ def process_osm_data_and_load_to_staging(**context):
                 {'name': 'v', 'type': 'INTEGER'},
             ]
         )
-        print("Upload to staging table complete.")
+        logging.info("Upload to staging table complete.")
 
 
 with DAG(
