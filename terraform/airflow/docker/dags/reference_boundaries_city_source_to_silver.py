@@ -98,13 +98,12 @@ def process_boundaries_to_staging(**context):
     )
     print("Successfully loaded data into reference.dim_cities_staging.")
 
-
 with DAG(
-    dag_id="reference_boundaries_source_to_silver",
+    dag_id="reference_boundaries_city_source_to_silver",
     start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
     schedule="@monthly",
     catchup=False,
-    tags=["reference", "silver", "dimensions"],
+    tags=["reference", "silver", "dimensions", "city"],
     default_args={
         "owner": "data_engineering",
         "retries": 1,
