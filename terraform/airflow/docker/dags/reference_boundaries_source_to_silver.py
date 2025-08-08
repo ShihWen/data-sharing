@@ -97,10 +97,6 @@ def process_boundaries_to_staging(**context):
         object_name=city_gcs_path,
     ).decode('utf-8')
     
-    print("================== RAW BOUNDARY DATA FROM GCS ==================")
-    print(raw_data)
-    print("================================================================")
-    
     print("Transforming city boundaries...")
     gdf = process_city_boundaries(raw_data)
 
@@ -113,7 +109,14 @@ def process_boundaries_to_staging(**context):
         destination_table="reference.dim_cities_staging",
         project_id=project_id,
         credentials=credentials,
-        if_exists='replace'
+        if_exists='replace',
+        table_schema=[
+            {'name': 'city_name_en', 'type': 'STRING'},
+            {'name': 'city_name_zh', 'type': 'STRING'},
+            {'name': 'update_date', 'type': 'TIMESTAMP'},
+            {'name': 'check_date', 'type': 'TIMESTAMP'},
+            {'name': 'geometry', 'type': 'GEOGRAPHY'},
+        ]
     )
     print("Successfully loaded data into reference.dim_cities_staging.")
 
