@@ -32,9 +32,9 @@ def process_city_boundaries(raw_data: str) -> gpd.GeoDataFrame:
     return gdf
 
 
-def process_district_boundaries(raw_data: str) -> gpd.GeoDataFrame:
+def process_town_boundaries(raw_data: str) -> gpd.GeoDataFrame:
     """
-    Transforms the raw GeoJSON string for district boundaries into a clean GeoDataFrame.
+    Transforms the raw GeoJSON string for town boundaries into a clean GeoDataFrame.
     """
     data = json.loads(raw_data)
     
@@ -45,8 +45,8 @@ def process_district_boundaries(raw_data: str) -> gpd.GeoDataFrame:
         geom = shape(feature['geometry'])
         
         records.append({
-            'district_code': properties['TownCode'],
-            'district_name_zh': properties['TownName'],
+            'town_code': properties['TownCode'],
+            'town_name_zh': properties['TownName'],
             'city_name_en': properties['City'],
             'city_name_zh': properties['CityName'],
             'update_date': pd.to_datetime(properties['UpdateDate']),
