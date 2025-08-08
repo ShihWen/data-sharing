@@ -12,8 +12,8 @@ WHEN NOT MATCHED BY TARGET THEN
         processed_at, valid_from_ts, valid_to_ts, is_current
     )
     VALUES (
-        S.city_name_en, S.city_name_zh, S.geometry, S.update_date, S.check_date,
-        CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), '9999-12-31T23:59:59', TRUE
+        S.city_name_en, S.city_name_zh, ST_GEOGFROMTEXT(S.geometry), S.update_date, S.check_date,
+        CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), TIMESTAMP('9999-12-31T23:59:59'), TRUE
     );
 """
 
@@ -26,12 +26,12 @@ INSERT INTO `{project_id}.{dataset_id}.{table_id}` (
 SELECT
     S.city_name_en,
     S.city_name_zh,
-    S.geometry,
+    ST_GEOGFROMTEXT(S.geometry),
     S.update_date,
     S.check_date,
     CURRENT_TIMESTAMP() AS processed_at,
     CURRENT_TIMESTAMP() AS valid_from_ts,
-    '9999-12-31T23:59:59' AS valid_to_ts,
+    TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts,
     TRUE AS is_current
 FROM `{project_id}.{dataset_id}.{staging_table_id}` AS S
 JOIN `{project_id}.{dataset_id}.{table_id}` AS T
