@@ -40,4 +40,8 @@ airflow variables set "gcs_data_lake_bucket" "open-data-v2-cicd-data-lake"
 # Cloud Function URLs
 airflow variables set "mrt_station_ntmc_function_uri" "${mrt_station_ntmc_function_uri}"
 
+# TDX API Credentials - fetched from Secret Manager by the VM's service account
+airflow variables set "tdx_client_id" "$(gcloud secrets versions access latest --secret=tdx_client_id)"
+airflow variables set "tdx_client_secret" "$(gcloud secrets versions access latest --secret=tdx_client_secret)"
+
 echo "✅ All Airflow variables have been set successfully!" 

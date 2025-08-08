@@ -915,6 +915,8 @@ create_connections_internal() {
         "tpe_mrt_gold_dataset_id tpe_mrt_gold"
         "gcs_data_lake_bucket open-data-v2-cicd-data-lake"
         "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt-station-ntmc-fetcher"
+        "tdx_client_id $(gcloud secrets versions access latest --secret=tdx_client_id)"
+        "tdx_client_secret $(gcloud secrets versions access latest --secret=tdx_client_secret)"
     )
 
     for var_pair in "${variables_to_set[@]}"; do
@@ -947,7 +949,7 @@ check_connections_and_variables_internal() {
 
     echo ""
     print_info "Checking essential variables..."
-    vars_to_check=("gcp_project_id" "environment" "gcs_data_lake_bucket")
+    vars_to_check=("gcp_project_id" "environment" "gcs_data_lake_bucket" "tdx_client_id" "tdx_client_secret")
     for var in "${vars_to_check[@]}"; do
         if docker-compose exec -T airflow-webserver airflow variables get "$var" > /dev/null 2>&1; then
             print_status "Variable '$var' exists."
