@@ -16,13 +16,30 @@ BOUNDARY_FILE_PATH = Path(os.path.dirname(__file__)).parent / "data/taipei_bound
 # Remove the get_taipei_boundary function as it's no longer needed.
 
 class WayHandler(osmium.SimpleHandler):
-    def __init__(self):
+    def __init__(self, bbox: tuple | None = None):
         super(WayHandler, self).__init__()
         self.ways = []
-        logging.info("WayHandler initialized.")
+        self.bbox = bbox
+        # Unpack for slightly faster access in the loop
+        self.min_lon, self.min_lat, self.max_lon, self.max_lat = bbox if bbox else (None, None, None, None)
+        logging.info(f"WayHandler initialized with bbox: {self.bbox}")
 
     def way(self, w):
         if 'highway' in w.tags:
+            # If a bounding box is provided, perform a quick check to see if at least one
+            # of the way's nodes is inside the box. This is a major optimization to
+            # avoid processing ways that are clearly outside our area of interest.
+            if self.bbox:
+                in_box = False
+                for n in w.nodes:
+                    if self.min_lon <= n.lon <= self.max_lon and \
+                       self.min_lat <= n.lat <= self.max_lat:
+                        in_box = True
+                        break  # Found a node in the box, so we process the whole way
+                
+                if not in_box:
+                    return # Skip this way entirely
+
             try:
                 # Build the linestring geometry from the node locations
                 # A valid LineString requires at least two points.
@@ -69,14 +86,16 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
     """
     logging.info("Processing PBF file into DataFrame...")
 
-    handler = WayHandler()
-    logging.info(f"Applying PBF file to WayHandler with bounding box pre-filter: {bbox}")
-    # Use the bounding box to pre-filter ways. This is a major optimization.
-    handler.apply_file(pbf_file_path, locations=True, box=bbox)
+    # Instantiate the handler with the bounding box for pre-filtering.
+    handler = WayHandler(bbox=bbox)
+    logging.info(f"Applying PBF file to WayHandler with bounding box pre-filter.")
+    
+    # apply_file does not take a 'box' argument; the filtering is done inside the handler.
+    handler.apply_file(pbf_file_path, locations=True)
     logging.info(f"Processed {len(handler.ways)} ways from the PBF file after pre-filtering.")
 
     if not handler.ways:
-        logging.warning("No ways with 'highway' tag found in the PBF file.")
+        logging.warning("No ways with 'highway' tag found in the PBF file after pre-filtering.")
         return pd.DataFrame()
 
     gdf = gpd.GeoDataFrame(handler.ways, geometry='geometry', crs="EPSG:4326")
