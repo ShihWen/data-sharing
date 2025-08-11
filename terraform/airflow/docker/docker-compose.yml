@@ -64,6 +64,8 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      # Increase the zombie task threshold to 20 minutes to allow for long-running jobs.
+      - AIRFLOW__SCHEDULER__ZOMBIE_TASK_THRESHOLD=1200
       - AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT=google-cloud-platform://?extra__google_cloud_platform__key_path=/opt/airflow/config/service-account.json&extra__google_cloud_platform__project=${GOOGLE_CLOUD_PROJECT}&extra__google_cloud_platform__scope=https://www.googleapis.com/auth/cloud-platform
     user: "${AIRFLOW_UID}:0"
     volumes:
