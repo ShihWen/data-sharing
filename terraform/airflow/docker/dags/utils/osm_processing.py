@@ -8,6 +8,7 @@ import json
 import logging
 from shapely.geometry import LineString, shape
 from shapely import wkt
+from typing import Union
 
 
 # The path to the boundary file, relative to the DAGs folder
@@ -16,7 +17,7 @@ BOUNDARY_FILE_PATH = Path(os.path.dirname(__file__)).parent / "data/taipei_bound
 # Remove the get_taipei_boundary function as it's no longer needed.
 
 class WayHandler(osmium.SimpleHandler):
-    def __init__(self, bbox: tuple | None = None):
+    def __init__(self, bbox: Union[tuple, None] = None):
         super(WayHandler, self).__init__()
         self.ways = []
         self.bbox = bbox
