@@ -84,25 +84,28 @@ def process_osm_data_and_load_to_staging(**context):
     bucket_name = Variable.get("gcs_data_lake_bucket")
     project_id = Variable.get("gcp_project_id")
     
-    # For now, we hardcode Taipei City. This can be parameterized later.
-    clip_city_name_en = "Taipei"
-
-    logging.info(f"Fetching boundary for '{clip_city_name_en}' from reference.dim_cities...")
+    # Fetch all current town boundaries for Taiwan.
+    logging.info("Fetching all current town boundaries from reference.dim_towns...")
     
     boundary_query = f"""
-        SELECT ST_ASTEXT(geometry) as wkt
-        FROM `{project_id}.reference.dim_cities`
-        WHERE city_name_en = '{clip_city_name_en}' AND is_current = TRUE
-        LIMIT 1
+        SELECT
+            town_name_zh AS district,
+            city_name_en AS city,
+            geometry
+        FROM `{project_id}.reference.dim_towns`
+        WHERE is_current = TRUE
     """
 
-    df_boundary = bq_hook.get_pandas_df(sql=boundary_query, dialect="standard")
+    df_boundaries = bq_hook.get_pandas_df(sql=boundary_query, dialect="standard")
 
-    if df_boundary.empty:
-        raise ValueError(f"Could not find a current boundary for city: {clip_city_name_en}")
+    if df_boundaries.empty:
+        raise ValueError("Could not find any current town boundaries in reference.dim_towns.")
 
-    boundary_wkt = df_boundary['wkt'][0]
-    logging.info("Boundary successfully fetched from BigQuery.")
+    # Convert the WKT strings to actual geometry objects for GeoPandas
+    df_boundaries['geometry'] = gpd.GeoSeries.from_wkt(df_boundaries['geometry'])
+    gdf_boundaries = gpd.GeoDataFrame(df_boundaries, geometry='geometry', crs="EPSG:4326")
+    
+    logging.info(f"Successfully fetched {len(gdf_boundaries)} town boundaries from BigQuery.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         local_file_path = Path(tmpdir) / "data.osm.pbf"
@@ -117,8 +120,7 @@ def process_osm_data_and_load_to_staging(**context):
         logging.info("Processing PBF file into DataFrame...")
         df = process_pbf_to_dataframe(
             pbf_file_path=str(local_file_path),
-            boundary_wkt=boundary_wkt,
-            city_name=clip_city_name_en
+            boundaries_gdf=gdf_boundaries
         )
         
         if df.empty:

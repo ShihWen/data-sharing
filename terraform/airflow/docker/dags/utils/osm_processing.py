@@ -56,24 +56,19 @@ class WayHandler(osmium.SimpleHandler):
                 # Node location not found, skipping this way
                 pass
 
-def process_pbf_to_dataframe(pbf_file_path: str, boundary_wkt: str, city_name: str) -> pd.DataFrame:
+def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFrame) -> pd.DataFrame:
     """
-    Processes a PBF file and clips the road network data to the provided boundary.
+    Processes a PBF file and clips the road network data to the provided boundaries.
 
     Args:
         pbf_file_path: The local path to the OSM PBF file.
-        boundary_wkt: The WKT representation of the boundary to clip against.
-        city_name: The name of the city to assign to the processed data.
+        boundaries_gdf: A GeoDataFrame containing the town/district boundaries to clip against.
+                        It must include 'geometry', 'city', and 'district' columns.
     """
     logging.info("Processing PBF file into DataFrame...")
-    
-    # Load the boundary from WKT
-    boundary_geom = wkt.loads(boundary_wkt)
-    boundary_gdf = gpd.GeoDataFrame([{'geometry': boundary_geom}], crs="EPSG:4326")
 
     handler = WayHandler()
     logging.info("Applying PBF file to WayHandler...")
-    # The box argument is not needed as we are clipping with the exact boundary later
     handler.apply_file(pbf_file_path, locations=True)
     logging.info(f"Processed {len(handler.ways)} ways from the PBF file.")
 
@@ -82,50 +77,39 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundary_wkt: str, city_name: s
         return pd.DataFrame()
 
     gdf = gpd.GeoDataFrame(handler.ways, geometry='geometry', crs="EPSG:4326")
-
-    # Filter out invalid or empty geometries which can cause issues with spatial operations
     gdf = gdf[gdf.geometry.is_valid & ~gdf.geometry.is_empty]
 
     if gdf.empty:
         logging.warning("GeoDataFrame is empty after filtering invalid geometries.")
         return pd.DataFrame()
 
-    logging.info("Clipping road network to the precise boundary...")
-    # Use sjoin with 'intersects' to find all roads that touch or cross the boundary
-    clipped_gdf = gpd.sjoin(gdf, boundary_gdf, how="inner", predicate='intersects')
+    logging.info("Spatially joining road network with all town boundaries...")
+    # Use sjoin with 'intersects' to find all roads that touch or cross any town boundary.
+    # This will tag each road with the properties of the town(s) it intersects.
+    clipped_gdf = gpd.sjoin(gdf, boundaries_gdf, how="inner", predicate='intersects')
 
     if clipped_gdf.empty:
-        logging.warning("No road segments found within the provided boundary.")
+        logging.warning("No road segments found within any of the provided boundaries.")
         return pd.DataFrame()
 
-    # Drop the 'index_right' column added by sjoin
+    # The join adds an 'index_right' column, which we can drop.
     clipped_gdf = clipped_gdf.drop(columns=['index_right'])
 
-    logging.info(f"Found {len(clipped_gdf)} road segments within the boundary.")
+    logging.info(f"Found {len(clipped_gdf)} road segments within all town boundaries.")
 
     # --- Data Cleaning and Type Conversion ---
-
-    # Standardize 'oneway' and 'reversed' columns to boolean
-    # The 'oneway' and 'reversed' tags can have values like 'yes', 'no', 'true', 'false', '1', '0'.
-    # This mapping handles the common cases and defaults any other value to False.
     bool_map = {'yes': True, 'true': True, '1': True, 'no': False, 'false': False, '0': False}
     clipped_gdf['oneway'] = clipped_gdf['oneway'].str.lower().map(bool_map).fillna(False).astype(bool)
     clipped_gdf['reversed'] = clipped_gdf['reversed'].replace({'yes': True, 'true': True, '1': True, 1: True, 'no': False, 'false': False, '0': False, 0: False, None: False}).astype(bool)
 
-    # Convert numeric columns, coercing errors to NaN and then filling with a default (e.g., 0 or None)
-    # Using Int64 (capital I) to allow for pandas' nullable integer type
     clipped_gdf['lanes'] = pd.to_numeric(clipped_gdf['lanes'], errors='coerce').astype('Int64')
     clipped_gdf['maxspeed'] = pd.to_numeric(clipped_gdf['maxspeed'], errors='coerce').astype('Int64')
     clipped_gdf['length'] = pd.to_numeric(clipped_gdf['length'], errors='coerce').astype('float')
     clipped_gdf['width'] = pd.to_numeric(clipped_gdf['width'], errors='coerce').astype('float')
 
-    # Assign the city and district.
-    # The district is still a placeholder for a future enhancement.
-    clipped_gdf['city'] = city_name
-    clipped_gdf['district'] = 'Unknown'
+    # The 'city' and 'district' columns are now populated directly from the spatial join.
 
     # Convert geometry to Well-Known Text (WKT) for BigQuery
-    # Ensure this is one of the last steps
     clipped_gdf['geometry'] = clipped_gdf['geometry'].apply(lambda geom: geom.wkt if geom else None)
     logging.info("Converted geometry to WKT format.")
     
