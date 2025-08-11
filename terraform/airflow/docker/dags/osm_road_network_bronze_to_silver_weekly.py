@@ -90,8 +90,9 @@ def process_osm_data_and_load_to_staging(**context):
     
     boundary_query = f"""
         SELECT
-            town_name_zh AS district,
-            city_name_en AS city,
+            town_code,
+            town_name_zh AS town,
+            city_name_zh AS city,
             geometry
         FROM `{project_id}.reference.dim_towns`
         WHERE is_current = TRUE
@@ -159,7 +160,8 @@ def process_osm_data_and_load_to_staging(**context):
                 {'name': 'tunnel', 'type': 'STRING'},
                 {'name': 'junction', 'type': 'STRING'},
                 {'name': 'city', 'type': 'STRING'},
-                {'name': 'district', 'type': 'STRING'},
+                {'name': 'town', 'type': 'STRING'},
+                {'name': 'town_code', 'type': 'STRING'},
                 {'name': 'geometry', 'type': 'GEOGRAPHY'},
                 {'name': 'u', 'type': 'INTEGER'},
                 {'name': 'v', 'type': 'INTEGER'},

@@ -10,15 +10,16 @@ schema:
   - {name: "u", type: "INTEGER", mode: "NULLABLE", description: "The starting node ID of the edge."}
   - {name: "v", type: "INTEGER", mode: "NULLABLE", description: "The ending node ID of the edge."}
   - {name: "osmid", type: "INTEGER", mode: "REQUIRED", description: "The OpenStreetMap ID of the way. This is the natural key for the road."}
-  - {name: "city", type: "STRING", mode: "NULLABLE", description: "The city the road segment belongs to (e.g., 'Taipei City')."}
-  - {name: "district", type: "STRING", mode: "NULLABLE", description: "The district the road segment belongs to (e.g., 'Songshan District')."}
-  - {name: "highway", type: "STRING", mode: "NULLABLE", description: "The type of highway (e.g., 'tertiary', 'secondary')."}
+  - {name: "city", type: "STRING", mode: "NULLABLE", description: "The traditional Chinese name of the city the road segment belongs to (e.g., '臺北市')."}
+  - {name: "town", type: "STRING", mode: "NULLABLE", description: "The traditional Chinese name of the town/district the road segment belongs to (e.g., '松山區')."}
+  - {name: "town_code", type: "STRING", mode: "NULLABLE", description: "The unique identifier for the town/district, from reference.dim_towns."}
+  - {name: "highway", type: "STRING", mode: "NULLABLE", description: "The type of road (e.g., 'tertiary', 'residential')."}
   - {name: "lanes", type: "INTEGER", mode: "NULLABLE", description: "The number of lanes on the road."}
-  - {name: "name", type: "STRING", mode: "NULLABLE", description: "The name of the road."}
+  - {name: "name", type: "STRING", mode: "NULLABLE", description: "The official name of the road."}
   - {name: "oneway", type: "BOOLEAN", mode: "NULLABLE", description: "Indicates if the road is one-way."}
   - {name: "reversed", type: "BOOLEAN", mode: "NULLABLE", description: "Indicates if the direction of the way is reversed."}
   - {name: "length", type: "FLOAT", mode: "NULLABLE", description: "The length of the road segment in meters."}
-  - {name: "geometry", type: "GEOGRAPHY", mode: "NULLABLE", description: "The linestring geometry of the road segment."}
+  - {name: "geometry", type: "GEOGRAPHY", mode: "NULLABLE", description: "The LineString geometry of the road segment."}
   - {name: "bridge", type: "STRING", mode: "NULLABLE", description: "Indicates if the road is on a bridge."}
   - {name: "maxspeed", type: "INTEGER", mode: "NULLABLE", description: "The maximum speed limit on the road."}
   - {name: "ref", type: "STRING", mode: "NULLABLE", description: "A reference number for the road."}
@@ -26,7 +27,7 @@ schema:
   - {name: "width", type: "FLOAT", mode: "NULLABLE", description: "The width of the road in meters."}
   - {name: "access", type: "STRING", mode: "NULLABLE", description: "The access restrictions on the road."}
   - {name: "tunnel", type: "STRING", mode: "NULLABLE", description: "Indicates if the road is in a tunnel."}
-  - {name: "junction", type: "STRING", mode: "NULLABLE", description: "The type of junction."}
+  - {name: "junction", type: "STRING", mode: "NULLABLE", description: "Indicates a junction on the road (e.g., 'roundabout')."}
   - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp."}
   - {name: "valid_from_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record became valid."}
   - {name: "valid_to_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record expired. A future date indicates the current version."}
