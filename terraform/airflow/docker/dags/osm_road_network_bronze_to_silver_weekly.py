@@ -11,6 +11,7 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
+import geopandas as gpd
 
 from sql.osm_road_network_queries import MERGE_SCD2_ROAD_NETWORK
 from utils.osm_processing import process_pbf_to_dataframe
