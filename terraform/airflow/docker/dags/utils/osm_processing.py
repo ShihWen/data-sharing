@@ -56,13 +56,14 @@ class WayHandler(osmium.SimpleHandler):
                 # Node location not found, skipping this way
                 pass
 
-def process_pbf_to_dataframe(pbf_file_path: str, boundary_wkt: str) -> pd.DataFrame:
+def process_pbf_to_dataframe(pbf_file_path: str, boundary_wkt: str, city_name: str) -> pd.DataFrame:
     """
     Processes a PBF file and clips the road network data to the provided boundary.
 
     Args:
         pbf_file_path: The local path to the OSM PBF file.
         boundary_wkt: The WKT representation of the boundary to clip against.
+        city_name: The name of the city to assign to the processed data.
     """
     logging.info("Processing PBF file into DataFrame...")
     
@@ -118,9 +119,9 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundary_wkt: str) -> pd.DataFr
     clipped_gdf['length'] = pd.to_numeric(clipped_gdf['length'], errors='coerce').astype('float')
     clipped_gdf['width'] = pd.to_numeric(clipped_gdf['width'], errors='coerce').astype('float')
 
-    # Add dummy columns for city and district for now.
-    # A future improvement could be to perform a spatial join against district boundaries.
-    clipped_gdf['city'] = 'Taipei'
+    # Assign the city and district.
+    # The district is still a placeholder for a future enhancement.
+    clipped_gdf['city'] = city_name
     clipped_gdf['district'] = 'Unknown'
 
     # Convert geometry to Well-Known Text (WKT) for BigQuery

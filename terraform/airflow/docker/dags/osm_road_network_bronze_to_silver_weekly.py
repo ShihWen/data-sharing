@@ -117,7 +117,8 @@ def process_osm_data_and_load_to_staging(**context):
         logging.info("Processing PBF file into DataFrame...")
         df = process_pbf_to_dataframe(
             pbf_file_path=str(local_file_path),
-            boundary_wkt=boundary_wkt
+            boundary_wkt=boundary_wkt,
+            city_name=clip_city_name_en
         )
         
         if df.empty:
