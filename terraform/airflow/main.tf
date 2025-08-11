@@ -116,9 +116,10 @@ resource "google_cloud_scheduler_job" "stop_airflow" {
 
 # Basic VM for Airflow
 resource "google_compute_instance" "airflow" {
-  name         = "airflow-vm"
-  machine_type = "e2-standard-2"
-  zone         = var.zone
+  name                      = "airflow-vm"
+  machine_type              = "e2-standard-2"
+  zone                      = var.zone
+  allow_stopping_for_update = true
 
   lifecycle {
     prevent_destroy = false
