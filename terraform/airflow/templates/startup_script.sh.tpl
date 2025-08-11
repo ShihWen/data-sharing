@@ -3,8 +3,12 @@ set -e  # Exit on error
 
 echo "Starting Airflow setup..."
 
+# Fix potentially broken Debian backports repository to prevent apt-get update failures.
+# This changes the source list to point to the official archive for older releases.
+echo "deb http://archive.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list
+
 # Install Docker
-apt-get update
+apt-get update -o Acquire::Check-Valid-Until=false
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common python3-pip
 curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
 add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
