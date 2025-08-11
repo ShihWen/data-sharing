@@ -56,7 +56,7 @@ class WayHandler(osmium.SimpleHandler):
                 # Node location not found, skipping this way
                 pass
 
-def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFrame) -> pd.DataFrame:
+def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFrame, bbox: tuple) -> pd.DataFrame:
     """
     Processes a PBF file and clips the road network data to the provided boundaries.
 
@@ -64,13 +64,16 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
         pbf_file_path: The local path to the OSM PBF file.
         boundaries_gdf: A GeoDataFrame containing the town/district boundaries to clip against.
                         It must include 'geometry', 'city', and 'district' columns.
+        bbox: A tuple representing the bounding box (min_lon, min_lat, max_lon, max_lat)
+              to pre-filter the PBF data, reducing memory usage.
     """
     logging.info("Processing PBF file into DataFrame...")
 
     handler = WayHandler()
-    logging.info("Applying PBF file to WayHandler...")
-    handler.apply_file(pbf_file_path, locations=True)
-    logging.info(f"Processed {len(handler.ways)} ways from the PBF file.")
+    logging.info(f"Applying PBF file to WayHandler with bounding box pre-filter: {bbox}")
+    # Use the bounding box to pre-filter ways. This is a major optimization.
+    handler.apply_file(pbf_file_path, locations=True, box=bbox)
+    logging.info(f"Processed {len(handler.ways)} ways from the PBF file after pre-filtering.")
 
     if not handler.ways:
         logging.warning("No ways with 'highway' tag found in the PBF file.")
@@ -109,8 +112,10 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
 
     # The 'city' and 'district' columns are now populated directly from the spatial join.
 
-    # Convert geometry to Well-Known Text (WKT) for BigQuery
-    clipped_gdf['geometry'] = clipped_gdf['geometry'].apply(lambda geom: geom.wkt if geom else None)
+    # Convert geometry to Well-Known Text (WKT) for BigQuery using the idiomatic method
+    # that avoids raising a UserWarning.
+    df_for_bq = pd.DataFrame(clipped_gdf.drop(columns='geometry'))
+    df_for_bq['geometry'] = clipped_gdf.geometry.to_wkt()
     logging.info("Converted geometry to WKT format.")
     
     # Ensure final columns match the BigQuery schema
@@ -119,6 +124,6 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
         'length', 'bridge', 'maxspeed', 'ref', 'service', 'width', 'access', 
         'tunnel', 'junction', 'geometry', 'city', 'district'
     ]
-    clipped_gdf = clipped_gdf.reindex(columns=final_columns)
+    final_df = df_for_bq.reindex(columns=final_columns)
 
-    return clipped_gdf 
+    return final_df 

@@ -106,7 +106,13 @@ def process_osm_data_and_load_to_staging(**context):
     df_boundaries['geometry'] = gpd.GeoSeries.from_wkt(df_boundaries['geometry'])
     gdf_boundaries = gpd.GeoDataFrame(df_boundaries, geometry='geometry', crs="EPSG:4326")
     
+    # Calculate the total bounding box of all towns to pre-filter the PBF file.
+    # This is a significant optimization to reduce memory usage.
+    total_bounds = gdf_boundaries.total_bounds
+    bbox = (total_bounds[0], total_bounds[1], total_bounds[2], total_bounds[3])
+
     logging.info(f"Successfully fetched {len(gdf_boundaries)} town boundaries from BigQuery.")
+    logging.info(f"Calculated total bounding box for pre-filtering: {bbox}")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         local_file_path = Path(tmpdir) / "data.osm.pbf"
@@ -121,7 +127,8 @@ def process_osm_data_and_load_to_staging(**context):
         logging.info("Processing PBF file into DataFrame...")
         df = process_pbf_to_dataframe(
             pbf_file_path=str(local_file_path),
-            boundaries_gdf=gdf_boundaries
+            boundaries_gdf=gdf_boundaries,
+            bbox=bbox
         )
         
         if df.empty:
