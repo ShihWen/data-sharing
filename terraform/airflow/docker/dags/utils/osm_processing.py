@@ -81,7 +81,7 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
     Args:
         pbf_file_path: The local path to the OSM PBF file.
         boundaries_gdf: A GeoDataFrame containing the town/district boundaries to clip against.
-                        It must include 'geometry', 'city', and 'district' columns.
+                        It must include 'geometry', 'city', and 'town' columns.
         bbox: A tuple representing the bounding box (min_lon, min_lat, max_lon, max_lat)
               to pre-filter the PBF data, reducing memory usage.
     """
@@ -142,7 +142,7 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
     final_columns = [
         'osmid', 'u', 'v', 'highway', 'name', 'lanes', 'oneway', 'reversed', 
         'length', 'bridge', 'maxspeed', 'ref', 'service', 'width', 'access', 
-        'tunnel', 'junction', 'geometry', 'city', 'district'
+        'tunnel', 'junction', 'geometry', 'city', 'town'
     ]
     final_df = df_for_bq.reindex(columns=final_columns)
 

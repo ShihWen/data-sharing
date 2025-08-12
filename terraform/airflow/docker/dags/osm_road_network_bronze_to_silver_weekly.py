@@ -159,7 +159,6 @@ def process_osm_data_and_load_to_staging(**context):
                 {'name': 'access', 'type': 'STRING'},
                 {'name': 'tunnel', 'type': 'STRING'},
                 {'name': 'junction', 'type': 'STRING'},
-                {'name': 'city', 'type': 'STRING'},
                 {'name': 'town', 'type': 'STRING'},
                 {'name': 'town_code', 'type': 'STRING'},
                 {'name': 'geometry', 'type': 'GEOGRAPHY'},
