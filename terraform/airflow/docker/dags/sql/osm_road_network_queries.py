@@ -20,7 +20,7 @@ WHEN MATCHED AND (
     T.city <> S.city OR
     T.town <> S.town OR
     T.town_code <> S.town_code OR
-    ST_EQUALS(T.geometry, ST_GEOGFROMTEXT(S.geometry)) = FALSE
+    ST_EQUALS(T.geometry, S.geometry) = FALSE
 ) THEN
   UPDATE SET
     is_current = FALSE,
@@ -33,7 +33,7 @@ WHEN NOT MATCHED BY TARGET THEN
     processed_at, valid_from_ts, valid_to_ts, is_current
   ) VALUES (
     S.osmid, S.u, S.v, S.highway, S.name, S.lanes, S.oneway, S.reversed, S.length, S.bridge,
-    S.maxspeed, S.ref, S.service, S.width, S.access, S.tunnel, S.junction, ST_GEOGFROMTEXT(S.geometry),
+    S.maxspeed, S.ref, S.service, S.width, S.access, S.tunnel, S.junction, S.geometry,
     S.city, S.town, S.town_code,
     CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), TIMESTAMP('9999-12-31T23:59:59'), TRUE
   )
