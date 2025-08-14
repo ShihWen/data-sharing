@@ -117,6 +117,9 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
 
     # The join adds an 'index_right' column, which we can drop.
     clipped_gdf = clipped_gdf.drop(columns=['index_right'])
+    
+    # Log the available columns after spatial join for debugging
+    logging.info(f"Columns available after spatial join: {clipped_gdf.columns.tolist()}")
 
     logging.info(f"Found {len(clipped_gdf)} road segments within all town boundaries.")
 
@@ -142,8 +145,32 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
     final_columns = [
         'osmid', 'u', 'v', 'highway', 'name', 'lanes', 'oneway', 'reversed', 
         'length', 'bridge', 'maxspeed', 'ref', 'service', 'width', 'access', 
-        'tunnel', 'junction', 'geometry', 'city', 'town'
+        'tunnel', 'junction', 'geometry', 'city', 'town', 'town_code'
     ]
-    final_df = df_for_bq.reindex(columns=final_columns)
+    
+    # Check if all required columns are present
+    missing_columns = [col for col in final_columns if col not in df_for_bq.columns]
+    if missing_columns:
+        logging.warning(f"Missing columns in DataFrame: {missing_columns}")
+        logging.info(f"Available columns: {df_for_bq.columns.tolist()}")
+        
+        # Add missing columns with default values
+        for col in missing_columns:
+            if col == 'town_code':
+                df_for_bq[col] = None  # or some default value
+            elif col in ['lanes', 'maxspeed', 'length', 'width']:
+                df_for_bq[col] = None
+            elif col in ['oneway', 'reversed']:
+                df_for_bq[col] = False
+            else:
+                df_for_bq[col] = None
+    
+    # Ensure the DataFrame has all required columns in the correct order
+    final_df = df_for_bq[final_columns]
+    
+    # Log final DataFrame info
+    logging.info(f"Final DataFrame shape: {final_df.shape}")
+    logging.info(f"Final DataFrame columns: {final_df.columns.tolist()}")
+    logging.info(f"Sample of town_code values: {final_df['town_code'].head().tolist() if 'town_code' in final_df.columns else 'town_code column not found'}")
 
     return final_df 

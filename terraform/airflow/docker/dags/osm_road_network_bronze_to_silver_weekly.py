@@ -90,12 +90,13 @@ def process_osm_data_and_load_to_staging(**context):
     
     boundary_query = f"""
         SELECT
-            town_code,
             town_name_zh AS town,
-            city_name_zh AS city,
+            city_name_en AS city,
+            town_code,
             geometry
         FROM `{project_id}.reference.dim_towns`
         WHERE is_current = TRUE
+        LIMIT 2
     """
 
     df_boundaries = bq_hook.get_pandas_df(sql=boundary_query, dialect="standard")
@@ -106,6 +107,13 @@ def process_osm_data_and_load_to_staging(**context):
     # Convert the WKT strings to actual geometry objects for GeoPandas
     df_boundaries['geometry'] = gpd.GeoSeries.from_wkt(df_boundaries['geometry'])
     gdf_boundaries = gpd.GeoDataFrame(df_boundaries, geometry='geometry', crs="EPSG:4326")
+    
+    # Debug: Check boundaries structure
+    logging.info(f"Boundaries DataFrame columns: {gdf_boundaries.columns.tolist()}")
+    logging.info(f"Boundaries DataFrame shape: {gdf_boundaries.shape}")
+    logging.info(f"Sample boundaries data:")
+    for idx, row in gdf_boundaries.head().iterrows():
+        logging.info(f"  Row {idx}: town={row.get('town', 'N/A')}, city={row.get('city', 'N/A')}, town_code={row.get('town_code', 'N/A')}")
     
     # Calculate the total bounding box of all towns to pre-filter the PBF file.
     # This is a significant optimization to reduce memory usage.
@@ -137,6 +145,15 @@ def process_osm_data_and_load_to_staging(**context):
             return
 
         logging.info(f"Uploading {len(df)} records to staging table: {project_id}.{SILVER_DATASET}.{STAGING_TABLE}")
+        logging.info(f"DataFrame columns before upload: {df.columns.tolist()}")
+        
+        # Debug: Check if town_code column exists and has data
+        if 'town_code' in df.columns:
+            logging.info(f"town_code column found with {df['town_code'].notna().sum()} non-null values")
+            logging.info(f"Sample town_code values: {df['town_code'].dropna().head().tolist()}")
+        else:
+            logging.warning("town_code column not found in DataFrame!")
+            logging.info(f"Available columns: {df.columns.tolist()}")
         
         df.to_gbq(
             destination_table=f"{SILVER_DATASET}.{STAGING_TABLE}",
@@ -145,6 +162,8 @@ def process_osm_data_and_load_to_staging(**context):
             if_exists='replace',
             table_schema=[
                 {'name': 'osmid', 'type': 'INTEGER'},
+                {'name': 'u', 'type': 'INTEGER'},
+                {'name': 'v', 'type': 'INTEGER'},
                 {'name': 'highway', 'type': 'STRING'},
                 {'name': 'name', 'type': 'STRING'},
                 {'name': 'lanes', 'type': 'INTEGER'},
@@ -159,11 +178,10 @@ def process_osm_data_and_load_to_staging(**context):
                 {'name': 'access', 'type': 'STRING'},
                 {'name': 'tunnel', 'type': 'STRING'},
                 {'name': 'junction', 'type': 'STRING'},
+                {'name': 'city', 'type': 'STRING'},
                 {'name': 'town', 'type': 'STRING'},
                 {'name': 'town_code', 'type': 'STRING'},
                 {'name': 'geometry', 'type': 'GEOGRAPHY'},
-                {'name': 'u', 'type': 'INTEGER'},
-                {'name': 'v', 'type': 'INTEGER'},
             ]
         )
         logging.info("Upload to staging table complete.")
@@ -206,5 +224,6 @@ with DAG(
             }
         },
     )
+    logging.info(f"Merge SQL query: {MERGE_SCD2_ROAD_NETWORK.format(project_id='{{ var.value.gcp_project_id }}', dataset_id=SILVER_DATASET, table_id=SILVER_TABLE, staging_table_id=STAGING_TABLE)}")
 
     download_osm_data >> process_and_load_to_staging >> merge_into_silver_scd2 
