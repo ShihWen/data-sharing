@@ -285,8 +285,51 @@ docker-compose ps
 
 # Final health check - if webserver is responding, consider it successful
 echo "Performing final health check..."
-if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1; then
-    echo "✅ Airflow is responding to health checks!"
+
+# Wait for Airflow to be fully ready with comprehensive health checks
+echo "Waiting for Airflow to be fully operational..."
+timeout=600  # 10 minutes total timeout
+airflow_ready=false
+
+while [ $timeout -gt 0 ]; do
+    echo "Checking Airflow readiness... $(($timeout / 30)) checks remaining"
+    
+    # Check if webserver is responding
+    if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1; then
+        echo "✅ Webserver is responding to health checks"
+        
+        # Check if scheduler is healthy
+        if docker-compose ps airflow-scheduler | grep -q "Up (healthy)" || docker-compose ps airflow-scheduler | grep -q "Up"; then
+            echo "✅ Scheduler is running"
+            
+            # Check if we can actually execute Airflow commands
+            if docker-compose exec -T airflow-webserver airflow version > /dev/null 2>&1; then
+                echo "✅ Airflow CLI is working"
+                
+                # Test if we can access the database
+                if docker-compose exec -T airflow-webserver airflow db check > /dev/null 2>&1; then
+                    echo "✅ Database connection is working"
+                    airflow_ready=true
+                    break
+                else
+                    echo "⚠️  Database connection not ready yet..."
+                fi
+            else
+                echo "⚠️  Airflow CLI not ready yet..."
+            fi
+        else
+            echo "⚠️  Scheduler not ready yet..."
+        fi
+    else
+        echo "⚠️  Webserver not responding yet..."
+    fi
+    
+    sleep 30
+    timeout=$((timeout - 30))
+done
+
+if [ "$airflow_ready" = true ]; then
+    echo "🎉 Airflow is fully operational and ready!"
     
     # Setup automatic connections creation using existing airflow-manager.sh script
     echo "Setting up automatic Airflow connections service..."
@@ -305,15 +348,6 @@ if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1;
 set -e
 echo "Creating basic Google Cloud connection..."
 cd /opt/airflow
-# Wait for Airflow to be ready
-timeout=300
-while [ $timeout -gt 0 ]; do
-    if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1; then
-        break
-    fi
-    sleep 10
-    timeout=$((timeout - 10))
-done
 # Create basic connection
 docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true
 docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \
@@ -357,22 +391,36 @@ EOL
     systemctl enable airflow-connections.service
     echo "✅ Airflow connections service enabled for automatic execution on boot"
     
-    # Execute connections creation now (in background to not block startup)
-    echo "Creating connections and variables immediately..."
+    # Execute connections creation now (synchronously to ensure completion)
+    echo "Creating connections and variables now..."
     if [ -f /opt/airflow/airflow-manager.sh ]; then
-        nohup /opt/airflow/airflow-manager.sh connections > /var/log/airflow-connections.log 2>&1 &
-        echo "✅ Started airflow-manager.sh connections in background"
+        echo "Running airflow-manager.sh connections..."
+        if /opt/airflow/airflow-manager.sh connections; then
+            echo "✅ Successfully created connections and variables using airflow-manager.sh"
+        else
+            echo "⚠️  airflow-manager.sh failed, trying fallback script..."
+            if /opt/airflow/create_connections_fallback.sh; then
+                echo "✅ Successfully created basic connection using fallback script"
+            else
+                echo "❌ Both scripts failed to create connections"
+            fi
+        fi
     else
-        nohup /opt/airflow/create_connections_fallback.sh > /var/log/airflow-connections.log 2>&1 &
-        echo "✅ Started fallback connections script in background"
+        echo "Running fallback connections script..."
+        if /opt/airflow/create_connections_fallback.sh; then
+            echo "✅ Successfully created basic connection using fallback script"
+        else
+            echo "❌ Fallback script failed to create connections"
+        fi
     fi
     
-    echo "Airflow setup complete!"
+    echo "🎉 Airflow setup complete with connections and variables configured!"
     exit 0
 else
-    echo "⚠️  Airflow webserver is not responding to health checks, but services are running"
-    echo "This may be normal during initial startup. Services will continue to initialize."
-    echo "The connections service will automatically create connections when Airflow becomes ready."
-    echo "Airflow setup complete!"
+    echo "❌ Airflow failed to become fully operational within timeout"
+    echo "Services may still be initializing. The connections service will automatically create connections when Airflow becomes ready."
+    echo "Current service status:"
+    docker-compose ps
+    echo "Airflow setup complete, but connections will be created when services are ready."
     exit 0
 fi 
