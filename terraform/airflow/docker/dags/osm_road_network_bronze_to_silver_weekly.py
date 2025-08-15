@@ -96,7 +96,6 @@ def process_osm_data_and_load_to_staging(**context):
             geometry
         FROM `{project_id}.reference.dim_towns`
         WHERE is_current = TRUE
-        LIMIT 2
     """
 
     df_boundaries = bq_hook.get_pandas_df(sql=boundary_query, dialect="standard")
