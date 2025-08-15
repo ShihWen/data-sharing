@@ -428,6 +428,24 @@ fi
 
 echo ""
 echo "SUCCESS: Comprehensive connections and variables setup completed!"
+
+# Unpause all DAGs except specific ones that should remain paused
+echo ""
+echo "Unpausing DAGs (keeping mrt_traffic_bronze_to_silver_full_load paused)..."
+if docker-compose exec -T airflow-webserver airflow dags unpause --all; then
+    echo "SUCCESS: All DAGs have been unpaused successfully!"
+    
+    # Re-pause the specific DAG that should remain paused
+    echo "Re-pausing mrt_traffic_bronze_to_silver_full_load DAG..."
+    if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load; then
+        echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG has been re-paused"
+    else
+        echo "WARNING: Failed to re-pause mrt_traffic_bronze_to_silver_full_load DAG, but continuing..."
+    fi
+else
+    echo "WARNING: Failed to unpause all DAGs, but continuing..."
+fi
+
 FALLBACK_EOF
         chmod +x /opt/airflow/create_connections_fallback.sh
         chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/create_connections_fallback.sh
@@ -471,6 +489,23 @@ EOL
         echo "Running airflow-manager.sh connections..."
         if /opt/airflow/airflow-manager.sh connections; then
             echo "SUCCESS: Successfully created connections and variables using airflow-manager.sh"
+            
+            # Unpause all DAGs except specific ones that should remain paused
+            echo ""
+            echo "Unpausing DAGs (keeping mrt_traffic_bronze_to_silver_full_load paused)..."
+            if docker-compose exec -T airflow-webserver airflow dags unpause --all; then
+                echo "SUCCESS: All DAGs have been unpaused successfully!"
+                
+                # Re-pause the specific DAG that should remain paused
+                echo "Re-pausing mrt_traffic_bronze_to_silver_full_load DAG..."
+                if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load; then
+                    echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG has been re-paused"
+                else
+                    echo "WARNING: Failed to re-pause mrt_traffic_bronze_to_silver_full_load DAG, but continuing..."
+                fi
+            else
+                echo "WARNING: Failed to unpause all DAGs, but continuing..."
+            fi
         else
             echo "WARNING: airflow-manager.sh failed, trying fallback script..."
                     if /opt/airflow/create_connections_fallback.sh; then

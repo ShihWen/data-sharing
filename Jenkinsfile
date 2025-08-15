@@ -354,40 +354,25 @@ pipeline {
         }
         */
 
+        /*
         stage('Setup Airflow Connections & Variables') {
             steps {
                 script {
                     echo "=== Setting up Airflow Connections & Variables ==="
                     
-                    // Make the airflow-manager script executable
-                    sh '''
-                        chmod +x scripts/airflow-manager.sh
-                    '''
+                    // NOTE: This stage has been commented out because:
+                    // 1. The startup script now handles connections and variables automatically
+                    // 2. SSH access from Jenkins to the VM was unreliable and caused failures
+                    // 3. The startup script runs directly on the VM and is more reliable
+                    // 4. All DAGs are now automatically unpaused after connections are created
                     
-                    // Check if connections and variables already exist
-                                            echo "Checking if Airflow connections and variables already exist..."
-                    def connectionsExist = sh(
-                        script: '''
-                            cd scripts
-                            ./airflow-manager.sh check-connections
-                        ''',
-                        returnStatus: true
-                    )
-
-                    if (connectionsExist == 0) {
-                        echo "SUCCESS: Connections and variables already exist - skipping creation step"
-                        echo "This saves time by not recreating existing configurations!"
-                    } else {
-                        echo "Connections or variables are missing - creating them now..."
-                        sh '''
-                            cd scripts
-                            ./airflow-manager.sh connections
-                        '''
-                        echo "SUCCESS: Connections and variables have been created successfully"
-                    }
+                    echo "SKIPPED: Connections and variables are now handled automatically by the startup script"
+                    echo "The startup script creates all necessary connections, variables, and unpauses all DAGs"
+                    echo "This eliminates the need for external SSH connections and ensures reliability"
                 }
             }
         }
+        */
     }
     
     post {
