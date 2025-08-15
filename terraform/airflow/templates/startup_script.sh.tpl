@@ -342,18 +342,92 @@ if [ "$airflow_ready" = true ]; then
         echo "✅ Downloaded airflow-manager.sh script"
     else
         echo "⚠️  Could not download airflow-manager.sh, creating minimal connections script"
-        # Create a minimal fallback script
+        # Create a comprehensive fallback script that includes variables and connections
         cat > /opt/airflow/create_connections_fallback.sh <<'FALLBACK_EOF'
 #!/bin/bash
 set -e
-echo "Creating basic Google Cloud connection..."
+echo "Creating comprehensive Airflow connections and variables..."
+
 cd /opt/airflow
-# Create basic connection
+
+# Wait for Airflow services to stabilize
+echo "Waiting for Airflow services to stabilize..."
+sleep 15
+
+# Create Google Cloud connection
+echo "Creating Google Cloud connection..."
 docker-compose exec -T airflow-webserver airflow connections delete 'google_cloud_default' 2>/dev/null || true
 docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_default' \
     --conn-type 'google_cloud_platform' \
     --conn-extra '{"project": "${project_id}", "key_path": "/opt/airflow/config/service-account.json"}'
-echo "✅ Basic connection created"
+
+if docker-compose exec -T airflow-webserver airflow connections get 'google_cloud_default' > /dev/null 2>&1; then
+    echo "✅ Google Cloud connection created successfully!"
+else
+    echo "❌ Failed to create Google Cloud connection"
+    exit 1
+fi
+
+echo ""
+echo "Creating Airflow variables..."
+
+# Create all the essential variables
+variables_to_set=(
+    "gcp_project_id ${project_id}"
+    "gcp_region asia-east1"
+    "notification_email '[\"admin@example.com\"]'"
+    "bigquery_location asia-east1"
+    "data_retention_days 30"
+    "max_parallel_tasks 5"
+    "environment dev"
+    "tpe_mrt_bronze_dataset_id tpe_mrt_bronze"
+    "tpe_mrt_silver_dataset_id tpe_mrt_silver"
+    "tpe_mrt_gold_dataset_id tpe_mrt_gold"
+    "gcs_data_lake_bucket open-data-v2-cicd-data-lake"
+    "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt-station-ntmc-fetcher"
+)
+
+for var_pair in "${variables_to_set[@]}"; do
+    read -r key value <<<"$var_pair"
+    echo "Setting variable: $key = $value"
+    if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
+        echo "✅ Set variable: $key"
+    else
+        echo "❌ Failed to set variable: $key"
+    fi
+done
+
+# Try to get TDX credentials from Secret Manager if available
+echo ""
+echo "Setting TDX credentials from Secret Manager..."
+if command -v gcloud >/dev/null 2>&1; then
+    # Get TDX client ID
+    if tdx_client_id=$(gcloud secrets versions access latest --secret=tdx_client_id 2>/dev/null); then
+        if docker-compose exec -T airflow-webserver airflow variables set "tdx_client_id" "$tdx_client_id"; then
+            echo "✅ Set variable: tdx_client_id"
+        else
+            echo "❌ Failed to set variable: tdx_client_id"
+        fi
+    else
+        echo "⚠️  Could not retrieve tdx_client_id from Secret Manager"
+    fi
+    
+    # Get TDX client secret
+    if tdx_client_secret=$(gcloud secrets versions access latest --secret=tdx_client_secret 2>/dev/null); then
+        if docker-compose exec -T airflow-webserver airflow variables set "tdx_client_secret" "$tdx_client_secret"; then
+            echo "✅ Set variable: tdx_client_secret"
+        else
+            echo "❌ Failed to set variable: tdx_client_secret"
+        fi
+    else
+        echo "⚠️  Could not retrieve tdx_client_secret from Secret Manager"
+    fi
+else
+    echo "⚠️  gcloud command not available, skipping TDX credentials"
+fi
+
+echo ""
+echo "✅ Comprehensive connections and variables setup completed!"
 FALLBACK_EOF
         chmod +x /opt/airflow/create_connections_fallback.sh
         chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/create_connections_fallback.sh
@@ -399,16 +473,16 @@ EOL
             echo "✅ Successfully created connections and variables using airflow-manager.sh"
         else
             echo "⚠️  airflow-manager.sh failed, trying fallback script..."
-            if /opt/airflow/create_connections_fallback.sh; then
-                echo "✅ Successfully created basic connection using fallback script"
-            else
-                echo "❌ Both scripts failed to create connections"
-            fi
+                    if /opt/airflow/create_connections_fallback.sh; then
+            echo "✅ Successfully created comprehensive connections and variables using fallback script"
+        else
+            echo "❌ Both scripts failed to create connections"
+        fi
         fi
     else
         echo "Running fallback connections script..."
         if /opt/airflow/create_connections_fallback.sh; then
-            echo "✅ Successfully created basic connection using fallback script"
+            echo "✅ Successfully created comprehensive connections and variables using fallback script"
         else
             echo "❌ Fallback script failed to create connections"
         fi

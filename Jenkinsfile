@@ -75,6 +75,19 @@ pipeline {
             }
         }
 
+        stage('Upload Airflow Manager Script') {
+            steps {
+                script {
+                    sh '''
+                        echo "Uploading airflow-manager.sh script to GCS..."
+                        gsutil cp scripts/airflow-manager.sh gs://${AIRFLOW_BUCKET}/scripts/airflow-manager.sh
+                        echo "✅ Airflow manager script uploaded to GCS"
+                        echo "This ensures the startup script can download and use the full script instead of the fallback"
+                    '''
+                }
+            }
+        }
+
         stage('Upload DAGs to GCS') {
             when {
                 expression { return env.DAG_CHANGES == "true" }
