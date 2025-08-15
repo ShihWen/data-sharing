@@ -91,7 +91,7 @@ def process_osm_data_and_load_to_staging(**context):
     boundary_query = f"""
         SELECT
             town_name_zh AS town,
-            city_name_en AS city,
+            city_name_zh AS city,
             town_code,
             geometry
         FROM `{project_id}.reference.dim_towns`
