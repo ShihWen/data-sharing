@@ -178,6 +178,35 @@ def process_osm_data_and_load_to_staging(**context):
         else:
             logging.warning("city or town columns not found for distribution analysis!")
         
+        # Deduplicate the DataFrame to prevent MERGE failures
+        # Use a more sophisticated approach: keep the record with the most complete information
+        logging.info(f"Before deduplication: {len(df)} records")
+        
+        # Create a completeness score for each record (count of non-null values)
+        df['completeness_score'] = df.notna().sum(axis=1)
+        
+        # Sort by completeness score (descending) and then by other criteria
+        df_sorted = df.sort_values(
+            by=['completeness_score', 'name', 'highway'], 
+            ascending=[False, True, True]
+        )
+        
+        # Keep the first occurrence (most complete) for each osmid
+        df_deduped = df_sorted.drop_duplicates(subset=['osmid'], keep='first')
+        
+        # Remove the temporary completeness score column
+        df_deduped = df_deduped.drop(columns=['completeness_score'])
+        
+        logging.info(f"After deduplication: {len(df_deduped)} records")
+        
+        # Log duplicate osmid values for debugging
+        duplicate_osmids = df[df.duplicated(subset=['osmid'], keep=False)]['osmid'].value_counts()
+        if not duplicate_osmids.empty:
+            logging.warning(f"Found {len(duplicate_osmids)} duplicate osmid values:")
+            logging.warning(f"Top 10 duplicate osmids: {duplicate_osmids.head(10).to_dict()}")
+        
+        df = df_deduped
+        
         df.to_gbq(
             destination_table=f"{SILVER_DATASET}.{STAGING_TABLE}",
             project_id=project_id,

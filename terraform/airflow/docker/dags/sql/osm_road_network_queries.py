@@ -1,6 +1,28 @@
+# This MERGE query handles SCD2 (Slowly Changing Dimension Type 2) for road network data.
+# It deduplicates the staging table by keeping the most complete record for each osmid
+# before performing the merge operation to prevent "UPDATE/MERGE must match at most one source row" errors.
 MERGE_SCD2_ROAD_NETWORK = """
 MERGE `{project_id}.{dataset_id}.{table_id}` AS T
-USING `{project_id}.{dataset_id}.{staging_table_id}` AS S
+USING (
+    SELECT * FROM (
+        SELECT 
+            *,
+            ROW_NUMBER() OVER (
+                PARTITION BY osmid 
+                ORDER BY 
+                    (CASE WHEN name IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN highway IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN lanes IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN length IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN maxspeed IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN town_code IS NOT NULL THEN 1 ELSE 0 END) DESC,
+                    name ASC,
+                    highway ASC
+            ) as rn
+        FROM `{project_id}.{dataset_id}.{staging_table_id}`
+    ) ranked
+    WHERE rn = 1
+) AS S
 ON T.osmid = S.osmid AND T.is_current = TRUE
 WHEN MATCHED AND (
     T.highway <> S.highway OR
