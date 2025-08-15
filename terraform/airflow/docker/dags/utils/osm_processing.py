@@ -107,21 +107,54 @@ def process_pbf_to_dataframe(pbf_file_path: str, boundaries_gdf: gpd.GeoDataFram
         return pd.DataFrame()
 
     logging.info("Spatially joining road network with all town boundaries...")
-    # Use sjoin with 'intersects' to find all roads that touch or cross any town boundary.
-    # This will tag each road with the properties of the town(s) it intersects.
-    clipped_gdf = gpd.sjoin(gdf, boundaries_gdf, how="inner", predicate='intersects')
-
-    if clipped_gdf.empty:
+    # Process each boundary individually to ensure we get roads from all cities
+    # The previous approach used a single spatial join with how="inner", which only
+    # returned roads that intersected ALL boundaries simultaneously. This meant
+    # we were missing roads that only existed in individual cities.
+    # By processing each boundary separately, we ensure all cities are represented.
+    all_clipped_results = []
+    
+    for idx, boundary in boundaries_gdf.iterrows():
+        city_name = boundary.get('city', f'city_{idx}')
+        town_name = boundary.get('town', f'town_{idx}')
+        town_code = boundary.get('town_code', f'code_{idx}')
+        
+        logging.info(f"Processing boundary {idx}: city={city_name}, town={town_name}, town_code={town_code}")
+        
+        # Create a single-row GeoDataFrame for this boundary
+        single_boundary = gpd.GeoDataFrame([boundary], geometry='geometry', crs="EPSG:4326")
+        
+        # Perform spatial join for this specific boundary
+        boundary_clipped = gpd.sjoin(gdf, single_boundary, how="inner", predicate='intersects')
+        
+        if not boundary_clipped.empty:
+            # Add city, town, and town_code information
+            boundary_clipped['city'] = city_name
+            boundary_clipped['town'] = town_name
+            boundary_clipped['town_code'] = town_code
+            
+            # Drop the index_right column added by sjoin
+            boundary_clipped = boundary_clipped.drop(columns=['index_right'])
+            
+            all_clipped_results.append(boundary_clipped)
+            logging.info(f"Found {len(boundary_clipped)} road segments for {city_name}/{town_name}")
+        else:
+            logging.info(f"No road segments found for {city_name}/{town_name}")
+    
+    if not all_clipped_results:
         logging.warning("No road segments found within any of the provided boundaries.")
         return pd.DataFrame()
-
-    # The join adds an 'index_right' column, which we can drop.
-    clipped_gdf = clipped_gdf.drop(columns=['index_right'])
+    
+    # Combine all results
+    clipped_gdf = pd.concat(all_clipped_results, ignore_index=True)
     
     # Log the available columns after spatial join for debugging
     logging.info(f"Columns available after spatial join: {clipped_gdf.columns.tolist()}")
-
-    logging.info(f"Found {len(clipped_gdf)} road segments within all town boundaries.")
+    logging.info(f"Total road segments found across all boundaries: {len(clipped_gdf)}")
+    
+    # Log distribution by city
+    city_counts = clipped_gdf['city'].value_counts()
+    logging.info(f"Road segments per city: {city_counts.to_dict()}")
 
     # --- Data Cleaning and Type Conversion ---
     bool_map = {'yes': True, 'true': True, '1': True, 'no': False, 'false': False, '0': False}

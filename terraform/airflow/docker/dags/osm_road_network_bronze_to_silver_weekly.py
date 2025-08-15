@@ -115,6 +115,16 @@ def process_osm_data_and_load_to_staging(**context):
     for idx, row in gdf_boundaries.head().iterrows():
         logging.info(f"  Row {idx}: town={row.get('town', 'N/A')}, city={row.get('city', 'N/A')}, town_code={row.get('town_code', 'N/A')}")
     
+    # Additional debugging: Show all boundaries being processed
+    logging.info("All boundaries to be processed:")
+    for idx, row in gdf_boundaries.iterrows():
+        logging.info(f"  Boundary {idx}: town='{row.get('town', 'N/A')}', city='{row.get('city', 'N/A')}', town_code='{row.get('town_code', 'N/A')}'")
+        # Log the geometry bounds for this boundary
+        geom = row.geometry
+        if geom:
+            bounds = geom.bounds
+            logging.info(f"    Geometry bounds: min_lon={bounds[0]:.6f}, min_lat={bounds[1]:.6f}, max_lon={bounds[2]:.6f}, max_lat={bounds[3]:.6f}")
+    
     # Calculate the total bounding box of all towns to pre-filter the PBF file.
     # This is a significant optimization to reduce memory usage.
     total_bounds = gdf_boundaries.total_bounds
@@ -154,6 +164,20 @@ def process_osm_data_and_load_to_staging(**context):
         else:
             logging.warning("town_code column not found in DataFrame!")
             logging.info(f"Available columns: {df.columns.tolist()}")
+        
+        # Debug: Show distribution by city and town
+        if 'city' in df.columns and 'town' in df.columns:
+            city_counts = df['city'].value_counts()
+            town_counts = df['town'].value_counts()
+            logging.info(f"Results distribution by city: {city_counts.to_dict()}")
+            logging.info(f"Results distribution by town: {town_counts.to_dict()}")
+            
+            # Show sample records for each city
+            for city in df['city'].unique():
+                city_df = df[df['city'] == city]
+                logging.info(f"City '{city}': {len(city_df)} records, sample town_codes: {city_df['town_code'].dropna().head().tolist()}")
+        else:
+            logging.warning("city or town columns not found for distribution analysis!")
         
         df.to_gbq(
             destination_table=f"{SILVER_DATASET}.{STAGING_TABLE}",
