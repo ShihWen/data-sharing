@@ -69,7 +69,7 @@ pipeline {
                         # Use rsync to sync the entire docker config directory, which is more robust
                         # and includes Dockerfile, requirements.txt, and docker-compose.yml
                         gsutil -m rsync -r -d terraform/airflow/docker/ gs://${AIRFLOW_BUCKET}/docker/
-                        echo "✅ Core configuration directory synced."
+                        echo "SUCCESS: Core configuration directory synced."
                     '''
                 }
             }
@@ -81,7 +81,7 @@ pipeline {
                     sh '''
                         echo "Uploading airflow-manager.sh script to GCS..."
                         gsutil cp scripts/airflow-manager.sh gs://${AIRFLOW_BUCKET}/scripts/airflow-manager.sh
-                        echo "✅ Airflow manager script uploaded to GCS"
+                        echo "SUCCESS: Airflow manager script uploaded to GCS"
                         echo "This ensures the startup script can download and use the full script instead of the fallback"
                     '''
                 }
@@ -375,7 +375,7 @@ pipeline {
                     )
 
                     if (connectionsExist == 0) {
-                        echo "✅ Connections and variables already exist - skipping creation step"
+                        echo "SUCCESS: Connections and variables already exist - skipping creation step"
                         echo "This saves time by not recreating existing configurations!"
                     } else {
                         echo "🔗 Connections or variables are missing - creating them now..."
@@ -383,7 +383,7 @@ pipeline {
                             cd scripts
                             ./airflow-manager.sh connections
                         '''
-                        echo "✅ Connections and variables have been created successfully"
+                        echo "SUCCESS: Connections and variables have been created successfully"
                     }
                 }
             }

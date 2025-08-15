@@ -44,4 +44,4 @@ airflow variables set "mrt_station_ntmc_function_uri" "${mrt_station_ntmc_functi
 airflow variables set "tdx_client_id" "$(gcloud secrets versions access latest --secret=tdx_client_id)"
 airflow variables set "tdx_client_secret" "$(gcloud secrets versions access latest --secret=tdx_client_secret)"
 
-echo "✅ All Airflow variables have been set successfully!" 
+echo "SUCCESS: All Airflow variables have been set successfully!" 

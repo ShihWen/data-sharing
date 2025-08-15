@@ -187,7 +187,7 @@ EOL
 # Enable the permission fix service
 systemctl daemon-reload
 systemctl enable airflow-permissions.service
-echo "✅ Airflow permissions service enabled for future boots"
+echo "SUCCESS: Airflow permissions service enabled for future boots"
 
 # Add airflow users to docker group
 echo "Adding airflow users to docker group..."
@@ -296,32 +296,32 @@ while [ $timeout -gt 0 ]; do
     
     # Check if webserver is responding
     if curl -s --connect-timeout 10 "http://localhost:8081/health" > /dev/null 2>&1; then
-        echo "✅ Webserver is responding to health checks"
+        echo "SUCCESS: Webserver is responding to health checks"
         
         # Check if scheduler is healthy
         if docker-compose ps airflow-scheduler | grep -q "Up (healthy)" || docker-compose ps airflow-scheduler | grep -q "Up"; then
-            echo "✅ Scheduler is running"
+            echo "SUCCESS: Scheduler is running"
             
             # Check if we can actually execute Airflow commands
             if docker-compose exec -T airflow-webserver airflow version > /dev/null 2>&1; then
-                echo "✅ Airflow CLI is working"
+                echo "SUCCESS: Airflow CLI is working"
                 
                 # Test if we can access the database
                 if docker-compose exec -T airflow-webserver airflow db check > /dev/null 2>&1; then
-                    echo "✅ Database connection is working"
+                    echo "SUCCESS: Database connection is working"
                     airflow_ready=true
                     break
                 else
-                    echo "⚠️  Database connection not ready yet..."
+                    echo "WARNING: Database connection not ready yet..."
                 fi
             else
-                echo "⚠️  Airflow CLI not ready yet..."
+                echo "WARNING: Airflow CLI not ready yet..."
             fi
         else
-            echo "⚠️  Scheduler not ready yet..."
+            echo "WARNING: Scheduler not ready yet..."
         fi
     else
-        echo "⚠️  Webserver not responding yet..."
+        echo "WARNING: Webserver not responding yet..."
     fi
     
     sleep 30
@@ -329,7 +329,7 @@ while [ $timeout -gt 0 ]; do
 done
 
 if [ "$airflow_ready" = true ]; then
-    echo "🎉 Airflow is fully operational and ready!"
+    echo "SUCCESS: Airflow is fully operational and ready!"
     
     # Setup automatic connections creation using existing airflow-manager.sh script
     echo "Setting up automatic Airflow connections service..."
@@ -339,9 +339,9 @@ if [ "$airflow_ready" = true ]; then
     if gsutil cp gs://${gcs_bucket}/scripts/airflow-manager.sh /opt/airflow/airflow-manager.sh; then
         chmod +x /opt/airflow/airflow-manager.sh
         chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/airflow-manager.sh
-        echo "✅ Downloaded airflow-manager.sh script"
+        echo "SUCCESS: Downloaded airflow-manager.sh script"
     else
-        echo "⚠️  Could not download airflow-manager.sh, creating minimal connections script"
+        echo "WARNING: Could not download airflow-manager.sh, creating minimal connections script"
         # Create a comprehensive fallback script that includes variables and connections
         cat > /opt/airflow/create_connections_fallback.sh <<'FALLBACK_EOF'
 #!/bin/bash
@@ -362,9 +362,9 @@ docker-compose exec -T airflow-webserver airflow connections add 'google_cloud_d
     --conn-extra '{"project": "${project_id}", "key_path": "/opt/airflow/config/service-account.json"}'
 
 if docker-compose exec -T airflow-webserver airflow connections get 'google_cloud_default' > /dev/null 2>&1; then
-    echo "✅ Google Cloud connection created successfully!"
+    echo "SUCCESS: Google Cloud connection created successfully!"
 else
-    echo "❌ Failed to create Google Cloud connection"
+    echo "ERROR: Failed to create Google Cloud connection"
     exit 1
 fi
 
@@ -391,9 +391,9 @@ for var_pair in "${variables_to_set[@]}"; do
     read -r key value <<<"$var_pair"
     echo "Setting variable: $key = $value"
     if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
-        echo "✅ Set variable: $key"
+        echo "SUCCESS: Set variable: $key"
     else
-        echo "❌ Failed to set variable: $key"
+        echo "ERROR: Failed to set variable: $key"
     fi
 done
 
@@ -409,7 +409,7 @@ if command -v gcloud >/dev/null 2>&1; then
             echo "❌ Failed to set variable: tdx_client_id"
         fi
     else
-        echo "⚠️  Could not retrieve tdx_client_id from Secret Manager"
+        echo "WARNING: Could not retrieve tdx_client_id from Secret Manager"
     fi
     
     # Get TDX client secret
@@ -420,10 +420,10 @@ if command -v gcloud >/dev/null 2>&1; then
             echo "❌ Failed to set variable: tdx_client_secret"
         fi
     else
-        echo "⚠️  Could not retrieve tdx_client_secret from Secret Manager"
+        echo "WARNING: Could not retrieve tdx_client_secret from Secret Manager"
     fi
 else
-    echo "⚠️  gcloud command not available, skipping TDX credentials"
+    echo "WARNING: gcloud command not available, skipping TDX credentials"
 fi
 
 echo ""
@@ -463,35 +463,35 @@ EOL
     # Enable the connections service
     systemctl daemon-reload
     systemctl enable airflow-connections.service
-    echo "✅ Airflow connections service enabled for automatic execution on boot"
+            echo "SUCCESS: Airflow connections service enabled for automatic execution on boot"
     
     # Execute connections creation now (synchronously to ensure completion)
     echo "Creating connections and variables now..."
     if [ -f /opt/airflow/airflow-manager.sh ]; then
         echo "Running airflow-manager.sh connections..."
         if /opt/airflow/airflow-manager.sh connections; then
-            echo "✅ Successfully created connections and variables using airflow-manager.sh"
+            echo "SUCCESS: Successfully created connections and variables using airflow-manager.sh"
         else
-            echo "⚠️  airflow-manager.sh failed, trying fallback script..."
+            echo "WARNING: airflow-manager.sh failed, trying fallback script..."
                     if /opt/airflow/create_connections_fallback.sh; then
-            echo "✅ Successfully created comprehensive connections and variables using fallback script"
+            echo "SUCCESS: Successfully created comprehensive connections and variables using fallback script"
         else
-            echo "❌ Both scripts failed to create connections"
+            echo "ERROR: Both scripts failed to create connections"
         fi
         fi
     else
         echo "Running fallback connections script..."
         if /opt/airflow/create_connections_fallback.sh; then
-            echo "✅ Successfully created comprehensive connections and variables using fallback script"
+            echo "SUCCESS: Successfully created comprehensive connections and variables using fallback script"
         else
-            echo "❌ Fallback script failed to create connections"
+            echo "ERROR: Fallback script failed to create connections"
         fi
     fi
     
-    echo "🎉 Airflow setup complete with connections and variables configured!"
+    echo "SUCCESS: Airflow setup complete with connections and variables configured!"
     exit 0
 else
-    echo "❌ Airflow failed to become fully operational within timeout"
+    echo "ERROR: Airflow failed to become fully operational within timeout"
     echo "Services may still be initializing. The connections service will automatically create connections when Airflow becomes ready."
     echo "Current service status:"
     docker-compose ps
