@@ -92,7 +92,7 @@ def process_village_boundaries_to_staging(**context):
 with DAG(
     dag_id="reference_boundaries_village_source_to_silver",
     start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
-    schedule="@monthly",
+    schedule="@yearly",
     catchup=False,
     tags=["reference", "silver", "dimensions", "village"],
     default_args={
