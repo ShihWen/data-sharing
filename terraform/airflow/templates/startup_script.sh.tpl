@@ -387,13 +387,13 @@ variables_to_set=(
     "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt-station-ntmc-fetcher"
 )
 
-for var_pair in "${variables_to_set[@]}"; do
-    read -r key value <<<"$var_pair"
-    echo "Setting variable: $key = $value"
+for var_pair in "$${variables_to_set[@]}"; do
+    read -r key value <<<"$$var_pair"
+    echo "Setting variable: $$key = $$value"
     if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
-        echo "SUCCESS: Set variable: $key"
+        echo "SUCCESS: Set variable: $$key"
     else
-        echo "ERROR: Failed to set variable: $key"
+                    echo "ERROR: Failed to set variable: $$key"
     fi
 done
 
@@ -402,22 +402,22 @@ echo ""
 echo "Setting TDX credentials from Secret Manager..."
 if command -v gcloud >/dev/null 2>&1; then
     # Get TDX client ID
-    if tdx_client_id=$(gcloud secrets versions access latest --secret=tdx_client_id 2>/dev/null); then
+    if tdx_client_id=$$(gcloud secrets versions access latest --secret=tdx_client_id 2>/dev/null); then
         if docker-compose exec -T airflow-webserver airflow variables set "tdx_client_id" "$tdx_client_id"; then
-            echo "✅ Set variable: tdx_client_id"
+            echo "SUCCESS: Set variable: tdx_client_id"
         else
-            echo "❌ Failed to set variable: tdx_client_id"
+            echo "ERROR: Failed to set variable: tdx_client_id"
         fi
     else
         echo "WARNING: Could not retrieve tdx_client_id from Secret Manager"
     fi
     
     # Get TDX client secret
-    if tdx_client_secret=$(gcloud secrets versions access latest --secret=tdx_client_secret 2>/dev/null); then
+    if tdx_client_secret=$$(gcloud secrets versions access latest --secret=tdx_client_secret 2>/dev/null); then
         if docker-compose exec -T airflow-webserver airflow variables set "tdx_client_secret" "$tdx_client_secret"; then
-            echo "✅ Set variable: tdx_client_secret"
+            echo "SUCCESS: Set variable: tdx_client_secret"
         else
-            echo "❌ Failed to set variable: tdx_client_secret"
+            echo "ERROR: Failed to set variable: tdx_client_secret"
         fi
     else
         echo "WARNING: Could not retrieve tdx_client_secret from Secret Manager"
@@ -427,7 +427,7 @@ else
 fi
 
 echo ""
-echo "✅ Comprehensive connections and variables setup completed!"
+echo "SUCCESS: Comprehensive connections and variables setup completed!"
 FALLBACK_EOF
         chmod +x /opt/airflow/create_connections_fallback.sh
         chown $AIRFLOW_UID:$AIRFLOW_GID /opt/airflow/create_connections_fallback.sh

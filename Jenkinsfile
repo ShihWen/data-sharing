@@ -289,11 +289,11 @@ pipeline {
                     
                     // Check if VM was recreated or already existed
                     if (env.SKIP_VM_RECREATION == 'true') {
-                        echo "✅ VM was already running and healthy, proceeding with config update..."
+                        echo "SUCCESS: VM was already running and healthy, proceeding with config update..."
                         // VM is already ready, minimal wait
                         sleep(time: 30, unit: 'SECONDS')
                     } else {
-                        echo "🔄 VM was created/recreated, waiting for it to be fully ready..."
+                        echo "VM was created/recreated, waiting for it to be fully ready..."
                         // VM was just created, need to wait longer
                         sleep(time: 180, unit: 'SECONDS') // Wait 3 minutes for startup
                         
@@ -318,7 +318,7 @@ pipeline {
                                         ).trim()
                                         
                                         if (healthCheck == '200') {
-                                            echo "✅ Airflow is healthy and ready!"
+                                            echo "SUCCESS: Airflow is healthy and ready!"
                                             return true
                                         } else {
                                             echo "⏳ Waiting for Airflow to be healthy... (HTTP ${healthCheck})"
@@ -342,9 +342,9 @@ pipeline {
                     sh '''
                         echo "📝 Running scheduler configuration update..."
                         if ./scripts/update_airflow_config.sh scheduler terraform/airflow/docker/config/airflow.cfg; then
-                            echo "✅ Scheduler configuration updated successfully"
+                            echo "SUCCESS: Scheduler configuration updated successfully"
                         else
-                            echo "⚠️  Scheduler configuration update failed, but continuing..."
+                            echo "WARNING: Scheduler configuration update failed, but continuing..."
                             echo "This may be due to container naming differences or timing issues"
                             echo "The deployment will continue as this is not critical for basic functionality"
                         fi
@@ -365,7 +365,7 @@ pipeline {
                     '''
                     
                     // Check if connections and variables already exist
-                    echo "🔍 Checking if Airflow connections and variables already exist..."
+                                            echo "Checking if Airflow connections and variables already exist..."
                     def connectionsExist = sh(
                         script: '''
                             cd scripts
@@ -378,7 +378,7 @@ pipeline {
                         echo "SUCCESS: Connections and variables already exist - skipping creation step"
                         echo "This saves time by not recreating existing configurations!"
                     } else {
-                        echo "🔗 Connections or variables are missing - creating them now..."
+                        echo "Connections or variables are missing - creating them now..."
                         sh '''
                             cd scripts
                             ./airflow-manager.sh connections
