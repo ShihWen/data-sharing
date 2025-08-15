@@ -432,18 +432,44 @@ echo "SUCCESS: Comprehensive connections and variables setup completed!"
 # Unpause all DAGs except specific ones that should remain paused
 echo ""
 echo "Unpausing DAGs (keeping mrt_traffic_bronze_to_silver_full_load paused)..."
-if docker-compose exec -T airflow-webserver airflow dags unpause --all; then
-    echo "SUCCESS: All DAGs have been unpaused successfully!"
+
+# Get list of all DAGs and unpause them individually (compatible with older Airflow versions)
+echo "Getting list of all DAGs..."
+dag_list=$(docker-compose exec -T airflow-webserver airflow dags list --output table 2>/dev/null | grep -v "dag_id" | awk '{print $1}' | grep -v "^$" || echo "")
+
+if [ -n "$dag_list" ]; then
+    echo "Found DAGs: $dag_list"
+    unpause_success_count=0
+    unpause_total_count=0
     
-    # Re-pause the specific DAG that should remain paused
-    echo "Re-pausing mrt_traffic_bronze_to_silver_full_load DAG..."
-    if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load; then
-        echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG has been re-paused"
+    for dag_id in $dag_list; do
+        # Skip the DAG that should remain paused
+        if [ "$dag_id" = "mrt_traffic_bronze_to_silver_full_load" ]; then
+            echo "Skipping mrt_traffic_bronze_to_silver_full_load DAG (keeping it paused)"
+            continue
+        fi
+        
+        echo "Unpausing DAG: $dag_id"
+        if docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id" >/dev/null 2>&1; then
+            echo "SUCCESS: Unpaused DAG: $dag_id"
+            unpause_success_count=$((unpause_success_count + 1))
+        else
+            echo "WARNING: Failed to unpause DAG: $dag_id"
+        fi
+        unpause_total_count=$((unpause_total_count + 1))
+    done
+    
+    echo "SUCCESS: Unpaused $unpause_success_count out of $unpause_total_count DAGs"
+    
+    # Ensure the specific DAG remains paused
+    echo "Ensuring mrt_traffic_bronze_to_silver_full_load DAG remains paused..."
+    if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load >/dev/null 2>&1; then
+        echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG is confirmed paused"
     else
-        echo "WARNING: Failed to re-pause mrt_traffic_bronze_to_silver_full_load DAG, but continuing..."
+        echo "WARNING: Could not confirm pause status for mrt_traffic_bronze_to_silver_full_load DAG"
     fi
 else
-    echo "WARNING: Failed to unpause all DAGs, but continuing..."
+    echo "WARNING: Could not retrieve DAG list, skipping DAG unpausing"
 fi
 
 FALLBACK_EOF
@@ -493,18 +519,44 @@ EOL
             # Unpause all DAGs except specific ones that should remain paused
             echo ""
             echo "Unpausing DAGs (keeping mrt_traffic_bronze_to_silver_full_load paused)..."
-            if docker-compose exec -T airflow-webserver airflow dags unpause --all; then
-                echo "SUCCESS: All DAGs have been unpaused successfully!"
+
+            # Get list of all DAGs and unpause them individually (compatible with older Airflow versions)
+            echo "Getting list of all DAGs..."
+            dag_list=$(docker-compose exec -T airflow-webserver airflow dags list --output table 2>/dev/null | grep -v "dag_id" | awk '{print $1}' | grep -v "^$" || echo "")
+
+            if [ -n "$dag_list" ]; then
+                echo "Found DAGs: $dag_list"
+                unpause_success_count=0
+                unpause_total_count=0
                 
-                # Re-pause the specific DAG that should remain paused
-                echo "Re-pausing mrt_traffic_bronze_to_silver_full_load DAG..."
-                if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load; then
-                    echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG has been re-paused"
+                for dag_id in $dag_list; do
+                    # Skip the DAG that should remain paused
+                    if [ "$dag_id" = "mrt_traffic_bronze_to_silver_full_load" ]; then
+                        echo "Skipping mrt_traffic_bronze_to_silver_full_load DAG (keeping it paused)"
+                        continue
+                    fi
+                    
+                    echo "Unpausing DAG: $dag_id"
+                    if docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id" >/dev/null 2>&1; then
+                        echo "SUCCESS: Unpaused DAG: $dag_id"
+                        unpause_success_count=$((unpause_success_count + 1))
+                    else
+                        echo "WARNING: Failed to unpause DAG: $dag_id"
+                    fi
+                    unpause_total_count=$((unpause_total_count + 1))
+                done
+                
+                echo "SUCCESS: Unpaused $unpause_success_count out of $unpause_total_count DAGs"
+                
+                # Ensure the specific DAG remains paused
+                echo "Ensuring mrt_traffic_bronze_to_silver_full_load DAG remains paused..."
+                if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load >/dev/null 2>&1; then
+                    echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG is confirmed paused"
                 else
-                    echo "WARNING: Failed to re-pause mrt_traffic_bronze_to_silver_full_load DAG, but continuing..."
+                    echo "WARNING: Could not confirm pause status for mrt_traffic_bronze_to_silver_full_load DAG"
                 fi
             else
-                echo "WARNING: Failed to unpause all DAGs, but continuing..."
+                echo "WARNING: Could not retrieve DAG list, skipping DAG unpausing"
             fi
         else
             echo "WARNING: airflow-manager.sh failed, trying fallback script..."
