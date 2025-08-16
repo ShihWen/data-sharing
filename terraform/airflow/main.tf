@@ -100,7 +100,7 @@ resource "google_cloud_scheduler_job" "start_airflow" {
 resource "google_cloud_scheduler_job" "stop_airflow" {
   name        = "stop-airflow-vm"
   description = "Stop Airflow VM on Sunday midnight"
-  schedule    = "0 16 * * 6"  # Every Sunday at 00:00
+  schedule    = "0 12 * * 6"  # Every Saturday at 12:00
   time_zone   = "Asia/Taipei"
   region      = var.region
   depends_on  = [google_service_account.scheduler_sa, google_project_iam_member.scheduler_sa_roles]
