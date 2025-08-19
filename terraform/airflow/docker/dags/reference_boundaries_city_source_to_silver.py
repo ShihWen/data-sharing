@@ -31,8 +31,6 @@ def fetch_and_save_boundaries_to_gcs(**context):
     
     urls = {
         "city": "https://tdx.transportdata.tw/api/basic/V3/Map/District/Boundary/City?%24format=GEOJSON",
-        "district": "https://tdx.transportdata.tw/api/basic/V3/Map/District/Boundary/Town?%24format=GEOJSON",
-        "village": "https://tdx.transportdata.tw/api/basic/V3/Map/District/Boundary/Village?%24format=GEOJSON"
     }
     
     gcs_paths = {}
