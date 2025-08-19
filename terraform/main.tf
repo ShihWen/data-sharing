@@ -89,6 +89,13 @@ locals {
       destination_dataset = "tpe_mrt_bronze"
       schedule            = "every saturday 01:10"
     }
+    c_store_seven_eleven = {
+      display_name        = "Seven Eleven Data Transfer"
+      destination_table   = "seven_eleven"
+      data_path           = "s3://${var.s3_bucket}/cvs/sevenEleven*"
+      destination_dataset = "c_store_bronze"
+      schedule            = "every saturday 01:10"
+    }
   }
 }
 
