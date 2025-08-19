@@ -1,6 +1,6 @@
-table_id: "seven_eleven"
+table_id: "family_mart"
 dataset_id_var_name: "c_store_bronze"
-description: "Raw site location for Seven Eleven"
+description: "Raw site location for Family Mart"
 labels:
   data_source: "s3"
   data_type: "site_location"

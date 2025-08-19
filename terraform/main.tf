@@ -96,6 +96,13 @@ locals {
       destination_dataset = "c_store_bronze"
       schedule            = "every saturday 01:10"
     }
+    c_store_family_mart = {
+      display_name        = "Family Mart Data Transfer"
+      destination_table   = "family_mart"
+      data_path           = "s3://${var.s3_bucket}/cvs/familymart*"
+      destination_dataset = "c_store_bronze"
+      schedule            = "every saturday 01:10"
+    }
   }
 }
 
