@@ -13,7 +13,7 @@ schema:
   - {name: "name",                       type: "STRING", mode: "NULLABLE", description: "site name of convenience store"}
   - {name: "city",                       type: "STRING", mode: "NULLABLE", description: "city of convenience store"}
   - {name: "district",                   type: "STRING", mode: "NULLABLE", description: "district of convenience store"}
-  - {name: "adress",                     type: "STRING",  mode: "NULLABLE", description: "address of convenience store"}
+  - {name: "address",                     type: "STRING",  mode: "NULLABLE", description: "address of convenience store"}
   - {name: "long",                       type: "FLOAT",   mode: "NULLABLE", description: "longitude of convenience store"}
   - {name: "lat",                        type: "FLOAT",   mode: "NULLABLE", description: "latitude of convenience store"}
   - {name: "service",                    type: "STRING",  mode: "NULLABLE", description: "service of convenience store, separated by comma"}
