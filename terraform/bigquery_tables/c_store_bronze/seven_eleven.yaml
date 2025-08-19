@@ -7,8 +7,8 @@ labels:
   tier: "bronze"
 
 schema:
-  - {name: "extract_date",               type: "DATE",  mode: "NULLABLE", description: "data extracted date"}
-  - {name: "extract_time",               type: "TIME",  mode: "NULLABLE", description: "data extracted time, TW timezone"}
+  - {name: "extract_date",               type: "STRING",  mode: "NULLABLE", description: "data extracted date"}
+  - {name: "extract_time",               type: "STRING",  mode: "NULLABLE", description: "data extracted time, TW timezone"}
   - {name: "company",                    type: "STRING",  mode: "NULLABLE", description: "company name of convenience store"}
   - {name: "name",                       type: "STRING", mode: "NULLABLE", description: "site name of convenience store"}
   - {name: "city",                       type: "STRING", mode: "NULLABLE", description: "city of convenience store"}
