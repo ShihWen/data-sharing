@@ -518,7 +518,10 @@ EOL
             
             # Unpause all DAGs except specific ones that should remain paused
             echo ""
-            echo "Unpausing DAGs (keeping mrt_traffic_bronze_to_silver_full_load paused)..."
+            echo "Unpausing DAGs (keeping specific DAGs paused)..."
+
+            # Define the list of DAGs that should remain paused
+            paused_dags="mrt_traffic_bronze_to_silver_full_load reference_boundaries_city_source_to_silver reference_boundaries_town_source_to_silver reference_boundaries_village_source_to_silver mrt_station_ntmc_source_to_bronze"
 
             # Get list of all DAGs and unpause them individually (compatible with older Airflow versions)
             echo "Getting list of all DAGs..."
@@ -526,13 +529,22 @@ EOL
 
             if [ -n "$dag_list" ]; then
                 echo "Found DAGs: $dag_list"
+                echo "DAGs that will remain paused: $paused_dags"
                 unpause_success_count=0
                 unpause_total_count=0
                 
                 for dag_id in $dag_list; do
-                    # Skip the DAG that should remain paused
-                    if [ "$dag_id" = "mrt_traffic_bronze_to_silver_full_load" ]; then
-                        echo "Skipping mrt_traffic_bronze_to_silver_full_load DAG (keeping it paused)"
+                    # Check if this DAG should remain paused
+                    should_skip=false
+                    for paused_dag in $paused_dags; do
+                        if [ "$dag_id" = "$paused_dag" ]; then
+                            echo "Skipping $paused_dag DAG (keeping it paused)"
+                            should_skip=true
+                            break
+                        fi
+                    done
+                    
+                    if [ "$should_skip" = true ]; then
                         continue
                     fi
                     
@@ -548,23 +560,25 @@ EOL
                 
                 echo "SUCCESS: Unpaused $unpause_success_count out of $unpause_total_count DAGs"
                 
-                # Ensure the specific DAG remains paused
-                echo "Ensuring mrt_traffic_bronze_to_silver_full_load DAG remains paused..."
-                if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load >/dev/null 2>&1; then
-                    echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG is confirmed paused"
-                else
-                    echo "WARNING: Could not confirm pause status for mrt_traffic_bronze_to_silver_full_load DAG"
-                fi
+                # Ensure all specified DAGs remain paused
+                echo "Ensuring specified DAGs remain paused..."
+                for paused_dag in $paused_dags; do
+                    if docker-compose exec -T airflow-webserver airflow dags pause "$paused_dag" >/dev/null 2>&1; then
+                        echo "SUCCESS: $paused_dag DAG is confirmed paused"
+                    else
+                        echo "WARNING: Could not confirm pause status for $paused_dag DAG"
+                    fi
+                done
             else
                 echo "WARNING: Could not retrieve DAG list, skipping DAG unpausing"
             fi
         else
             echo "WARNING: airflow-manager.sh failed, trying fallback script..."
-                    if /opt/airflow/create_connections_fallback.sh; then
-            echo "SUCCESS: Successfully created comprehensive connections and variables using fallback script"
-        else
-            echo "ERROR: Both scripts failed to create connections"
-        fi
+            if /opt/airflow/create_connections_fallback.sh; then
+                echo "SUCCESS: Successfully created comprehensive connections and variables using fallback script"
+            else
+                echo "ERROR: Both scripts failed to create connections"
+            fi
         fi
     else
         echo "Running fallback connections script..."
