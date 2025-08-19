@@ -103,6 +103,20 @@ locals {
       destination_dataset = "c_store_bronze"
       schedule            = "every saturday 01:10"
     }
+    c_store_ok_mart = {
+      display_name        = "OK Mart Data Transfer"
+      destination_table   = "ok_mart"
+      data_path           = "s3://${var.s3_bucket}/cvs/okmart*"
+      destination_dataset = "c_store_bronze"
+      schedule            = "every saturday 01:10"
+    }
+    c_store_hilife = {
+      display_name        = "Hi-Life Data Transfer"
+      destination_table   = "hilife"
+      data_path           = "s3://${var.s3_bucket}/cvs/hilife*"
+      destination_dataset = "c_store_bronze"
+      schedule            = "every saturday 01:10"
+    }
   }
 }
 

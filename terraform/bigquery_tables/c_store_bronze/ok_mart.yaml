@@ -1,0 +1,17 @@
+table_id: "ok_mart"
+dataset_id_var_name: "c_store_bronze"
+description: "Raw site location for OK Mart"
+labels:
+  data_source: "s3"
+  data_type: "site_location"
+  tier: "bronze"
+
+schema:
+  - {name: "extract_date",               type: "STRING",  mode: "NULLABLE", description: "data extracted date"}
+  - {name: "extract_time",               type: "STRING",  mode: "NULLABLE", description: "data extracted time, TW timezone"}
+  - {name: "company",                    type: "STRING",  mode: "NULLABLE", description: "company name of convenience store"}
+  - {name: "name",                       type: "STRING", mode: "NULLABLE", description: "site name of convenience store"}
+  - {name: "city",                       type: "STRING", mode: "NULLABLE", description: "city of convenience store"}
+  - {name: "district",                   type: "STRING", mode: "NULLABLE", description: "district of convenience store"}
+  - {name: "address",                    type: "STRING",  mode: "NULLABLE", description: "address of convenience store"}
+  - {name: "service",                    type: "STRING",  mode: "NULLABLE", description: "service of convenience store, separated by comma"}
