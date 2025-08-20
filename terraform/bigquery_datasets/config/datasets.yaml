@@ -162,3 +162,19 @@ datasets:
         special_group: "projectWriters"
       - role: "READER"
         special_group: "projectReaders"
+
+  - id: "c_store_silver"
+    friendly_name: "Convinence Store silver"
+    description: "Convinence Store site locations"
+    labels:
+      environment: "development"
+      domain: "c_store"
+      data_tier: "silver"
+      owner: "data_engineering"
+    access_rules:
+      - role: "OWNER"
+        special_group: "projectOwners"
+      - role: "WRITER"
+        special_group: "projectWriters"
+      - role: "READER"
+        special_group: "projectReaders"
