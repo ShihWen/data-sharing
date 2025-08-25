@@ -1,10 +1,12 @@
-from airflow.models import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.bigquery import BigQueryExecuteQueryOperator
+from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.operators.python import PythonOperator, BranchPythonOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
-from airflow.hooks.base import BaseHook
-from airflow.utils.email import send_email
-from sql.c_store_seven_eleven_queries import CHECK_NEW_DATA_QUERY
+from airflow.utils.trigger_rule import TriggerRule
+from airflow.models import Variable
+import logging
 
 # Import common functions
 from utils.common_functions import (
