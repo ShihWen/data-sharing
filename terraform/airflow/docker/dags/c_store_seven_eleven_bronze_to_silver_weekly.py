@@ -8,10 +8,12 @@ from airflow.utils.trigger_rule import TriggerRule
 from airflow.models import Variable
 import logging
 
-
+from default_args import default_args
+from dag_config import SCHEDULE_INTERVALS
 from sql.c_store_seven_eleven_queries import (
     CHECK_DUPLICATE_STORE_QUERY
 )
+
 
 def notify_success(context):
     """Send email notification on success"""
@@ -111,7 +113,7 @@ dag = DAG(
     'c_store_seven_eleven_bronze_to_silver_weekly',
     default_args=default_args,
     description='C store seven eleven data transfer from bronze to silver (one date at a time)',
-    schedule_interval='0 2 * * 6',  # Run at 10 AM every Saturday on Taiwan time
+    schedule_interval= SCHEDULE_INTERVALS['weekly'],  # Run at 10 AM every Saturday on Taiwan time
     start_date=days_ago(1),
     catchup=False,
     tags=['c_store', 'seven_eleven', 'bronze', 'silver', 'incremental-load'],
