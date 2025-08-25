@@ -137,17 +137,15 @@ check_duplicate_store = BranchPythonOperator(
 )
 
 
-
-
-# Task 2: Process the new month (only runs if new month found)
-process_date = BigQueryExecuteQueryOperator(
-    task_id='process_date',
-    sql=TRANSFORM_AND_LOAD_DATE_QUERY,
-    params={
-        'target_date': '{{ ti.xcom_pull(task_ids="check_and_branch", key="target_date") }}'
-    },
-    use_legacy_sql=False,
-    dag=dag,
-)
+# # Task 2: Process the new month (only runs if new month found)
+# process_date = BigQueryExecuteQueryOperator(
+#     task_id='process_date',
+#     sql=TRANSFORM_AND_LOAD_DATE_QUERY,
+#     params={
+#         'target_date': '{{ ti.xcom_pull(task_ids="check_and_branch", key="target_date") }}'
+#     },
+#     use_legacy_sql=False,
+#     dag=dag,
+# )
 
 check_and_branch >> check_duplicate_store
