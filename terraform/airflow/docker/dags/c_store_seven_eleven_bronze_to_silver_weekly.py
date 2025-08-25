@@ -12,6 +12,10 @@ from utils.common_functions import (
     log_no_processing
 )
 
+from sql.c_store_seven_eleven_queries import (
+    CHECK_DUPLICATE_STORE_QUERY
+)
+
 def notify_success(context):
     """Send email notification on success"""
     send_notification(
@@ -31,7 +35,7 @@ def notify_failure(context):
 
 def check_and_decide(**context):
     """
-    Check if there's a new month and decide which task to run next.
+    Check if there's a new date and decide which task to run next.
     Returns task_id for branching.
     """
     hook = BigQueryHook(
@@ -66,6 +70,38 @@ def check_and_decide(**context):
         logging.info("No new date to process")
         return 'no_processing_needed'
 
+def check_duplicate_store(**context):
+    """
+    Check for duplicate stores and decide which task to run next.
+    Returns task_id for branching.
+    """
+    hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False
+    )
+    job_config = {
+        'query': {
+            'query': CHECK_DUPLICATE_STORE_QUERY,
+            'useLegacySql': False
+        }
+    }
+    query_job = hook.insert_job(
+        configuration=job_config,
+        project_id=hook.project_id
+    )
+    results = query_job.result()
+    result = list(results)
+    if result:
+        logging.info(f"Duplicate stores found: {len(result)} stores")
+        for row in result:
+            logging.info(f"Duplicate store found: {row['name']}, {row['city']}")
+        
+        return 'process_duplicate_store'
+    else:
+        logging.info("No duplicate stores found")
+        return 'no_processing_needed'
+
+
 
 def log_no_processing(**context):
     """Log when no processing is needed"""
@@ -94,6 +130,16 @@ check_and_branch = BranchPythonOperator(
     dag=dag,
 )
 
+# Task 2: Check for duplicate stores
+check_duplicate_store = BranchPythonOperator(
+    task_id='check_duplicate_store',
+    python_callable=check_duplicate_store,
+    dag=dag,
+)
+
+
+
+
 # Task 2: Process the new month (only runs if new month found)
 process_date = BigQueryExecuteQueryOperator(
     task_id='process_date',
@@ -104,3 +150,5 @@ process_date = BigQueryExecuteQueryOperator(
     use_legacy_sql=False,
     dag=dag,
 )
+
+check_and_branch >> check_duplicate_store
