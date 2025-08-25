@@ -35,25 +35,4 @@ HAVING COUNT(*) > 1
 
 
 TRANSFORM_AND_LOAD_DATE_QUERY = """
-WITH an_nan_stores AS (
-    select *
-    from `{project_id}.{bronze_dataset_id}`.seven_eleven A
-    left join
-    (
-        SELECT distinct name
-        from `{project_id}.{bronze_dataset_id}`.seven_eleven
-        where district = '安南區'
-        and city = '台南市'
-        and extract_date = '{{ params.target_date }}'
-    ) B
-    on A.name = B.name and A.city = B.city
-
-)
-
-INSERT INTO `{project_id}.{silver_dataset_id}`.seven_eleven
-(
-    extract_date,
-    store_id,
-    store_name, 
-    store_address,
-)
+"""
