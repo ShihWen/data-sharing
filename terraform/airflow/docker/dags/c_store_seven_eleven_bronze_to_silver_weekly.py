@@ -8,11 +8,6 @@ from airflow.utils.trigger_rule import TriggerRule
 from airflow.models import Variable
 import logging
 
-# Import common functions
-from utils.common_functions import (
-    check_and_decide,
-    log_no_processing
-)
 
 from sql.c_store_seven_eleven_queries import (
     CHECK_DUPLICATE_STORE_QUERY
