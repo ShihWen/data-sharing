@@ -5,6 +5,7 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQue
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
 from airflow.utils.trigger_rule import TriggerRule
+from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 import logging
 
