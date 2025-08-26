@@ -4,6 +4,7 @@ from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
+from airflow.utils.trigger_rule import TriggerRule
 from airflow.models import Variable
 import logging
 
