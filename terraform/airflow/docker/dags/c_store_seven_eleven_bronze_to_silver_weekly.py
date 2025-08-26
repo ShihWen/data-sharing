@@ -16,6 +16,10 @@ from sql.c_store_seven_eleven_queries import (
 )
 
 
+GCP_PROJECT_ID = "{{ var.value.gcp_project_id }}"
+BRONZE_DATASET = "c_store_bronze"
+SILVER_DATASET = "c_store_silver"
+
 def notify_success(context):
     """Send email notification on success"""
     send_notification(
@@ -46,14 +50,18 @@ def check_and_decide(**context):
     # Execute the check query
     job_config = {
         'query': {
-            'query': CHECK_NEW_DATA_QUERY,
+            'query': CHECK_NEW_DATA_QUERY.format(
+                project_id=GCP_PROJECT_ID,
+                bronze_dataset_id=BRONZE_DATASET,
+                silver_dataset_id=SILVER_DATASET
+            ),
             'useLegacySql': False
         }
     }
     
     query_job = hook.insert_job(
         configuration=job_config,
-        project_id=hook.project_id
+        project_id=GCP_PROJECT_ID
     )
     
     results = query_job.result()
@@ -81,13 +89,16 @@ def check_duplicate_store(**context):
     )
     job_config = {
         'query': {
-            'query': CHECK_DUPLICATE_STORE_QUERY,
+            'query': CHECK_DUPLICATE_STORE_QUERY.format(
+                project_id=GCP_PROJECT_ID,
+                bronze_dataset_id=BRONZE_DATASET
+            ),
             'useLegacySql': False
         }
     }
     query_job = hook.insert_job(
         configuration=job_config,
-        project_id=hook.project_id
+        project_id=GCP_PROJECT_ID
     )
     results = query_job.result()
     result = list(results)
