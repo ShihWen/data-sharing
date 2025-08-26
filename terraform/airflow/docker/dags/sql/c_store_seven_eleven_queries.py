@@ -35,7 +35,7 @@ HAVING COUNT(*) > 1
 """
 
 PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES = """
-CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}`.seven_eleven_step1_duplicate_{{{{ ds_nodash }}}}` AS
+CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}`.seven_eleven_step1_duplicate` AS
 SELECT *
        , CURRENT_TIMESTAMP() AS processed_at
 FROM `{project_id}.{bronze_dataset_id}`.seven_eleven
@@ -43,7 +43,7 @@ WHERE extract_date = '{target_date}';
 """
 
 PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES = """
-CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}`.seven_eleven_step2_remove_exact_duplicate_{{{{ ds_nodash }}}}` AS
+CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}`.seven_eleven_step2_remove_exact_duplicate` AS
 SELECT distinct extract_date
             , name
             , city
@@ -53,7 +53,7 @@ SELECT distinct extract_date
             , lat
             , service 
             , CURRENT_TIMESTAMP() AS processed_at
-FROM `{project_id}.{silver_dataset_id}`.seven_eleven_step1_duplicate_{{{{ ds_nodash }}}}`
+FROM `{project_id}.{silver_dataset_id}`.seven_eleven_step1_duplicate`
 WHERE extract_date = '{target_date}';
 """
 
