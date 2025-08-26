@@ -64,3 +64,33 @@ FROM `{project_id}.{silver_dataset_id}.seven_eleven_step1_duplicate`
 WHERE extract_date = '{target_date}';
 """
 
+PROCESS_DUPLICATE_STORE_STEP3_REMOVE_STORE_IN_SOUTH_DISTRICT_TAINAN = """
+CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` AS
+with remove_list as (
+    select extract_date
+           , name
+           , city
+           , district
+           , address
+           , long
+           , lat
+           , service 
+    from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate`
+    where distric = '安南區'
+)
+, remove as (
+    select extract_date
+           , name
+           , city
+           , district
+           , address
+           , long
+           , lat
+           , service 
+           , CURRENT_TIMESTAMP() AS processed_at
+    from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate`
+    where extract_date = '{target_date}'
+)
+select *
+from remove
+"""

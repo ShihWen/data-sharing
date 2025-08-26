@@ -162,6 +162,25 @@ def step2_remove_exact_duplicate_stores(**context):
     )
     bq_hook.run_query(sql)
     
+def step3_remove_store_in_south_district_tainan(**context):
+    """
+    Remove store in south district of Tainan.
+    """
+    target_date = context['task_instance'].xcom_pull(task_ids='check_and_branch', key='target_date')
+
+    bq_hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False
+    )
+
+    sql = PROCESS_DUPLICATE_STORE_STEP3_REMOVE_STORE_IN_SOUTH_DISTRICT_TAINAN.format(
+        project_id=gcp_project_id,
+        silver_dataset_id=SILVER_DATASET,
+        target_date=target_date
+    )
+    bq_hook.run_query(sql)
+
+
 
 
 def log_no_processing(**context):
@@ -217,6 +236,12 @@ with DAG(
         step2_task = PythonOperator(
             task_id='step2_remove_exact_duplicate_stores',
             python_callable=step2_remove_exact_duplicate_stores,
+            dag=dag,
+        )
+
+        step3_task = PythonOperator(
+            task_id='step3_remove_store_in_south_district_tainan',
+            python_callable=step3_remove_store_in_south_district_tainan,
             dag=dag,
         )
 
