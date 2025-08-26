@@ -134,7 +134,7 @@ def log_no_processing(**context):
 
 
 # Create the DAG
-dag = DAG(
+with DAG(
     'c_store_seven_eleven_bronze_to_silver_weekly',
     default_args=default_args,
     description='C store seven eleven data transfer from bronze to silver (one date at a time)',
@@ -145,28 +145,28 @@ dag = DAG(
     on_success_callback=notify_success,
     on_failure_callback=notify_failure,
     max_active_runs=1
-)
+) as dag:
 
-# Task 1: Check for new month and decide next step
-check_and_branch = BranchPythonOperator(
-    task_id='check_and_branch',
-    python_callable=check_and_decide,
-    dag=dag,
-)
+    # Task 1: Check for new month and decide next step
+    check_and_branch = BranchPythonOperator(
+        task_id='check_and_branch',
+        python_callable=check_and_decide,
+        dag=dag,
+    )
 
-# Task 2: Check for duplicate stores
-check_duplicate_store = BranchPythonOperator(
-    task_id='check_duplicate_store',
-    python_callable=check_duplicate_store,
-    dag=dag,
-)
+    # Task 2: Check for duplicate stores
+    check_duplicate_store = BranchPythonOperator(
+        task_id='check_duplicate_store',
+        python_callable=check_duplicate_store,
+        dag=dag,
+    )
 
-# Task 3: Log when no processing is needed
-no_processing_needed = PythonOperator(
-    task_id='no_processing_needed',
-    python_callable=log_no_processing,
-    dag=dag,
-)
+    # Task 3: Log when no processing is needed
+    no_processing_needed = PythonOperator(
+        task_id='no_processing_needed',
+        python_callable=log_no_processing,
+        dag=dag,
+    )
 
     with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
         # Task 4: Process duplicate stores (placeholder for now)
@@ -203,7 +203,6 @@ no_processing_needed = PythonOperator(
         step1_list_duplicate_stores >> step2_remove_exact_duplicate_stores
 
 
-
-# DAG flow with proper branching
-check_and_branch >> [ check_duplicate_store, no_processing_needed]
-check_duplicate_store >> [process_duplicate_store, no_processing_needed]
+    # DAG flow with proper branching
+    check_and_branch >> [ check_duplicate_store, no_processing_needed]
+    check_duplicate_store >> [process_duplicate_store, no_processing_needed]
