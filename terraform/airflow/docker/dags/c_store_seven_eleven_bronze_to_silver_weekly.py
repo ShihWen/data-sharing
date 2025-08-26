@@ -69,7 +69,7 @@ def check_and_decide(**context):
     result = list(results)
     
     if result and result[0]['new_date']:
-        new_date = result[0]['new_date'].strftime('%Y-%m-%d')
+        new_date = result[0]['new_date']#.strftime('%Y-%m-%d')
         logging.info(f"New date found: {new_date}")
         
         # Store the date to process for the next task
