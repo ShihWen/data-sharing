@@ -34,6 +34,26 @@ GROUP BY name, city
 HAVING COUNT(*) > 1
 """
 
-
-TRANSFORM_AND_LOAD_DATE_QUERY = """
+PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES = """
+CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}`.seven_eleven_step1_duplicate_{{{{ ds_nodash }}}}` AS
+SELECT *
+       , CURRENT_TIMESTAMP() AS processed_at
+FROM `{project_id}.{bronze_dataset_id}`.seven_eleven
+WHERE extract_date = '{target_date}';
 """
+
+PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES = """
+CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}`.seven_eleven_step2_remove_exact_duplicate_{{{{ ds_nodash }}}}` AS
+SELECT distinct extract_date
+            , name
+            , city
+            , district
+            , address
+            , long
+            , lat
+            , service 
+            , CURRENT_TIMESTAMP() AS processed_at
+FROM `{project_id}.{silver_dataset_id}`.seven_eleven_step1_duplicate_{{{{ ds_nodash }}}}`
+WHERE extract_date = '{target_date}';
+"""
+

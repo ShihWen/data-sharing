@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
-from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator, BigQueryInsertJobOperator
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
 from airflow.utils.trigger_rule import TriggerRule
@@ -12,7 +12,9 @@ from config.default_args import default_args
 from config.dag_config import SCHEDULE_INTERVALS
 from sql.c_store_seven_eleven_queries import (
     CHECK_NEW_DATA_QUERY,
-    CHECK_DUPLICATE_STORE_QUERY
+    CHECK_DUPLICATE_STORE_QUERY,
+    PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES,
+    PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES
 )
 
 
@@ -117,7 +119,7 @@ def check_duplicate_store(**context):
         for row in result:
             logging.info(f"Duplicate store found: {row['name']}, {row['city']}")
         
-        return 'process_duplicate_store'
+        return 'process_duplicate_store_step1_list_duplicate_stores'
     else:
         logging.info("No duplicate stores found")
         return 'no_processing_needed'
@@ -165,23 +167,41 @@ no_processing_needed = PythonOperator(
     dag=dag,
 )
 
-# Task 4: Process duplicate stores (placeholder for now)
-process_duplicate_store = PythonOperator(
-    task_id='process_duplicate_store',
-    python_callable=lambda **context: "Processed duplicate stores",
-    dag=dag,
-)
+with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
+    # Task 4: Process duplicate stores (placeholder for now)
+    step1_list_duplicate_stores = BigQueryInsertJobOperator(
+        dag=dag,
+        task_id='process_duplicate_store_step1_list_duplicate_stores',
+        configuration={
+            "query": {
+                "query": PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES.format(
+                    project_id=gcp_project_id,
+                    bronze_dataset_id=BRONZE_DATASET,
+                    target_date=target_date
+                ),
+                "useLegacySql": False,
+            }
+        },
+    )
 
-# # Task 2: Process the new month (only runs if new month found)
-# process_date = BigQueryExecuteQueryOperator(
-#     task_id='process_date',
-#     sql=TRANSFORM_AND_LOAD_DATE_QUERY,
-#     params={
-#         'target_date': '{{ ti.xcom_pull(task_ids="check_and_branch", key="target_date") }}'
-#     },
-#     use_legacy_sql=False,
-#     dag=dag,
-# )
+    step2_remove_exact_duplicate_stores = BigQueryInsertJobOperator(
+        dag=dag,
+        task_id='process_duplicate_store_step2_remove_exact_duplicate_stores',
+        configuration={
+            "query": {
+                "query": PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES.format(
+                    project_id=gcp_project_id,
+                    bronze_dataset_id=BRONZE_DATASET,
+                    target_date=target_date
+                ),
+                "useLegacySql": False,
+            }
+        },
+    )
+
+    step1_list_duplicate_stores >> step2_remove_exact_duplicate_stores
+
+
 
 # DAG flow with proper branching
 check_and_branch >> [ check_duplicate_store, no_processing_needed]
