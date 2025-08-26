@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
-from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator, BigQueryInsertJobOperator
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.utils.dates import days_ago
-from airflow.utils.trigger_rule import TriggerRule
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 import logging
@@ -77,12 +75,12 @@ def check_and_decide(**context):
         
         # Store the date to process for the next task
         context['task_instance'].xcom_push(key='target_date', value=new_date)
-        return 'check_duplicate_store'
+        return 'decide_duplicate_store_branch'
     else:
         logging.info("No new date to process")
-        return 'log_no_processing'
+        return 'no_processing_needed'
 
-def check_duplicate_store(**context):
+def decide_duplicate_store_branch(**context):
     """
     Check for duplicate stores and decide which task to run next.
     Returns task_id for branching.
@@ -120,11 +118,49 @@ def check_duplicate_store(**context):
         for row in result:
             logging.info(f"Duplicate store found: {row['name']}, {row['city']}")
         
-        return 'process_duplicate_store_step1_list_duplicate_stores'
+        return 'process_duplicate_store.step1_list_duplicate_stores'
     else:
         logging.info("No duplicate stores found")
         return 'no_processing_needed'
 
+def step1_list_duplicate_stores(**context):
+    """
+    List duplicate stores.
+    """
+    target_date = context['task_instance'].xcom_pull(task_ids='check_and_branch', key='target_date')
+
+    bq_hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False
+    )
+
+    sql = PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES.format(
+        project_id=gcp_project_id,
+        bronze_dataset_id=BRONZE_DATASET,
+        silver_dataset_id=SILVER_DATASET,
+        target_date=target_date
+    )
+    bq_hook.run_query(sql)
+
+
+def step2_remove_exact_duplicate_stores(**context):
+    """
+    Remove exact duplicate stores.
+    """
+    target_date = context['task_instance'].xcom_pull(task_ids='check_and_branch', key='target_date')
+    
+    bq_hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False
+    )
+    
+    sql = PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES.format(
+        project_id=gcp_project_id,
+        silver_dataset_id=SILVER_DATASET,
+        target_date=target_date
+    )
+    bq_hook.run_query(sql)
+    
 
 
 def log_no_processing(**context):
@@ -155,9 +191,9 @@ with DAG(
     )
 
     # Task 2: Check for duplicate stores
-    check_duplicate_store = BranchPythonOperator(
-        task_id='check_duplicate_store',
-        python_callable=check_duplicate_store,
+    decide_duplicate_store_branch = BranchPythonOperator(
+        task_id='decide_duplicate_store_branch',
+        python_callable=decide_duplicate_store_branch,
         dag=dag,
     )
 
@@ -165,44 +201,27 @@ with DAG(
     no_processing_needed = PythonOperator(
         task_id='no_processing_needed',
         python_callable=log_no_processing,
+        trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
         dag=dag,
     )
 
     with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
         # Task 4: Process duplicate stores (placeholder for now)
-        step1_list_duplicate_stores = BigQueryInsertJobOperator(
+        step1_task = PythonOperator(
+            task_id='step1_list_duplicate_stores',
+            python_callable=step1_list_duplicate_stores,
             dag=dag,
-            task_id='process_duplicate_store_step1_list_duplicate_stores',
-            configuration={
-                "query": {
-                    "query": PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES.format(
-                        project_id=gcp_project_id,
-                        bronze_dataset_id=BRONZE_DATASET,
-                        target_date=target_date
-                    ),
-                    "useLegacySql": False,
-                }
-            },
         )
 
-        step2_remove_exact_duplicate_stores = BigQueryInsertJobOperator(
+        step2_task = PythonOperator(
+            task_id='step2_remove_exact_duplicate_stores',
+            python_callable=step2_remove_exact_duplicate_stores,
             dag=dag,
-            task_id='process_duplicate_store_step2_remove_exact_duplicate_stores',
-            configuration={
-                "query": {
-                    "query": PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES.format(
-                        project_id=gcp_project_id,
-                        bronze_dataset_id=BRONZE_DATASET,
-                        target_date=target_date
-                    ),
-                    "useLegacySql": False,
-                }
-            },
         )
 
-        step1_list_duplicate_stores >> step2_remove_exact_duplicate_stores
+        step1_task >> step2_task
 
 
     # DAG flow with proper branching
-    check_and_branch >> [ check_duplicate_store, no_processing_needed]
-    check_duplicate_store >> [process_duplicate_store, no_processing_needed]
+    check_and_branch >> [ decide_duplicate_store_branch, no_processing_needed]
+    decide_duplicate_store_branch >> [process_duplicate_store, no_processing_needed]
