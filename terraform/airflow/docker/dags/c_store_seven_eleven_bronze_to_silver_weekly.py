@@ -16,7 +16,8 @@ from sql.c_store_seven_eleven_queries import (
 )
 
 
-GCP_PROJECT_ID = "{{ var.value.gcp_project_id }}"
+# Get Airflow variables. This is the recommended way to manage configuration.
+gcp_project_id = Variable.get("gcp_project_id")
 BRONZE_DATASET = "c_store_bronze"
 SILVER_DATASET = "c_store_silver"
 
@@ -51,7 +52,7 @@ def check_and_decide(**context):
     job_config = {
         'query': {
             'query': CHECK_NEW_DATA_QUERY.format(
-                project_id=GCP_PROJECT_ID,
+                project_id=gcp_project_id,
                 bronze_dataset_id=BRONZE_DATASET,
                 silver_dataset_id=SILVER_DATASET
             ),
@@ -61,7 +62,7 @@ def check_and_decide(**context):
     
     query_job = hook.insert_job(
         configuration=job_config,
-        project_id=GCP_PROJECT_ID
+        project_id=gcp_project_id
     )
     
     results = query_job.result()
@@ -87,18 +88,27 @@ def check_duplicate_store(**context):
         gcp_conn_id='google_cloud_default',
         use_legacy_sql=False
     )
+    
+    # Get the target date from the previous task
+    target_date = context['task_instance'].xcom_pull(task_ids='check_and_branch', key='target_date')
+    
+    if not target_date:
+        logging.info("No target date found, skipping duplicate store check")
+        return 'no_processing_needed'
+    
     job_config = {
         'query': {
             'query': CHECK_DUPLICATE_STORE_QUERY.format(
-                project_id=GCP_PROJECT_ID,
-                bronze_dataset_id=BRONZE_DATASET
+                project_id=gcp_project_id,
+                bronze_dataset_id=BRONZE_DATASET,
+                target_date=target_date
             ),
             'useLegacySql': False
         }
     }
     query_job = hook.insert_job(
         configuration=job_config,
-        project_id=GCP_PROJECT_ID
+        project_id=gcp_project_id
     )
     results = query_job.result()
     result = list(results)
@@ -148,6 +158,19 @@ check_duplicate_store = BranchPythonOperator(
     dag=dag,
 )
 
+# Task 3: Log when no processing is needed
+log_no_processing = PythonOperator(
+    task_id='log_no_processing',
+    python_callable=log_no_processing,
+    dag=dag,
+)
+
+# Task 4: Process duplicate stores (placeholder for now)
+process_duplicate_store = PythonOperator(
+    task_id='process_duplicate_store',
+    python_callable=lambda **context: "Processed duplicate stores",
+    dag=dag,
+)
 
 # # Task 2: Process the new month (only runs if new month found)
 # process_date = BigQueryExecuteQueryOperator(
@@ -160,4 +183,6 @@ check_duplicate_store = BranchPythonOperator(
 #     dag=dag,
 # )
 
-check_and_branch >> check_duplicate_store
+# DAG flow with proper branching
+check_and_branch >> [ check_duplicate_store, log_no_processing]
+check_duplicate_store >> [ process_duplicate_store, log_no_processing]

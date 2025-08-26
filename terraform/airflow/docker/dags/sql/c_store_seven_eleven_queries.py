@@ -28,7 +28,7 @@ CHECK_DUPLICATE_STORE_QUERY = """
 SELECT name, city
 FROM `{project_id}.{bronze_dataset_id}`.seven_eleven
 WHERE name is not null
-and extract_date = '{{ params.target_date }}'
+and extract_date = '{target_date}'
 GROUP BY name, city
 HAVING COUNT(*) > 1
 """
