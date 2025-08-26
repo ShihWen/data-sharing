@@ -159,8 +159,8 @@ check_duplicate_store = BranchPythonOperator(
 )
 
 # Task 3: Log when no processing is needed
-log_no_processing = PythonOperator(
-    task_id='log_no_processing',
+no_processing_needed = PythonOperator(
+    task_id='no_processing_needed',
     python_callable=log_no_processing,
     dag=dag,
 )
@@ -184,5 +184,5 @@ process_duplicate_store = PythonOperator(
 # )
 
 # DAG flow with proper branching
-check_and_branch >> [ check_duplicate_store, log_no_processing]
-check_duplicate_store >> [ process_duplicate_store, log_no_processing]
+check_and_branch >> [ check_duplicate_store, no_processing_needed]
+check_duplicate_store >> [ process_duplicate_store]
