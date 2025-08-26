@@ -10,7 +10,7 @@ silver_dates AS (
 new_date AS (
     SELECT bronze_dates.extract_date
     FROM bronze_dates
-    LEFT JOIN silver_dates ON bronze_dates.extract_date = silver_dates.extract_date
+    LEFT JOIN silver_dates ON bronze_dates.extract_date = format_date('%Y-%m-%d', silver_dates.extract_date)
     WHERE silver_dates.extract_date IS NULL
     ORDER BY bronze_dates.extract_date
     LIMIT 1  -- Only one date arrives at a time
