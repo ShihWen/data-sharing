@@ -74,10 +74,10 @@ def check_and_decide(**context):
         
         # Store the date to process for the next task
         context['task_instance'].xcom_push(key='target_date', value=new_date)
-        return 'process_date'
+        return 'check_duplicate_store'
     else:
         logging.info("No new date to process")
-        return 'no_processing_needed'
+        return 'log_no_processing'
 
 def check_duplicate_store(**context):
     """
