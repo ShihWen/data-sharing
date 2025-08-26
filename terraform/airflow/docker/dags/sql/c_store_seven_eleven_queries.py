@@ -36,7 +36,14 @@ HAVING COUNT(*) > 1
 
 PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES = """
 CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step1_duplicate` AS
-SELECT *
+SELECT extract_date
+       , name
+       , city
+       , district
+       , address
+       , long
+       , lat
+       , service 
        , CURRENT_TIMESTAMP() AS processed_at
 FROM `{project_id}.{bronze_dataset_id}`.seven_eleven
 WHERE extract_date = '{target_date}';
