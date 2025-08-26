@@ -168,39 +168,39 @@ no_processing_needed = PythonOperator(
     dag=dag,
 )
 
-with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
-    # Task 4: Process duplicate stores (placeholder for now)
-    step1_list_duplicate_stores = BigQueryInsertJobOperator(
-        dag=dag,
-        task_id='process_duplicate_store_step1_list_duplicate_stores',
-        configuration={
-            "query": {
-                "query": PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES.format(
-                    project_id=gcp_project_id,
-                    bronze_dataset_id=BRONZE_DATASET,
-                    target_date=target_date
-                ),
-                "useLegacySql": False,
-            }
-        },
-    )
+    with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
+        # Task 4: Process duplicate stores (placeholder for now)
+        step1_list_duplicate_stores = BigQueryInsertJobOperator(
+            dag=dag,
+            task_id='process_duplicate_store_step1_list_duplicate_stores',
+            configuration={
+                "query": {
+                    "query": PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES.format(
+                        project_id=gcp_project_id,
+                        bronze_dataset_id=BRONZE_DATASET,
+                        target_date=target_date
+                    ),
+                    "useLegacySql": False,
+                }
+            },
+        )
 
-    step2_remove_exact_duplicate_stores = BigQueryInsertJobOperator(
-        dag=dag,
-        task_id='process_duplicate_store_step2_remove_exact_duplicate_stores',
-        configuration={
-            "query": {
-                "query": PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES.format(
-                    project_id=gcp_project_id,
-                    bronze_dataset_id=BRONZE_DATASET,
-                    target_date=target_date
-                ),
-                "useLegacySql": False,
-            }
-        },
-    )
+        step2_remove_exact_duplicate_stores = BigQueryInsertJobOperator(
+            dag=dag,
+            task_id='process_duplicate_store_step2_remove_exact_duplicate_stores',
+            configuration={
+                "query": {
+                    "query": PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES.format(
+                        project_id=gcp_project_id,
+                        bronze_dataset_id=BRONZE_DATASET,
+                        target_date=target_date
+                    ),
+                    "useLegacySql": False,
+                }
+            },
+        )
 
-    step1_list_duplicate_stores >> step2_remove_exact_duplicate_stores
+        step1_list_duplicate_stores >> step2_remove_exact_duplicate_stores
 
 
 
