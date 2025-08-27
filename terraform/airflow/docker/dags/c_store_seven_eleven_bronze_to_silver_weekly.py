@@ -280,9 +280,7 @@ with DAG(
             "query": {
                 "query": INSERT_DATA_TO_SILVER_QUERY.format(
                     project_id=gcp_project_id,
-                    bronze_dataset_id=BRONZE_DATASET,
                     silver_dataset_id=SILVER_DATASET,
-                    target_date=target_date
                 ),
                 "useLegacySql": False
             }
