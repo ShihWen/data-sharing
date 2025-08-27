@@ -107,3 +107,79 @@ and A.service = B.service
 where B.name is null
 and A.extract_date ='{target_date}'
 """
+
+PROCESS_DUPLICATE_STORE_STEP4_REMOVE_SHORTER_SERVICE_STORE = """
+CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_remove_shorter_service_store` AS
+  WITH  duplicate_store_name AS 
+  (
+    select extract_date, name
+    from
+    (
+      SELECT extract_date
+            , name
+            , row_number() over(partition by name, extract_date order by extract_date desc, name) rn
+      FROM `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan`
+      where name <> '鳳儀'
+    ) A
+    where rn > 1
+  )
+  ,duplicate_store AS
+  (
+    select extract_date, name
+    from
+    (
+      select extract_date, name
+            , row_number() over(partition by extract_date, name, city, district order by extract_date) rn
+      from
+      (
+        select distinct A.extract_date
+              , A.name
+              , A.city
+              , A.district
+              , A.address
+              , A.long
+              , A.lat
+              , A.service 
+        from `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan` A
+        inner join duplicate_store_name B
+        on A.name = B.name and A.extract_date = B.extract_date
+        where A.name not in ('鳳儀')
+      ) X
+    ) W
+    where rn > 1
+  )
+  , duplicate_store_fulllist AS
+  (
+    select T.extract_date
+            , T.name
+            , T.city
+            , T.district
+            , T.address
+            , T.long
+            , T.lat
+            , T.service 
+            , row_number() over(partition by T.extract_date, T.name, T.city, T.district order by length(service) desc ) idx
+    from `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan` T
+    inner join duplicate_store U on T.name = U.name and T.extract_date = U.extract_date
+  )
+  select X.extract_date
+         , X.name
+         , X.city
+         , X.district
+         , X.address
+         , X.long
+         , X.lat
+         , X.service
+  from `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan` X
+  left join
+  ( select * from duplicate_store_fulllist where idx = 2 ) Y
+  on X.extract_date = Y.extract_date 
+  and X.name = Y.name
+  and X.city = Y.city
+  and X.district = Y.district
+  and X.address = Y.address
+  and X.long = Y.long
+  and X.lat = Y.lat
+  and X.service = Y.service
+  WHERE Y.name is null; 
+"""

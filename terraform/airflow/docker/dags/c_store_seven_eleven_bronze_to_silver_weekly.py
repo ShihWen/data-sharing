@@ -15,7 +15,8 @@ from sql.c_store_seven_eleven_queries import (
     CHECK_DUPLICATE_STORE_QUERY,
     PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES,
     PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES,
-    PROCESS_DUPLICATE_STORE_STEP3_REMOVE_STORE_IN_SOUTH_DISTRICT_TAINAN
+    PROCESS_DUPLICATE_STORE_STEP3_REMOVE_STORE_IN_SOUTH_DISTRICT_TAINAN,
+    PROCESS_DUPLICATE_STORE_STEP4_REMOVE_SHORTER_SERVICE_STORE
 )
 
 
@@ -182,6 +183,21 @@ def step3_remove_store_in_south_district_tainan(**context):
     bq_hook.run_query(sql)
 
 
+def step4_remove_shorter_service_store(**context):
+    """
+    Remove shorter service store.
+    """
+
+    bq_hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False
+    )
+
+    sql = PROCESS_DUPLICATE_STORE_STEP4_REMOVE_SHORTER_SERVICE_STORE.format(
+        project_id=gcp_project_id,
+        silver_dataset_id=SILVER_DATASET
+    )
+    bq_hook.run_query(sql)
 
 
 def log_no_processing(**context):
@@ -246,7 +262,13 @@ with DAG(
             dag=dag,
         )
 
-        step1_task >> step2_task  >> step3_task
+        step4_task = PythonOperator(
+            task_id='step4_remove_shorter_service_store',
+            python_callable=step4_remove_shorter_service_store,
+            dag=dag,
+        )
+
+        step1_task >> step2_task >> step3_task >> step4_task
 
 
     # DAG flow with proper branching
