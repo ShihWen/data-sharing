@@ -71,6 +71,8 @@ select A.extract_date
        , A.city
        , A.district
        , A.address
+       , A.long
+       , A.lat
        , A.service
 from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate` A
 left join
@@ -96,6 +98,8 @@ left join
 and A.name = B.name 
 and A.city = B.city 
 and A.district = B.district
+and A.long = B.long
+and A.lat = B.lat
 and A.address = B.address
 and A.service = B.service
 where B.name is null
