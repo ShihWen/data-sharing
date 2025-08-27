@@ -188,7 +188,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
 
 INSERT_DATA_TO_SILVER_QUERY = """
 INSERT INTO `{project_id}.{silver_dataset_id}.seven_eleven`
-SELECT extract_date
+SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , name
        , city
        , district
