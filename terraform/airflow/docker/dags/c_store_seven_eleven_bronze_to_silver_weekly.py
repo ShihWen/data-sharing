@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.trigger_rule import TriggerRule
@@ -16,7 +17,8 @@ from sql.c_store_seven_eleven_queries import (
     PROCESS_DUPLICATE_STORE_STEP1_LIST_DUPLICATE_STORES,
     PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES,
     PROCESS_DUPLICATE_STORE_STEP3_REMOVE_STORE_IN_SOUTH_DISTRICT_TAINAN,
-    PROCESS_DUPLICATE_STORE_STEP4_REMOVE_SHORTER_SERVICE_STORE
+    PROCESS_DUPLICATE_STORE_STEP4_REMOVE_SHORTER_SERVICE_STORE,
+    INSERT_DATA_TO_SILVER_QUERY
 )
 
 
@@ -242,8 +244,9 @@ with DAG(
         dag=dag,
     )
 
+    # Task 4: Process duplicate stores
     with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
-        # Task 4: Process duplicate stores (placeholder for now)
+        
         step1_task = PythonOperator(
             task_id='step1_list_duplicate_stores',
             python_callable=step1_list_duplicate_stores,
@@ -270,7 +273,28 @@ with DAG(
 
         step1_task >> step2_task >> step3_task >> step4_task
 
+    # Task 5: insert data to silver dataset
+    insert_data_to_silver = BigQueryInsertJobOperator(
+        task_id='insert_data_to_silver',
+        configuration={
+            "query": {
+                "query": INSERT_DATA_TO_SILVER_QUERY.format(
+                    project_id=gcp_project_id,
+                    bronze_dataset_id=BRONZE_DATASET,
+                    silver_dataset_id=SILVER_DATASET,
+                    target_date=target_date
+                ),
+                "useLegacySql": False
+            }
+        },
+        project_id=gcp_project_id,
+        location="asia-east1",
+        use_legacy_sql=False,
+        gcp_conn_id='google_cloud_default',
+        dag=dag,
+    )
 
     # DAG flow with proper branching
     check_and_branch >> [ decide_duplicate_store_branch, no_processing_needed]
     decide_duplicate_store_branch >> [process_duplicate_store, no_processing_needed]
+    process_duplicate_store >> insert_data_to_silver

@@ -74,6 +74,7 @@ select A.extract_date
        , A.long
        , A.lat
        , A.service
+       , CURRENT_TIMESTAMP() AS processed_at
 from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate` A
 left join
 (
@@ -118,7 +119,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
       SELECT extract_date
             , name
             , row_number() over(partition by name, extract_date order by extract_date desc, name) rn
-      FROM `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan`
+      FROM `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan`
       where name <> '鳳儀'
     ) A
     where rn > 1
@@ -140,7 +141,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
               , A.long
               , A.lat
               , A.service 
-        from `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan` A
+        from `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` A
         inner join duplicate_store_name B
         on A.name = B.name and A.extract_date = B.extract_date
         where A.name not in ('鳳儀')
@@ -159,7 +160,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
             , T.lat
             , T.service 
             , row_number() over(partition by T.extract_date, T.name, T.city, T.district order by length(service) desc ) idx
-    from `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan` T
+    from `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` T
     inner join duplicate_store U on T.name = U.name and T.extract_date = U.extract_date
   )
   select X.extract_date
@@ -170,7 +171,8 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
          , X.long
          , X.lat
          , X.service
-  from `open-data-v2-cicd.c_store_silver.seven_eleven_step3_remove_store_in_south_district_tainan` X
+         , CURRENT_TIMESTAMP() AS processed_at
+  from `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` X
   left join
   ( select * from duplicate_store_fulllist where idx = 2 ) Y
   on X.extract_date = Y.extract_date 
@@ -182,4 +184,17 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
   and X.lat = Y.lat
   and X.service = Y.service
   WHERE Y.name is null; 
+"""
+
+INSERT_DATA_TO_SILVER_QUERY = """
+INSERT INTO `{project_id}.{silver_dataset_id}.seven_eleven`
+SELECT extract_date
+       , name
+       , city
+       , district
+       , address
+       , ST_GEOGPOINT(long, lat) as location
+       , SPLIT(service, ',') as service
+       , CURRENT_TIMESTAMP() AS processed_at
+FROM `{project_id}.{silver_dataset_id}.seven_eleven_step4_remove_shorter_service_store`
 """
