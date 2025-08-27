@@ -285,11 +285,6 @@ with DAG(
                 "useLegacySql": False
             }
         },
-        project_id=gcp_project_id,
-        location="asia-east1",
-        use_legacy_sql=False,
-        gcp_conn_id='google_cloud_default',
-        dag=dag,
     )
 
     # DAG flow with proper branching
