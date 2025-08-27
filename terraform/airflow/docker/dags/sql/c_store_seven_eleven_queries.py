@@ -83,6 +83,8 @@ left join
          , city
          , district
          , address
+         , long
+         , lat
          , service
   from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate`
   where extract_date = '{target_date}'
