@@ -245,7 +245,7 @@ with DAG(
             dag=dag,
         )
 
-        step1_task >> step2_task
+        step1_task >> step2_task  >> step3_task
 
 
     # DAG flow with proper branching

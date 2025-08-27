@@ -66,31 +66,38 @@ WHERE extract_date = '{target_date}';
 
 PROCESS_DUPLICATE_STORE_STEP3_REMOVE_STORE_IN_SOUTH_DISTRICT_TAINAN = """
 CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` AS
-with remove_list as (
-    select extract_date
-           , name
-           , city
-           , district
-           , address
-           , long
-           , lat
-           , service 
-    from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate`
-    where distric = '安南區'
-)
-, remove as (
-    select extract_date
-           , name
-           , city
-           , district
-           , address
-           , long
-           , lat
-           , service 
-           , CURRENT_TIMESTAMP() AS processed_at
+select A.extract_date
+       , A.name
+       , A.city
+       , A.district
+       , A.address
+       , A.service
+from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate` A
+left join
+(
+  -- 安南店誤植到南區的店點清單
+  select extract_date
+         , name
+         , city
+         , district
+         , address
+         , service
+  from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate`
+  where extract_date = '{target_date}'
+  and district = '南區'
+  and name in
+  (
+    select name
     from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate`
     where extract_date = '{target_date}'
-)
-select *
-from remove
+    and district = '安南區'
+  )
+) B on A.extract_date = B.extract_date 
+and A.name = B.name 
+and A.city = B.city 
+and A.district = B.district
+and A.address = B.address
+and A.service = B.service
+where B.name is null
+and A.extract_date ='{target_date}'
 """
