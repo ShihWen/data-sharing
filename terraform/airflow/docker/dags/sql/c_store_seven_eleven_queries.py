@@ -198,3 +198,17 @@ SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , CURRENT_TIMESTAMP() AS processed_at
 FROM `{project_id}.{silver_dataset_id}.seven_eleven_step4_remove_shorter_service_store`
 """
+
+INSERT_NO_DUPLICATE_DATA_TO_SILVER_QUERY = """
+INSERT INTO `{project_id}.{silver_dataset_id}.seven_eleven`
+SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
+       , name
+       , city
+       , district
+       , address
+       , ST_GEOGPOINT(long, lat) as location
+       , SPLIT(service, ',') as service
+       , CURRENT_TIMESTAMP() AS processed_at
+FROM `{project_id}.{bronze_dataset_id}.seven_eleven`
+WHERE extract_date = '{target_date}'
+"""

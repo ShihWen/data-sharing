@@ -18,7 +18,8 @@ from sql.c_store_seven_eleven_queries import (
     PROCESS_DUPLICATE_STORE_STEP2_REMOVE_EXACT_DUPLICATE_STORES,
     PROCESS_DUPLICATE_STORE_STEP3_REMOVE_STORE_IN_SOUTH_DISTRICT_TAINAN,
     PROCESS_DUPLICATE_STORE_STEP4_REMOVE_SHORTER_SERVICE_STORE,
-    INSERT_DATA_TO_SILVER_QUERY
+    INSERT_DATA_TO_SILVER_QUERY,
+    INSERT_NO_DUPLICATE_DATA_TO_SILVER_QUERY
 )
 
 
@@ -128,6 +129,27 @@ def decide_duplicate_store_branch(**context):
         logging.info("No duplicate stores found")
         return 'insert_data_to_silver'
 
+def insert_data_without_duplicates(**context):
+    """
+    List duplicate stores.
+    """
+    target_date = context['task_instance'].xcom_pull(task_ids='check_and_branch', key='target_date')
+
+    bq_hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False
+    )
+
+    sql = INSERT_NO_DUPLICATE_DATA_TO_SILVER_QUERY.format(
+        project_id=gcp_project_id,
+        bronze_dataset_id=BRONZE_DATASET,
+        silver_dataset_id=SILVER_DATASET,
+        target_date=target_date
+    )
+    bq_hook.run_query(sql)
+
+
+
 def step1_list_duplicate_stores(**context):
     """
     List duplicate stores.
@@ -236,6 +258,12 @@ with DAG(
         dag=dag,
     )
 
+    insert_no_duplicate_data_to_silver = PythonOperator(
+        task_id='insert_no_duplicate_data_to_silver',
+        python_callable=insert_data_without_duplicates,
+        dag=dag,
+    )
+
     # Task 3: Log when no processing is needed
     no_processing_needed = PythonOperator(
         task_id='no_processing_needed',
@@ -287,7 +315,9 @@ with DAG(
         },
     )
 
+
+
     # DAG flow with proper branching
     check_and_branch >> [ decide_duplicate_store_branch, no_processing_needed]
-    decide_duplicate_store_branch >> [process_duplicate_store, insert_data_to_silver]
+    decide_duplicate_store_branch >> [process_duplicate_store, insert_no_duplicate_data_to_silver]
     process_duplicate_store >> insert_data_to_silver

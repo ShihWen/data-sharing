@@ -15,7 +15,8 @@ from config.dag_config import SCHEDULE_INTERVALS
 from sql.c_store_family_mart_queries import (
     CHECK_NEW_DATA_QUERY,
     CHECK_DUPLICATE_STORE_QUERY,
-    INSERT_DATA_TO_SILVER_QUERY
+    INSERT_DATA_TO_SILVER_QUERY,
+    INSERT_NO_DUPLICATE_DATA_TO_SILVER_QUERY
 )
 
 
