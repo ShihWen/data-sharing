@@ -212,5 +212,5 @@ with DAG(
 
     # DAG flow with proper branching
     check_and_branch >> [ decide_duplicate_store_branch, no_processing_needed]
-    decide_duplicate_store_branch >> [process_duplicate_store, no_processing_needed]
-    process_duplicate_store >> insert_data_to_silver
+    # decide_duplicate_store_branch >> [process_duplicate_store, no_processing_needed]
+    # process_duplicate_store >> insert_data_to_silver
