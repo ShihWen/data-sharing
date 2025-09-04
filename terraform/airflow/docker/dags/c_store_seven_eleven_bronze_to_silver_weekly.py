@@ -126,7 +126,7 @@ def decide_duplicate_store_branch(**context):
         return 'process_duplicate_store.step1_list_duplicate_stores'
     else:
         logging.info("No duplicate stores found")
-        return 'no_processing_needed'
+        return 'insert_data_to_silver'
 
 def step1_list_duplicate_stores(**context):
     """
@@ -289,5 +289,5 @@ with DAG(
 
     # DAG flow with proper branching
     check_and_branch >> [ decide_duplicate_store_branch, no_processing_needed]
-    decide_duplicate_store_branch >> [process_duplicate_store, no_processing_needed]
+    decide_duplicate_store_branch >> [process_duplicate_store, insert_data_to_silver]
     process_duplicate_store >> insert_data_to_silver
