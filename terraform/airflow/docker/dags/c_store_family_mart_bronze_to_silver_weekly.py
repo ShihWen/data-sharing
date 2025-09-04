@@ -176,6 +176,7 @@ with DAG(
         )
 
     # Task 5: insert data to silver dataset
+    target_date = context['task_instance'].xcom_pull(task_ids='check_and_branch', key='target_date')
     insert_data_to_silver = BigQueryInsertJobOperator(
         task_id='insert_data_to_silver',
         configuration={
@@ -184,6 +185,7 @@ with DAG(
                     project_id=gcp_project_id,
                     bronze_dataset_id=BRONZE_DATASET,
                     silver_dataset_id=SILVER_DATASET,
+                    target_date=target_date
                 ),
                 "useLegacySql": False
             }

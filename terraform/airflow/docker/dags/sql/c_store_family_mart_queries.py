@@ -45,4 +45,5 @@ SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , SPLIT(service, ',') as service
        , CURRENT_TIMESTAMP() AS processed_at
 FROM `{project_id}.{bronze_dataset_id}.family_mart`
+WHERE extract_date = '{target_date}'
 """
