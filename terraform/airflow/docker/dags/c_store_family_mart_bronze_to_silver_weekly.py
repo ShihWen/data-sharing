@@ -196,19 +196,10 @@ with DAG(
         )
 
     # Task 5: insert data to silver dataset
-    insert_no_duplicate_data_to_silver = BigQueryInsertJobOperator(
+    insert_no_duplicate_data_to_silver = PythonOperator(
         task_id='insert_no_duplicate_data_to_silver',
-        configuration={
-            "query": {
-                "query": INSERT_NO_DUPLICATE_DATA_TO_SILVER_QUERY.format(
-                    project_id=gcp_project_id,
-                    bronze_dataset_id=BRONZE_DATASET,
-                    silver_dataset_id=SILVER_DATASET,
-                    target_date=target_date
-                ),
-                "useLegacySql": False
-            }
-        },
+        python_callable=insert_data_without_duplicates,
+        dag=dag,
     )
 
     # DAG flow with proper branching
