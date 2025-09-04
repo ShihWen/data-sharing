@@ -34,7 +34,7 @@ GROUP BY name, city
 HAVING COUNT(*) > 1
 """
 
-INSERT_DATA_TO_SILVER_QUERY = """
+INSERT_NO_DUPLICATE_DATA_TO_SILVER_QUERY = """
 INSERT INTO `{project_id}.{silver_dataset_id}.family_mart`
 SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , name
@@ -47,3 +47,4 @@ SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
 FROM `{project_id}.{bronze_dataset_id}.family_mart`
 WHERE extract_date = '{target_date}'
 """
+
