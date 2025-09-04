@@ -197,18 +197,18 @@ with DAG(
     #     step1_task >> step2_task >> step3_task >> step4_task
 
     # Task 5: insert data to silver dataset
-    insert_data_to_silver = BigQueryInsertJobOperator(
-        task_id='insert_data_to_silver',
-        configuration={
-            "query": {
-                "query": INSERT_DATA_TO_SILVER_QUERY.format(
-                    project_id=gcp_project_id,
-                    silver_dataset_id=SILVER_DATASET,
-                ),
-                "useLegacySql": False
-            }
-        },
-    )
+    # insert_data_to_silver = BigQueryInsertJobOperator(
+    #     task_id='insert_data_to_silver',
+    #     configuration={
+    #         "query": {
+    #             "query": INSERT_DATA_TO_SILVER_QUERY.format(
+    #                 project_id=gcp_project_id,
+    #                 silver_dataset_id=SILVER_DATASET,
+    #             ),
+    #             "useLegacySql": False
+    #         }
+    #     },
+    # )
 
     # DAG flow with proper branching
     check_and_branch >> [ decide_duplicate_store_branch, no_processing_needed]
