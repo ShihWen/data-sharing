@@ -168,33 +168,33 @@ with DAG(
     )
 
     # Task 4: Process duplicate stores
-    with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
+    # with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
         
-        step1_task = PythonOperator(
-            task_id='step1_list_duplicate_stores',
-            python_callable=step1_list_duplicate_stores,
-            dag=dag,
-        )
+    #     step1_task = PythonOperator(
+    #         task_id='step1_list_duplicate_stores',
+    #         python_callable=step1_list_duplicate_stores,
+    #         dag=dag,
+    #     )
 
-        step2_task = PythonOperator(
-            task_id='step2_remove_exact_duplicate_stores',
-            python_callable=step2_remove_exact_duplicate_stores,
-            dag=dag,
-        )
+    #     step2_task = PythonOperator(
+    #         task_id='step2_remove_exact_duplicate_stores',
+    #         python_callable=step2_remove_exact_duplicate_stores,
+    #         dag=dag,
+    #     )
 
-        step3_task = PythonOperator(
-            task_id='step3_remove_store_in_south_district_tainan',
-            python_callable=step3_remove_store_in_south_district_tainan,
-            dag=dag,
-        )
+    #     step3_task = PythonOperator(
+    #         task_id='step3_remove_store_in_south_district_tainan',
+    #         python_callable=step3_remove_store_in_south_district_tainan,
+    #         dag=dag,
+    #     )
 
-        step4_task = PythonOperator(
-            task_id='step4_remove_shorter_service_store',
-            python_callable=step4_remove_shorter_service_store,
-            dag=dag,
-        )
+    #     step4_task = PythonOperator(
+    #         task_id='step4_remove_shorter_service_store',
+    #         python_callable=step4_remove_shorter_service_store,
+    #         dag=dag,
+    #     )
 
-        step1_task >> step2_task >> step3_task >> step4_task
+    #     step1_task >> step2_task >> step3_task >> step4_task
 
     # Task 5: insert data to silver dataset
     insert_data_to_silver = BigQueryInsertJobOperator(
