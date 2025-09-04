@@ -122,8 +122,8 @@ def decide_duplicate_store_branch(**context):
         
         return 'process_duplicate_store.step1_list_duplicate_stores'
     else:
-        logging.info("No duplicate stores found")
-        return 'no_processing_needed'
+        logging.info("No duplicate stores found - proceed to insert into silver")
+        return 'insert_data_to_silver'
 
 
 def log_no_processing(**context):
