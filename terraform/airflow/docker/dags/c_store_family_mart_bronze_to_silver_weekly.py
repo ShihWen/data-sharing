@@ -7,6 +7,7 @@ from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.models import Variable
+from airflow.operators.empty import EmptyOperator
 import logging
 
 from config.default_args import default_args
@@ -168,49 +169,27 @@ with DAG(
     )
 
     # Task 4: Process duplicate stores
-    # with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
-        
-    #     step1_task = PythonOperator(
-    #         task_id='step1_list_duplicate_stores',
-    #         python_callable=step1_list_duplicate_stores,
-    #         dag=dag,
-    #     )
-
-    #     step2_task = PythonOperator(
-    #         task_id='step2_remove_exact_duplicate_stores',
-    #         python_callable=step2_remove_exact_duplicate_stores,
-    #         dag=dag,
-    #     )
-
-    #     step3_task = PythonOperator(
-    #         task_id='step3_remove_store_in_south_district_tainan',
-    #         python_callable=step3_remove_store_in_south_district_tainan,
-    #         dag=dag,
-    #     )
-
-    #     step4_task = PythonOperator(
-    #         task_id='step4_remove_shorter_service_store',
-    #         python_callable=step4_remove_shorter_service_store,
-    #         dag=dag,
-    #     )
-
-    #     step1_task >> step2_task >> step3_task >> step4_task
+    with TaskGroup(group_id='process_duplicate_store') as process_duplicate_store:
+        # Placeholder task to satisfy branching target
+        step1_task = EmptyOperator(
+            task_id='step1_list_duplicate_stores'
+        )
 
     # Task 5: insert data to silver dataset
-    # insert_data_to_silver = BigQueryInsertJobOperator(
-    #     task_id='insert_data_to_silver',
-    #     configuration={
-    #         "query": {
-    #             "query": INSERT_DATA_TO_SILVER_QUERY.format(
-    #                 project_id=gcp_project_id,
-    #                 silver_dataset_id=SILVER_DATASET,
-    #             ),
-    #             "useLegacySql": False
-    #         }
-    #     },
-    # )
+    insert_data_to_silver = BigQueryInsertJobOperator(
+        task_id='insert_data_to_silver',
+        configuration={
+            "query": {
+                "query": INSERT_DATA_TO_SILVER_QUERY.format(
+                    project_id=gcp_project_id,
+                    silver_dataset_id=SILVER_DATASET,
+                ),
+                "useLegacySql": False
+            }
+        },
+    )
 
     # DAG flow with proper branching
     check_and_branch >> [ decide_duplicate_store_branch, no_processing_needed]
-    # decide_duplicate_store_branch >> [process_duplicate_store, no_processing_needed]
-    # process_duplicate_store >> insert_data_to_silver
+    decide_duplicate_store_branch >> [process_duplicate_store, insert_data_to_silver]
+    process_duplicate_store >> no_processing_needed
