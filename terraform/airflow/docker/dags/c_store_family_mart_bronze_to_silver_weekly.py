@@ -123,7 +123,7 @@ def decide_duplicate_store_branch(**context):
         return 'process_duplicate_store.step1_list_duplicate_stores'
     else:
         logging.info("No duplicate stores found - proceed to insert into silver")
-        return 'insert_data_without_duplicates'
+        return 'insert_no_duplicate_data_to_silver'
 
 
 def log_no_processing(**context):
