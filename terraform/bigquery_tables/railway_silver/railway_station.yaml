@@ -17,9 +17,7 @@ schema:
   - {name: "station_class", type: "STRING", mode: "NULLABLE", description: "Station class/level."}
   - {name: "update_time", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the station data was last updated from the source."}
   - {name: "version_id", type: "INTEGER", mode: "NULLABLE", description: "Version identifier for the station data."}
-  - {name: "position_lon", type: "FLOAT", mode: "NULLABLE", description: "Longitude coordinate of the station position."}
-  - {name: "position_lat", type: "FLOAT", mode: "NULLABLE", description: "Latitude coordinate of the station position."}
-  - {name: "geo_hash", type: "STRING", mode: "NULLABLE", description: "Geohash representation of the station position."}
+  - {name: "geometry", type: "GEOGRAPHY", mode: "NULLABLE", description: "Longitude coordinate of the station position."}
   - {name: "location_city", type: "STRING", mode: "NULLABLE", description: "City where the station is located (e.g., '基隆市')."}
   - {name: "location_city_code", type: "STRING", mode: "NULLABLE", description: "City code (e.g., 'KEE')."}
   - {name: "location_town", type: "STRING", mode: "NULLABLE", description: "Town/district where the station is located (e.g., '中山區')."}
