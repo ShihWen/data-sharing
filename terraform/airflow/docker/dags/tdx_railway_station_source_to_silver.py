@@ -96,7 +96,6 @@ def process_railway_stations_to_staging(**context):
             except:
                 update_time = None
         
-        
         record = {
             'station_uid': station.get('StationUID'),
             'station_id': station.get('StationID'),
@@ -107,7 +106,7 @@ def process_railway_stations_to_staging(**context):
             'operator_id': station.get('OperatorID'),
             'station_class': station.get('StationClass'),
             'update_time': update_time,
-            'version_id': version_id,
+            'version_id': station.get('VersionID'),
             'geometry': geometry,
             'location_city': station.get('LocationCity'),
             'location_city_code': station.get('LocationCityCode'),
@@ -144,7 +143,7 @@ def process_railway_stations_to_staging(**context):
             {'name': 'operator_id', 'type': 'STRING'},
             {'name': 'station_class', 'type': 'STRING'},
             {'name': 'update_time', 'type': 'TIMESTAMP'},
-            {'name': 'version_id', 'type': 'STRING'},
+            {'name': 'version_id', 'type': 'INTEGER'},
             {'name': 'geometry', 'type': 'GEOGRAPHY'},
             {'name': 'location_city', 'type': 'STRING'},
             {'name': 'location_city_code', 'type': 'STRING'},
