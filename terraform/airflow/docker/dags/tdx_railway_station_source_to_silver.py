@@ -126,6 +126,7 @@ def process_railway_stations_to_staging(**context):
     # Convert to DataFrame for BigQuery upload
     import pandas as pd
     df = pd.DataFrame(processed_records)
+    print(df.info())
 
     print(f"Uploading {len(df)} records to railway_silver.railway_station_staging...")
     df.to_gbq(
