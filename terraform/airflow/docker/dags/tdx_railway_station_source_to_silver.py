@@ -96,13 +96,6 @@ def process_railway_stations_to_staging(**context):
             except:
                 update_time = None
         
-        # Handle version_id conversion to integer
-        version_id = station.get('VersionID')
-        if version_id is not None:
-            try:
-                version_id = int(version_id)
-            except (ValueError, TypeError):
-                version_id = None
         
         record = {
             'station_uid': station.get('StationUID'),
@@ -151,7 +144,7 @@ def process_railway_stations_to_staging(**context):
             {'name': 'operator_id', 'type': 'STRING'},
             {'name': 'station_class', 'type': 'STRING'},
             {'name': 'update_time', 'type': 'TIMESTAMP'},
-            {'name': 'version_id', 'type': 'INTEGER'},
+            {'name': 'version_id', 'type': 'STRING'},
             {'name': 'geometry', 'type': 'GEOGRAPHY'},
             {'name': 'location_city', 'type': 'STRING'},
             {'name': 'location_city_code', 'type': 'STRING'},
