@@ -1,0 +1,30 @@
+table_id: "railway_station"
+description: "Dimension table containing railway station information from TDX API. Tracks historical changes (SCD Type 2)."
+labels:
+  data_source: "tdx"
+  data_type: "station"
+  tier: "silver"
+  granularity: "station"
+
+schema:
+  - {name: "station_uid", type: "STRING", mode: "REQUIRED", description: "Unique identifier for the station (e.g., 'TRA-0900'). This is the natural key."}
+  - {name: "station_id", type: "STRING", mode: "NULLABLE", description: "Station ID (e.g., '0900')."}
+  - {name: "station_name_zh_tw", type: "STRING", mode: "NULLABLE", description: "Traditional Chinese name of the station (e.g., '基隆')."}
+  - {name: "station_name_en", type: "STRING", mode: "NULLABLE", description: "English name of the station (e.g., 'Keelung')."}
+  - {name: "station_address", type: "STRING", mode: "NULLABLE", description: "Full address of the station."}
+  - {name: "station_phone", type: "STRING", mode: "NULLABLE", description: "Phone number of the station."}
+  - {name: "operator_id", type: "STRING", mode: "NULLABLE", description: "Operator identifier (e.g., 'TRA')."}
+  - {name: "station_class", type: "STRING", mode: "NULLABLE", description: "Station class/level."}
+  - {name: "update_time", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the station data was last updated from the source."}
+  - {name: "version_id", type: "INTEGER", mode: "NULLABLE", description: "Version identifier for the station data."}
+  - {name: "position_lon", type: "FLOAT", mode: "NULLABLE", description: "Longitude coordinate of the station position."}
+  - {name: "position_lat", type: "FLOAT", mode: "NULLABLE", description: "Latitude coordinate of the station position."}
+  - {name: "geo_hash", type: "STRING", mode: "NULLABLE", description: "Geohash representation of the station position."}
+  - {name: "location_city", type: "STRING", mode: "NULLABLE", description: "City where the station is located (e.g., '基隆市')."}
+  - {name: "location_city_code", type: "STRING", mode: "NULLABLE", description: "City code (e.g., 'KEE')."}
+  - {name: "location_town", type: "STRING", mode: "NULLABLE", description: "Town/district where the station is located (e.g., '中山區')."}
+  - {name: "location_town_code", type: "STRING", mode: "NULLABLE", description: "Town/district code (e.g., '10017050')."}
+  - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."}
+  - {name: "valid_from_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record became valid."}
+  - {name: "valid_to_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record expired. A future date indicates the current version."}
+  - {name: "is_current", type: "BOOLEAN", mode: "NULLABLE", description: "Flag to easily identify the current version of the record (TRUE for current)."} 
