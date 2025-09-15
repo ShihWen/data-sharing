@@ -10,9 +10,7 @@ from airflow.providers.google.cloud.hooks.gcs import GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 
-from utils.boundary_processing import process_town_boundaries
 from utils.tdx_api import get_tdx_data
-from sql.boundary_queries import MERGE_SCD2_TOWNS, INSERT_UPDATED_TOWNS
 
 def fetch_railway_stations_to_gcs(**context):
     """
@@ -47,52 +45,117 @@ def fetch_railway_stations_to_gcs(**context):
     print(f"Saved raw railway stations data to gs://{bucket_name}/{file_name}")
     context["ti"].xcom_push(key="gcs_path", value=file_name)
 
-# def process_town_boundaries_to_staging(**context):
-#     """
-#     Reads the raw town boundary JSON file from GCS, transforms it,
-#     and loads it into a staging table in the reference dataset.
-#     """
-#     gcs_path = context["ti"].xcom_pull(task_ids="fetch_town_boundaries_to_gcs", key="gcs_path")
+def process_railway_stations_to_staging(**context):
+    """
+    Reads the raw railway station JSON file from GCS, transforms it,
+    and loads it into a staging table in the railway_silver dataset.
+    """
+    gcs_path = context["ti"].xcom_pull(task_ids="fetch_railway_stations_to_gcs", key="gcs_path")
     
-#     if not gcs_path:
-#         raise ValueError("GCS path for town boundaries not found in XComs.")
+    if not gcs_path:
+        raise ValueError("GCS path for railway stations not found in XComs.")
 
-#     gcs_hook = GCSHook()
-#     bq_hook = BigQueryHook()
-#     credentials = bq_hook.get_credentials()
-#     bucket_name = Variable.get("gcs_data_lake_bucket")
-#     project_id = Variable.get("gcp_project_id")
+    gcs_hook = GCSHook()
+    bq_hook = BigQueryHook()
+    credentials = bq_hook.get_credentials()
+    bucket_name = Variable.get("gcs_data_lake_bucket")
+    project_id = Variable.get("gcp_project_id")
 
-#     print(f"Downloading town boundaries from gs://{bucket_name}/{gcs_path}")
-#     raw_data = gcs_hook.download_as_byte_array(
-#         bucket_name=bucket_name,
-#         object_name=gcs_path,
-#     ).decode('utf-8')
+    print(f"Downloading railway stations from gs://{bucket_name}/{gcs_path}")
+    raw_data = gcs_hook.download_as_byte_array(
+        bucket_name=bucket_name,
+        object_name=gcs_path,
+    ).decode('utf-8')
     
-#     print("Transforming town boundaries...")
-#     gdf = process_town_boundaries(raw_data)
+    print("Transforming railway station data...")
+    stations_data = json.loads(raw_data)
+    
+    # Process each station record
+    processed_records = []
+    current_timestamp = pendulum.now('UTC')
+    
+    for station in stations_data:
+        # Extract nested StationName object
+        station_name = station.get('StationName', {})
+        
+        # Create geometry from PositionLon and PositionLat
+        position = station.get('StationPosition', {})
+        position_lon = position.get('PositionLon')
+        position_lat = position.get('PositionLat')
+        
+        # Create POINT geometry if coordinates are available
+        geometry = None
+        if position_lon is not None and position_lat is not None:
+            geometry = f"POINT({position_lon} {position_lat})"
+        
+        # Parse update_time to timestamp
+        update_time = None
+        if station.get('UpdateTime'):
+            try:
+                update_time = pendulum.parse(station['UpdateTime']).to_iso8601_string()
+            except:
+                update_time = None
+        
+        record = {
+            'station_uid': station.get('StationUID'),
+            'station_id': station.get('StationID'),
+            'station_name_zh_tw': station_name.get('Zh_tw'),
+            'station_name_en': station_name.get('En'),
+            'station_address': station.get('StationAddress'),
+            'station_phone': station.get('StationPhone'),
+            'operator_id': station.get('OperatorID'),
+            'station_class': station.get('StationClass'),
+            'update_time': update_time,
+            'version_id': station.get('VersionID'),
+            'geometry': geometry,
+            'location_city': station.get('LocationCity'),
+            'location_city_code': station.get('LocationCityCode'),
+            'location_town': station.get('LocationTown'),
+            'location_town_code': station.get('LocationTownCode'),
+            'processed_at': current_timestamp.to_iso8601_string(),
+            'valid_from_ts': current_timestamp.to_iso8601_string(),
+            'valid_to_ts': '2099-12-31T23:59:59Z',  # Future date for current records
+            'is_current': True,
+        }
+        processed_records.append(record)
 
-#     if gdf.empty:
-#         print("No town data to upload. Skipping.")
-#         return
+    if not processed_records:
+        print("No railway station data to upload. Skipping.")
+        return
 
-#     print(f"Uploading {len(gdf)} records to reference.dim_towns_staging...")
-#     gdf.to_gbq(
-#         destination_table="reference.dim_towns_staging",
-#         project_id=project_id,
-#         credentials=credentials,
-#         if_exists='replace',
-#         table_schema=[
-#             {'name': 'town_code', 'type': 'STRING'},
-#             {'name': 'town_name_zh', 'type': 'STRING'},
-#             {'name': 'city_name_en', 'type': 'STRING'},
-#             {'name': 'city_name_zh', 'type': 'STRING'},
-#             {'name': 'update_date', 'type': 'TIMESTAMP'},
-#             {'name': 'check_date', 'type': 'TIMESTAMP'},
-#             {'name': 'geometry', 'type': 'GEOGRAPHY'},
-#         ]
-#     )
-#     print("Successfully loaded data into reference.dim_towns_staging.")
+    # Convert to DataFrame for BigQuery upload
+    import pandas as pd
+    df = pd.DataFrame(processed_records)
+
+    print(f"Uploading {len(df)} records to railway_silver.railway_station_staging...")
+    df.to_gbq(
+        destination_table="railway_silver.railway_station_staging",
+        project_id=project_id,
+        credentials=credentials,
+        if_exists='replace',
+        table_schema=[
+            {'name': 'station_uid', 'type': 'STRING'},
+            {'name': 'station_id', 'type': 'STRING'},
+            {'name': 'station_name_zh_tw', 'type': 'STRING'},
+            {'name': 'station_name_en', 'type': 'STRING'},
+            {'name': 'station_address', 'type': 'STRING'},
+            {'name': 'station_phone', 'type': 'STRING'},
+            {'name': 'operator_id', 'type': 'STRING'},
+            {'name': 'station_class', 'type': 'STRING'},
+            {'name': 'update_time', 'type': 'TIMESTAMP'},
+            {'name': 'version_id', 'type': 'INTEGER'},
+            {'name': 'geometry', 'type': 'GEOGRAPHY'},
+            {'name': 'location_city', 'type': 'STRING'},
+            {'name': 'location_city_code', 'type': 'STRING'},
+            {'name': 'location_town', 'type': 'STRING'},
+            {'name': 'location_town_code', 'type': 'STRING'},
+            {'name': 'processed_at', 'type': 'TIMESTAMP'},
+            {'name': 'valid_from_ts', 'type': 'TIMESTAMP'},
+            {'name': 'valid_to_ts', 'type': 'TIMESTAMP'},
+            {'name': 'is_current', 'type': 'BOOLEAN'},
+        ]
+    )
+    print("Successfully loaded data into railway_silver.railway_station_staging.")
 
 with DAG(
     dag_id="tdx_railway_station_source_to_silver",
@@ -112,10 +175,10 @@ with DAG(
         python_callable=fetch_railway_stations_to_gcs,
     )
 
-    # process_silver_staging = PythonOperator(
-    #     task_id="process_town_boundaries_to_staging",
-    #     python_callable=process_town_boundaries_to_staging,
-    # )
+    process_silver_staging = PythonOperator(
+        task_id="process_railway_stations_to_staging",
+        python_callable=process_railway_stations_to_staging,
+    )
     
     # merge_into_silver_scd2 = BigQueryInsertJobOperator(
     #     task_id="merge_into_silver_scd2",
@@ -143,4 +206,4 @@ with DAG(
     #     },
     # )
 
-    fetch_bronze_data #>> process_silver_staging >> merge_into_silver_scd2 >> insert_updated_records 
+    fetch_bronze_data >> process_silver_staging 
