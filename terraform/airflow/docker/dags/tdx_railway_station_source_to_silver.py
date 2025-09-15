@@ -143,7 +143,7 @@ def process_railway_stations_to_staging(**context):
             {'name': 'operator_id', 'type': 'STRING'},
             {'name': 'station_class', 'type': 'STRING'},
             {'name': 'update_time', 'type': 'TIMESTAMP'},
-            {'name': 'version_id', 'type': 'INTEGER'},
+            {'name': 'version_id', 'type': 'STRING'},
             {'name': 'geometry', 'type': 'GEOGRAPHY'},
             {'name': 'location_city', 'type': 'STRING'},
             {'name': 'location_city_code', 'type': 'STRING'},
