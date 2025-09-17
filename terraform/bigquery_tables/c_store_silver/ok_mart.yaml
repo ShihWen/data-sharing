@@ -1,0 +1,17 @@
+table_id: "ok_mart"
+dataset_id_var_name: "c_store_silver"
+description: "Silver site location for OK Mart"
+labels:
+  data_source: "bronze"
+  data_type: "site_location"
+  tier: "silver"
+
+schema:
+  - {name: "extract_date",               type: "DATE",  mode: "NULLABLE", description: "data extracted date"}
+  - {name: "name",                       type: "STRING", mode: "NULLABLE", description: "site name of convenience store"}
+  - {name: "city",                       type: "STRING", mode: "NULLABLE", description: "city of convenience store"}
+  - {name: "district",                   type: "STRING", mode: "NULLABLE", description: "district of convenience store"}
+  - {name: "address",                    type: "STRING",  mode: "NULLABLE", description: "address of convenience store"}
+  - {name: "location",                   type: "GEOGRAPHY",  mode: "NULLABLE", description: "geohash of convenience store"}
+  - {name: "service",                    type: "STRING",  mode: "REPEATED", description: "service of convenience store, separated by comma"}
+  - {name: "processed_at",               type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."}
