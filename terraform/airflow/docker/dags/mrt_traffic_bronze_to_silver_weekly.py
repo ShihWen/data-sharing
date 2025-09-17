@@ -54,7 +54,7 @@ def validate_station_names_with_hook(**context):
     """
     Validates station names in the bronze table for inconsistencies.
     """
-    project_id = Variable.get('project_id')
+    project_id = Variable.get('gcp_project_id')
     location = Variable.get('bigquery_location', 'asia-east1')
     bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
     
