@@ -181,13 +181,54 @@ check_and_branch = BranchPythonOperator(
 )
 
 # Task 2: Process the new month (only runs if new month found)
-process_month = BigQueryExecuteQueryOperator(
+def process_month_data(**context):
+    """
+    Process the new month data by dynamically rendering the SQL with the XCom value.
+    """
+    project_id = Variable.get('gcp_project_id')
+    bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
+    silver_dataset = Variable.get('tpe_mrt_silver_dataset_id')
+    
+    # Get the target month from XCom
+    target_month = context['ti'].xcom_pull(task_ids='check_and_branch', key='target_month')
+    logging.info(f"Processing month: {target_month}")
+    
+    hook = BigQueryHook(
+        gcp_conn_id='google_cloud_default',
+        use_legacy_sql=False
+    )
+    
+    # Manually render the SQL template by replacing Jinja variables
+    rendered_sql = TRANSFORM_AND_LOAD_MONTH_QUERY.replace(
+        '{{ var.value.gcp_project_id }}', project_id
+    ).replace(
+        '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
+    ).replace(
+        '{{ var.value.tpe_mrt_silver_dataset_id }}', silver_dataset
+    ).replace(
+        "{{ params.target_month }}", target_month
+    )
+    
+    # Execute the query
+    job_config = {
+        'query': {
+            'query': rendered_sql,
+            'useLegacySql': False
+        }
+    }
+    
+    query_job = hook.insert_job(
+        configuration=job_config,
+        project_id=project_id
+    )
+    
+    results = query_job.result()
+    logging.info(f"Successfully processed month {target_month}")
+    return f"Processed {target_month}"
+
+process_month = PythonOperator(
     task_id='process_month',
-    sql=TRANSFORM_AND_LOAD_MONTH_QUERY,
-    params={
-        'target_month': '{{ ti.xcom_pull(task_ids="check_and_branch", key="target_month") }}'
-    },
-    use_legacy_sql=False,
+    python_callable=process_month_data,
     dag=dag,
 )
 
