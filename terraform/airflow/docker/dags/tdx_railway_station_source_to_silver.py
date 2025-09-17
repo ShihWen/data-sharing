@@ -86,7 +86,19 @@ def process_railway_stations_to_staging(**context):
         # Create POINT geometry if coordinates are available
         geometry = None
         if position_lon is not None and position_lat is not None:
-            geometry = f"POINT({position_lon} {position_lat})"
+            try:
+                # Validate coordinates are numeric
+                lon_float = float(position_lon)
+                lat_float = float(position_lat)
+                # Check if coordinates are within reasonable bounds
+                if -180 <= lon_float <= 180 and -90 <= lat_float <= 90:
+                    geometry = f"POINT({lon_float} {lat_float})"
+                else:
+                    print(f"Invalid coordinates for station {station.get('StationUID', 'unknown')}: lon={lon_float}, lat={lat_float}")
+                    geometry = None
+            except (ValueError, TypeError) as e:
+                print(f"Error parsing coordinates for station {station.get('StationUID', 'unknown')}: {e}")
+                geometry = None
         
         # Parse update_time to timestamp
         update_time = None
@@ -135,36 +147,62 @@ def process_railway_stations_to_staging(**context):
     import pandas as pd
     df = pd.DataFrame(processed_records)
     print(df.info())
+    
+    # Debug: Print data types and sample values for each column
+    print("\nDataFrame dtypes:")
+    for col, dtype in df.dtypes.items():
+        print(f"{col}: {dtype}")
+        # Print first few non-null values to check for type issues
+        non_null_values = df[col].dropna().head(3)
+        if len(non_null_values) > 0:
+            print(f"  Sample values: {non_null_values.tolist()}")
+        print()
 
     print(f"Uploading {len(df)} records to railway_silver.railway_station_staging...")
-    df.to_gbq(
-        destination_table="railway_silver.railway_station_staging",
-        project_id=project_id,
-        credentials=credentials,
-        if_exists='replace',
-        table_schema=[
-            {'name': 'station_uid', 'type': 'STRING'},
-            {'name': 'station_id', 'type': 'STRING'},
-            {'name': 'station_name_zh_tw', 'type': 'STRING'},
-            {'name': 'station_name_en', 'type': 'STRING'},
-            {'name': 'station_address', 'type': 'STRING'},
-            {'name': 'station_phone', 'type': 'STRING'},
-            {'name': 'operator_id', 'type': 'STRING'},
-            {'name': 'station_class', 'type': 'STRING'},
-            {'name': 'update_time', 'type': 'TIMESTAMP'},
-            {'name': 'version_id', 'type': 'INTEGER'},
-            {'name': 'geometry', 'type': 'GEOGRAPHY'},
-            {'name': 'location_city', 'type': 'STRING'},
-            {'name': 'location_city_code', 'type': 'STRING'},
-            {'name': 'location_town', 'type': 'STRING'},
-            {'name': 'location_town_code', 'type': 'STRING'},
-            {'name': 'processed_at', 'type': 'TIMESTAMP'},
-            {'name': 'valid_from_ts', 'type': 'TIMESTAMP'},
-            {'name': 'valid_to_ts', 'type': 'TIMESTAMP'},
-            {'name': 'is_current', 'type': 'BOOLEAN'},
-        ]
-    )
-    print("Successfully loaded data into railway_silver.railway_station_staging.")
+    
+    # Define the schema to match the existing staging table exactly
+    table_schema = [
+        {'name': 'station_uid', 'type': 'STRING'},
+        {'name': 'station_id', 'type': 'STRING'},
+        {'name': 'station_name_zh_tw', 'type': 'STRING'},
+        {'name': 'station_name_en', 'type': 'STRING'},
+        {'name': 'station_address', 'type': 'STRING'},
+        {'name': 'station_phone', 'type': 'STRING'},
+        {'name': 'operator_id', 'type': 'STRING'},
+        {'name': 'station_class', 'type': 'STRING'},
+        {'name': 'update_time', 'type': 'TIMESTAMP'},
+        {'name': 'version_id', 'type': 'INTEGER'},
+        {'name': 'geometry', 'type': 'GEOGRAPHY'},
+        {'name': 'location_city', 'type': 'STRING'},
+        {'name': 'location_city_code', 'type': 'STRING'},
+        {'name': 'location_town', 'type': 'STRING'},
+        {'name': 'location_town_code', 'type': 'STRING'},
+        {'name': 'processed_at', 'type': 'TIMESTAMP'},
+        {'name': 'valid_from_ts', 'type': 'TIMESTAMP'},
+        {'name': 'valid_to_ts', 'type': 'TIMESTAMP'},
+        {'name': 'is_current', 'type': 'BOOLEAN'},
+    ]
+    
+    try:
+        df.to_gbq(
+            destination_table="railway_silver.railway_station_staging",
+            project_id=project_id,
+            credentials=credentials,
+            if_exists='replace',
+            table_schema=table_schema
+        )
+        print("Successfully loaded data into railway_silver.railway_station_staging.")
+    except Exception as e:
+        print(f"Error uploading to BigQuery: {str(e)}")
+        print("Attempting to upload without explicit schema...")
+        # Try without explicit schema to let BigQuery infer types
+        df.to_gbq(
+            destination_table="railway_silver.railway_station_staging",
+            project_id=project_id,
+            credentials=credentials,
+            if_exists='replace'
+        )
+        print("Successfully loaded data into railway_silver.railway_station_staging (schema inferred).")
 
 with DAG(
     dag_id="tdx_railway_station_source_to_silver",
