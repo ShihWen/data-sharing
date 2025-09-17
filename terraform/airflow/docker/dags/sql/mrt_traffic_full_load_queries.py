@@ -12,7 +12,7 @@ WITH bronze_stats AS (
         COUNT(DISTINCT DATE_TRUNC(dt, MONTH)) as total_months,
         MIN(dt) as min_date,
         MAX(dt) as max_date
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 ),
 silver_stats AS (
     SELECT 
@@ -20,7 +20,7 @@ silver_stats AS (
         COUNT(DISTINCT DATE_TRUNC(dt, MONTH)) as total_months,
         MIN(dt) as min_date,
         MAX(dt) as max_date
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
 )
 SELECT 
     bronze_stats.total_records as bronze_records,
@@ -40,7 +40,7 @@ FROM bronze_stats, silver_stats
 
 # Full load processing query - processes data year by year for optimal performance
 FULL_LOAD_YEAR_BATCH_QUERY = """
-INSERT INTO `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
+INSERT INTO `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
 (
     dt,
     hour,
@@ -82,7 +82,7 @@ WITH bronze_data AS (
             ELSE 'off_peak'
         END as peak_period,
         CURRENT_TIMESTAMP() as processed_at
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
     WHERE EXTRACT(YEAR FROM dt) = {{ params.target_year }}
 ),
 new_records AS (
@@ -90,7 +90,7 @@ new_records AS (
     FROM bronze_data
     WHERE NOT EXISTS (
         SELECT 1 
-        FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic` silver
+        FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic` silver
         WHERE silver.dt = bronze_data.dt 
         AND silver.hour = bronze_data.hour
         AND silver.entrance = bronze_data.entrance  
@@ -111,7 +111,7 @@ WITH comparison AS (
         COUNT(DISTINCT EXTRACT(YEAR FROM dt)) as unique_years,
         MIN(dt) as min_date,
         MAX(dt) as max_date
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
     
     UNION ALL
     
@@ -122,7 +122,7 @@ WITH comparison AS (
         COUNT(DISTINCT EXTRACT(YEAR FROM dt)) as unique_years,
         MIN(dt) as min_date,
         MAX(dt) as max_date
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
 ),
 with_percentages AS (
     SELECT 
@@ -147,7 +147,7 @@ WITH bronze_analysis AS (
         COUNT(DISTINCT DATE_TRUNC(dt, MONTH)) as months_per_year,
         MIN(dt) as year_start,
         MAX(dt) as year_end
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
     GROUP BY EXTRACT(YEAR FROM dt)
 ),
 size_estimates AS (
@@ -186,11 +186,11 @@ SELECT
     B.entrance
 FROM (
     SELECT DISTINCT exit
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 ) AS A
 FULL JOIN (
     SELECT DISTINCT entrance
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 ) AS B
     ON A.exit = B.entrance
 WHERE

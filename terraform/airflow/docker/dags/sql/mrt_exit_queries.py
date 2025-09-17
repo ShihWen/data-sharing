@@ -8,12 +8,12 @@ Processing is based on VersionID to only load new versions.
 CHECK_NEW_VERSIONS_QUERY = """
 WITH bronze_versions AS (
     SELECT DISTINCT VersionID
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_exit`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_exit`
     WHERE VersionID IS NOT NULL
 ),
 silver_versions AS (
     SELECT DISTINCT version_id
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
     WHERE version_id IS NOT NULL
 ),
 new_versions AS (
@@ -36,7 +36,7 @@ FROM new_versions
 
 # Transform and load new versions from bronze to silver
 TRANSFORM_AND_LOAD_NEW_VERSIONS_QUERY = """
-INSERT INTO `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
+INSERT INTO `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
 (
     station_id,
     exit_id,
@@ -64,8 +64,8 @@ INSERT INTO `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }
 )
 WITH bronze_new_versions AS (
     SELECT b.*
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_exit` b
-    LEFT JOIN `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit` s
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_exit` b
+    LEFT JOIN `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit` s
         ON b.VersionID = s.version_id
     WHERE s.version_id IS NULL
         AND b.VersionID IS NOT NULL
@@ -170,7 +170,7 @@ WITH processing_stats AS (
         COUNT(CASE WHEN is_complete_record = false THEN 1 END) as incomplete_records,
         AVG(data_quality_score) as avg_quality_score,
         COUNT(CASE WHEN is_accessible = true THEN 1 END) as accessible_exits
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
     WHERE processed_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 )
 SELECT 
@@ -197,5 +197,5 @@ SELECT
     MIN(version_id) as min_version,
     MAX(version_id) as max_version,
     MAX(processed_at) as last_processed
-FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
+FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_exit`
 """ 

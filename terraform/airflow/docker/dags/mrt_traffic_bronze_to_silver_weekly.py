@@ -67,7 +67,7 @@ def validate_station_names_with_hook(**context):
     )
     
     rendered_sql = VALIDATE_STATION_NAMES_QUERY.replace(
-        '{{ var.value.project_id }}', project_id
+        '{{ var.value.gcp_project_id }}', project_id
     ).replace(
         '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
     )
@@ -102,22 +102,35 @@ def check_and_decide(**context):
     Check if there's a new month and decide which task to run next.
     Returns task_id for branching.
     """
+    project_id = Variable.get('gcp_project_id')
+    bronze_dataset = Variable.get('tpe_mrt_bronze_dataset_id')
+    silver_dataset = Variable.get('tpe_mrt_silver_dataset_id')
+    
     hook = BigQueryHook(
         gcp_conn_id='google_cloud_default',
         use_legacy_sql=False
     )
     
+    # Manually render the SQL template by replacing Jinja variables
+    rendered_sql = CHECK_NEW_MONTH_QUERY.replace(
+        '{{ var.value.gcp_project_id }}', project_id
+    ).replace(
+        '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
+    ).replace(
+        '{{ var.value.tpe_mrt_silver_dataset_id }}', silver_dataset
+    )
+    
     # Execute the check query
     job_config = {
         'query': {
-            'query': CHECK_NEW_MONTH_QUERY,
+            'query': rendered_sql,
             'useLegacySql': False
         }
     }
     
     query_job = hook.insert_job(
         configuration=job_config,
-        project_id=hook.project_id
+        project_id=project_id
     )
     
     results = query_job.result()

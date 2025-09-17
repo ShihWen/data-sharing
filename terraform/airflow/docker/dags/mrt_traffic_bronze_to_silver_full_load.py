@@ -74,7 +74,7 @@ def check_prerequisites_with_hook(**context):
     silver_dataset = Variable.get('tpe_mrt_silver_dataset_id')
     
     rendered_sql = CHECK_PREREQUISITES_QUERY.replace(
-        '{{ var.value.project_id }}', project_id
+        '{{ var.value.gcp_project_id }}', project_id
     ).replace(
         '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
     ).replace(
@@ -129,7 +129,7 @@ def validate_station_names_with_hook(**context):
     )
     
     rendered_sql = VALIDATE_STATION_NAMES_QUERY.replace(
-        '{{ var.value.project_id }}', project_id
+        '{{ var.value.gcp_project_id }}', project_id
     ).replace(
         '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
     )
@@ -178,7 +178,7 @@ def estimate_costs_with_hook(**context):
     
     # Render the SQL template
     rendered_sql = COST_ESTIMATION_QUERY.replace(
-        '{{ var.value.project_id }}', project_id
+        '{{ var.value.gcp_project_id }}', project_id
     ).replace(
         '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
     )
@@ -271,7 +271,7 @@ def process_full_load_years(**context):
         
         # Manually render the SQL template
         rendered_sql = FULL_LOAD_YEAR_BATCH_QUERY.replace(
-            '{{ var.value.project_id }}', project_id
+            '{{ var.value.gcp_project_id }}', project_id
         ).replace(
             '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
         ).replace(
@@ -370,7 +370,7 @@ def validate_full_load_with_hook(**context):
     
     # Render the SQL template
     rendered_sql = FULL_LOAD_VALIDATION_QUERY.replace(
-        '{{ var.value.project_id }}', project_id
+        '{{ var.value.gcp_project_id }}', project_id
     ).replace(
         '{{ var.value.tpe_mrt_bronze_dataset_id }}', bronze_dataset
     ).replace(
