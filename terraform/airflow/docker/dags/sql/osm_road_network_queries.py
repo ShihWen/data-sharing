@@ -59,4 +59,68 @@ WHEN NOT MATCHED BY TARGET THEN
     S.city, S.town, S.town_code,
     CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), TIMESTAMP('9999-12-31T23:59:59'), TRUE
   )
+"""
+
+# We need a second query to insert the updated rows for the matched records.
+INSERT_UPDATED_ROAD_NETWORK = """
+INSERT INTO `{project_id}.{dataset_id}.{table_id}` (
+    osmid, u, v, highway, name, lanes, oneway, reversed, length, bridge,
+    maxspeed, ref, service, width, access, tunnel, junction, geometry,
+    city, town, town_code,
+    processed_at, valid_from_ts, valid_to_ts, is_current
+)
+SELECT
+    S.osmid,
+    S.u,
+    S.v,
+    S.highway,
+    S.name,
+    S.lanes,
+    S.oneway,
+    S.reversed,
+    S.length,
+    S.bridge,
+    S.maxspeed,
+    S.ref,
+    S.service,
+    S.width,
+    S.access,
+    S.tunnel,
+    S.junction,
+    S.geometry,
+    S.city,
+    S.town,
+    S.town_code,
+    CURRENT_TIMESTAMP() AS processed_at,
+    CURRENT_TIMESTAMP() AS valid_from_ts,
+    TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts,
+    TRUE AS is_current
+FROM (
+    SELECT * FROM (
+        SELECT 
+            *,
+            ROW_NUMBER() OVER (
+                PARTITION BY osmid 
+                ORDER BY 
+                    (CASE WHEN name IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN highway IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN lanes IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN length IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN maxspeed IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN town_code IS NOT NULL THEN 1 ELSE 0 END) DESC,
+                    name ASC,
+                    highway ASC
+            ) as rn
+        FROM `{project_id}.{dataset_id}.{staging_table_id}`
+    ) ranked
+    WHERE rn = 1
+) AS S
+JOIN `{project_id}.{dataset_id}.{table_id}` AS T
+ON S.osmid = T.osmid
+WHERE T.valid_to_ts = (
+    SELECT MAX(T2.valid_to_ts)
+    FROM `{project_id}.{dataset_id}.{table_id}` T2
+    WHERE T2.osmid = T.osmid
+)
+AND T.is_current = FALSE;
 """ 
