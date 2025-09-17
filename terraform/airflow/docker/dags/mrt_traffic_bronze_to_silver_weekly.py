@@ -144,7 +144,7 @@ dag = DAG(
     default_args=default_args,
     description='SIMPLIFIED: MRT traffic data transfer from bronze to silver (one month at a time)',
     schedule_interval='0 2 * * 6',  # Run at 10 AM every Saturday on Taiwan time
-    start_date=days_ago(1),
+    start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
     catchup=False,
     tags=['mrt', 'traffic', 'bronze', 'silver', 'incremental-load'],
     on_success_callback=notify_success,

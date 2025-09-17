@@ -158,7 +158,7 @@ with DAG(
     default_args=default_args,
     description='C store family mart data transfer from bronze to silver (one date at a time)',
     schedule_interval= SCHEDULE_INTERVALS['weekly'],  # Run at 10 AM every Saturday on Taiwan time
-    start_date=days_ago(1),
+    start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
     catchup=False,
     tags=['c_store', 'family_mart', 'bronze', 'silver', 'incremental-load'],
     on_success_callback=notify_success,

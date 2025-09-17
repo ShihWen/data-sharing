@@ -236,7 +236,7 @@ with DAG(
     default_args=default_args,
     description='C store seven eleven data transfer from bronze to silver (one date at a time)',
     schedule_interval= SCHEDULE_INTERVALS['weekly'],  # Run at 10 AM every Saturday on Taiwan time
-    start_date=days_ago(1),
+    start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
     catchup=False,
     tags=['c_store', 'seven_eleven', 'bronze', 'silver', 'incremental-load'],
     on_success_callback=notify_success,
