@@ -7,6 +7,7 @@ from airflow.utils.dates import days_ago
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.models import Variable
 import logging
+import pendulum
 
 # Import SQL queries from separate file
 from sql.mrt_traffic_queries import (

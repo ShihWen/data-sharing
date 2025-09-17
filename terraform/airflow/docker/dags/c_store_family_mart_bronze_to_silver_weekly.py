@@ -9,6 +9,7 @@ from airflow.utils.trigger_rule import TriggerRule
 from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 import logging
+import pendulum
 
 from config.default_args import default_args
 from config.dag_config import SCHEDULE_INTERVALS
