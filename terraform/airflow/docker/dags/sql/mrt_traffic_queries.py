@@ -8,11 +8,11 @@ Since only one month arrives at a time, we removed all complex batching logic.
 CHECK_NEW_MONTH_QUERY = """
 WITH bronze_months AS (
     SELECT DISTINCT DATE_TRUNC(dt, MONTH) as month
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 ),
 silver_months AS (
     SELECT DISTINCT DATE_TRUNC(dt, MONTH) as month  
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
 ),
 new_month AS (
     SELECT bronze_months.month
@@ -33,7 +33,7 @@ FROM new_month
 
 # Simple transform and load for the new month
 TRANSFORM_AND_LOAD_MONTH_QUERY = """
-INSERT INTO `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
+INSERT INTO `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
 (
     dt,
     hour,
@@ -74,7 +74,7 @@ SELECT
         ELSE 'off_peak'
     END as peak_period,
     CURRENT_TIMESTAMP() as processed_at
-FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 WHERE DATE_TRUNC(dt, MONTH) = DATE('{{ params.target_month }}')
 """
 
@@ -87,7 +87,7 @@ WITH processing_stats AS (
         MAX(dt) as max_date,
         COUNT(CASE WHEN is_valid_traffic = false THEN 1 END) as invalid_records,
         COUNT(DISTINCT dt) as unique_dates
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_silver_dataset_id }}.mrt_traffic`
     WHERE processed_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 )
 SELECT 
@@ -119,11 +119,11 @@ SELECT
     B.entrance
 FROM (
     SELECT DISTINCT exit
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 ) AS A
 FULL JOIN (
     SELECT DISTINCT entrance
-    FROM `{{ var.value.project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
+    FROM `{{ var.value.gcp_project_id }}.{{ var.value.tpe_mrt_bronze_dataset_id }}.mrt_traffic`
 ) AS B
     ON A.exit = B.entrance
 WHERE
