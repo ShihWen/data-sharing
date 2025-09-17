@@ -157,52 +157,54 @@ def process_railway_stations_to_staging(**context):
         if len(non_null_values) > 0:
             print(f"  Sample values: {non_null_values.tolist()}")
         print()
+    
+    # Explicitly convert DataFrame columns to match BigQuery schema exactly
+    print("Converting DataFrame columns to match BigQuery schema...")
+    
+    # Convert timestamp columns to proper datetime objects
+    timestamp_columns = ['update_time', 'processed_at', 'valid_from_ts', 'valid_to_ts']
+    for col in timestamp_columns:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+            print(f"Converted {col} to datetime64[ns]")
+    
+    # Ensure all string columns are properly converted to string type
+    string_columns = [
+        'station_uid', 'station_id', 'station_name_zh_tw', 'station_name_en',
+        'station_address', 'station_phone', 'operator_id', 'station_class',
+        'geometry', 'location_city', 'location_city_code', 'location_town', 'location_town_code'
+    ]
+    for col in string_columns:
+        if col in df.columns:
+            df[col] = df[col].astype(str)
+            # Replace 'None' strings with actual None values
+            df[col] = df[col].replace('None', None)
+            print(f"Converted {col} to string")
+    
+    # Ensure version_id is integer
+    if 'version_id' in df.columns:
+        df['version_id'] = pd.to_numeric(df['version_id'], errors='coerce').astype('Int64')
+        print(f"Converted version_id to nullable integer")
+    
+    # Ensure is_current is boolean
+    if 'is_current' in df.columns:
+        df['is_current'] = df['is_current'].astype(bool)
+        print(f"Converted is_current to boolean")
+    
+    print("\nFinal DataFrame dtypes after conversion:")
+    print(df.dtypes)
 
     print(f"Uploading {len(df)} records to railway_silver.railway_station_staging...")
     
-    # Define the schema to match the existing staging table exactly
-    table_schema = [
-        {'name': 'station_uid', 'type': 'STRING'},
-        {'name': 'station_id', 'type': 'STRING'},
-        {'name': 'station_name_zh_tw', 'type': 'STRING'},
-        {'name': 'station_name_en', 'type': 'STRING'},
-        {'name': 'station_address', 'type': 'STRING'},
-        {'name': 'station_phone', 'type': 'STRING'},
-        {'name': 'operator_id', 'type': 'STRING'},
-        {'name': 'station_class', 'type': 'STRING'},
-        {'name': 'update_time', 'type': 'TIMESTAMP'},
-        {'name': 'version_id', 'type': 'INTEGER'},
-        {'name': 'geometry', 'type': 'GEOGRAPHY'},
-        {'name': 'location_city', 'type': 'STRING'},
-        {'name': 'location_city_code', 'type': 'STRING'},
-        {'name': 'location_town', 'type': 'STRING'},
-        {'name': 'location_town_code', 'type': 'STRING'},
-        {'name': 'processed_at', 'type': 'TIMESTAMP'},
-        {'name': 'valid_from_ts', 'type': 'TIMESTAMP'},
-        {'name': 'valid_to_ts', 'type': 'TIMESTAMP'},
-        {'name': 'is_current', 'type': 'BOOLEAN'},
-    ]
-    
-    try:
-        df.to_gbq(
-            destination_table="railway_silver.railway_station_staging",
-            project_id=project_id,
-            credentials=credentials,
-            if_exists='replace',
-            table_schema=table_schema
-        )
-        print("Successfully loaded data into railway_silver.railway_station_staging.")
-    except Exception as e:
-        print(f"Error uploading to BigQuery: {str(e)}")
-        print("Attempting to upload without explicit schema...")
-        # Try without explicit schema to let BigQuery infer types
-        df.to_gbq(
-            destination_table="railway_silver.railway_station_staging",
-            project_id=project_id,
-            credentials=credentials,
-            if_exists='replace'
-        )
-        print("Successfully loaded data into railway_silver.railway_station_staging (schema inferred).")
+    # Upload without explicit schema to avoid conflicts with existing table
+    # Let BigQuery use the existing table schema and our DataFrame will adapt
+    df.to_gbq(
+        destination_table="railway_silver.railway_station_staging",
+        project_id=project_id,
+        credentials=credentials,
+        if_exists='replace'
+    )
+    print("Successfully loaded data into railway_silver.railway_station_staging.")
 
 with DAG(
     dag_id="tdx_railway_station_source_to_silver",
