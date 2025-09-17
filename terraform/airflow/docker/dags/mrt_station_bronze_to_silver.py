@@ -5,6 +5,7 @@
 This DAG is responsible for transforming MRT station data from the bronze layer to the silver layer.
 
 **Key Features:**
+- **SCD2 Implementation:** Uses Slowly Changing Dimension Type 2 to track historical changes.
 - **Idempotent & Incremental:** Uses a version-based check to only process new data.
 - **Scheduled Execution:** Runs every Saturday at 10:00 AM.
 - **Data Cleansing:** Standardizes data types and structures.
@@ -24,15 +25,15 @@ from airflow.utils.dates import days_ago
 import logging
 
 # --- Import Queries ---
-from sql.mrt_station_queries import CHECK_NEW_VERSIONS_QUERY, TRANSFORM_AND_LOAD_SQL
+from sql.mrt_station_queries import CHECK_NEW_VERSIONS_QUERY, MERGE_SCD2_MRT_STATION, INSERT_UPDATED_MRT_STATION
 
 # --- DAG Configuration ---
 DAG_ID = "mrt_station_bronze_to_silver"
-DESCRIPTION = "Loads new MRT station data from bronze to silver, parsing and enriching it."
+DESCRIPTION = "Loads new MRT station data from bronze to silver using SCD2 pattern, parsing and enriching it."
 SCHEDULE_INTERVAL = '0 2 * * 6'  # Run at 10 AM every Saturday on Taiwan time
 START_DATE = pendulum.datetime(2023, 1, 1, tz="UTC")
 CATCHUP = False
-TAGS = ["mrt", "station", "bronze", "silver", "incremental-load", "trtc"]
+TAGS = ["mrt", "station", "bronze", "silver", "incremental-load", "trtc", "scd2"]
 
 # --- BigQuery Configuration ---
 GCP_CONN_ID = "google_cloud_default"
@@ -84,10 +85,10 @@ with DAG(
         doc_md="Checks if there are new `VersionID`s in the bronze table. Continues if count > 0, otherwise skips.",
     )
 
-    # Task 2: Execute the transformation and load into the silver table
-    transform_and_load_to_silver = BigQueryExecuteQueryOperator(
-        task_id="transform_and_load_to_silver",
-        sql=TRANSFORM_AND_LOAD_SQL,
+    # Task 2: Execute the SCD2 MERGE (Step 1) - Mark changed records as inactive
+    merge_scd2_mrt_station = BigQueryExecuteQueryOperator(
+        task_id="merge_scd2_mrt_station",
+        sql=MERGE_SCD2_MRT_STATION,
         use_legacy_sql=False,
         gcp_conn_id=GCP_CONN_ID,
         location=BIGQUERY_LOCATION,
@@ -95,8 +96,22 @@ with DAG(
             "bronze_dataset": BRONZE_DATASET,
             "silver_dataset": SILVER_DATASET,
         },
-        doc_md="Executes the main MERGE statement to transform data and load it into the silver table.",
+        doc_md="Executes the SCD2 MERGE statement to mark changed records as inactive and insert new records.",
+    )
+
+    # Task 3: Execute the SCD2 INSERT (Step 2) - Insert updated versions of changed records
+    insert_updated_mrt_station = BigQueryExecuteQueryOperator(
+        task_id="insert_updated_mrt_station",
+        sql=INSERT_UPDATED_MRT_STATION,
+        use_legacy_sql=False,
+        gcp_conn_id=GCP_CONN_ID,
+        location=BIGQUERY_LOCATION,
+        params={
+            "bronze_dataset": BRONZE_DATASET,
+            "silver_dataset": SILVER_DATASET,
+        },
+        doc_md="Executes the SCD2 INSERT statement to create new versions of changed records.",
     )
 
     # --- Task Dependencies ---
-    check_for_new_data >> transform_and_load_to_silver 
+    check_for_new_data >> merge_scd2_mrt_station >> insert_updated_mrt_station 

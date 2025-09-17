@@ -39,4 +39,9 @@ schema:
   - {name: "data_quality_score",    type: "FLOAT",     mode: "NULLABLE", description: "Overall data quality score (0.0-1.0)"}
 
   # Processing metadata
-  - {name: "processed_at",          type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp"} 
+  - {name: "processed_at",          type: "TIMESTAMP", mode: "NULLABLE", description: "Silver layer processing timestamp"}
+  
+  # SCD2 (Slowly Changing Dimension Type 2) fields
+  - {name: "valid_from_ts",         type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record became valid"}
+  - {name: "valid_to_ts",           type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record expired. A future date indicates the current version"}
+  - {name: "is_current",            type: "BOOLEAN",   mode: "NULLABLE", description: "Flag to easily identify the current version of the record (TRUE for current)"} 
