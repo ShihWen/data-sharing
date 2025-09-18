@@ -1,0 +1,4 @@
+google-cloud-bigquery
+beautifulsoup4
+lxml
+selenium
