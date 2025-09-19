@@ -14,4 +14,5 @@ schema:
   - {name: "address",                    type: "STRING",  mode: "NULLABLE", description: "address of convenience store"}
   - {name: "location",                   type: "GEOGRAPHY",  mode: "NULLABLE", description: "geohash of convenience store"}
   - {name: "service",                    type: "STRING",  mode: "REPEATED", description: "service of convenience store, separated by comma"}
+  - {name: "store_type",                 type: "STRING",  mode: "NULLABLE", description: "store type of convenience store"}
   - {name: "processed_at",               type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."}
