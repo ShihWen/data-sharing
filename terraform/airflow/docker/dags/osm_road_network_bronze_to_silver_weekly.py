@@ -14,6 +14,7 @@ from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 import geopandas as gpd
 
 from sql.osm_road_network_queries import MERGE_SCD2_ROAD_NETWORK
+from sql.osm_road_network_queries import INSERT_UPDATED_ROAD_NETWORK
 from utils.osm_processing import process_pbf_to_dataframe
 
 import logging
@@ -278,4 +279,19 @@ with DAG(
     )
     logging.info(f"Merge SQL query: {MERGE_SCD2_ROAD_NETWORK.format(project_id='{{ var.value.gcp_project_id }}', dataset_id=SILVER_DATASET, table_id=SILVER_TABLE, staging_table_id=STAGING_TABLE)}")
 
-    download_osm_data >> process_and_load_to_staging >> merge_into_silver_scd2 
+    insert_updated_records = BigQueryInsertJobOperator(
+        task_id="insert_updated_records",
+        configuration={
+            "query": {
+                "query": INSERT_UPDATED_ROAD_NETWORK.format(
+                    project_id="{{ var.value.gcp_project_id }}",
+                    dataset_id=SILVER_DATASET,
+                    table_id=SILVER_TABLE,
+                    staging_table_id=STAGING_TABLE,
+                ),
+                "useLegacySql": False,
+            }
+        },
+    )
+
+    download_osm_data >> process_and_load_to_staging >> merge_into_silver_scd2 >> insert_updated_records
