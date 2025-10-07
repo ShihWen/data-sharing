@@ -32,6 +32,13 @@ def fetch_bus_shape_to_gcs(**context):
     data = get_tdx_data(app_id, app_key, auth_url, url)
     
     file_name = f"bus/bronze/inter_city_bus_shape/inter_city_bus_shape_{execution_year_month}.json"
+
+    # Check if the file already exists in GCS for this execution date
+    if gcs_hook.exists(bucket_name=bucket_name, object_name=file_name):
+        print(f"File {file_name} already exists in GCS. Skipping download.")
+        context["ti"].xcom_push(key="gcs_object_path", value=file_name)
+        return
+
     gcs_hook.upload(
         bucket_name=bucket_name,
         object_name=file_name,
@@ -66,7 +73,7 @@ def process_bus_shape_to_staging(**context):
     gdf = process_inter_city_bus_shape(raw_data)
     print("--------------------------------")
     print(gdf.info())    
-    
+
     if gdf.empty:
         print("No bus shape data to upload. Skipping.")
         return
