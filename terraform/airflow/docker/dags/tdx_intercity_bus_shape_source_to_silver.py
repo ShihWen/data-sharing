@@ -93,9 +93,9 @@ def process_bus_shape_to_staging(**context):
             {'name': 'sub_route_id', 'type': 'STRING'},
             {'name': 'sub_route_name_zh_tw', 'type': 'STRING'},
             {'name': 'sub_route_name_en', 'type': 'STRING'},
-            {'name': 'direction', 'type': 'STRING'},
+            {'name': 'direction', 'type': 'INTEGER'},
             {'name': 'update_time', 'type': 'STRING'},
-            {'name': 'version_id', 'type': 'STRING'},
+            {'name': 'version_id', 'type': 'INTEGER'},
             {'name': 'geometry', 'type': 'GEOGRAPHY'},
         ]
     )
