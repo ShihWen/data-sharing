@@ -93,7 +93,7 @@ def process_bus_shape_to_staging(**context):
     print(gdf.info())    
 
     gdf.to_gbq(
-        destination_table="reference.dim_inter_city_bus_shape_staging",
+        destination_table="bus_silver.inter_city_bus_shape_staging",
         project_id=project_id,
         credentials=credentials,
         if_exists='replace',
