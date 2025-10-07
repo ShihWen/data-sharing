@@ -84,7 +84,7 @@ def process_bus_shape_to_staging(**context):
     string_columns = [
         "route_uid", "route_id", "route_name_zh_tw", "route_name_en",
         "sub_route_uid", "sub_route_id", "sub_route_name_zh_tw", "sub_route_name_en",
-        "update_time"
+        "update_time", "direction", "version_id"
     ]
     for col in string_columns:
         if col in gdf.columns:
