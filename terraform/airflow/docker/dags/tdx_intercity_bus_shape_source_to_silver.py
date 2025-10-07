@@ -106,13 +106,13 @@ with DAG(
 ) as dag:
 
     fetch_bronze_data = PythonOperator(
-        task_id="fetch_town_boundaries_to_gcs",
-        python_callable=fetch_town_boundaries_to_gcs,
+        task_id="fetch_bus_shape_to_gcs",
+        python_callable=fetch_bus_shape_to_gcs,
     )
 
     process_silver_staging = PythonOperator(
-        task_id="process_town_boundaries_to_staging",
-        python_callable=process_town_boundaries_to_staging,
+        task_id="process_bus_shape_to_staging",
+        python_callable=process_bus_shape_to_staging,
     )
     
     # merge_into_silver_scd2 = BigQueryInsertJobOperator(
