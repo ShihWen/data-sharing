@@ -31,7 +31,7 @@ def fetch_bus_shape_to_gcs(**context):
     print("Fetching bus shape from real TDX API...")
     data = get_tdx_data(app_id, app_key, auth_url, url)
     
-    file_name = f"reference/bronze/inter_city_bus_shape/inter_city_bus_shape_{execution_year_month}.json"
+    file_name = f"bus/bronze/inter_city_bus_shape/inter_city_bus_shape_{execution_year_month}.json"
     gcs_hook.upload(
         bucket_name=bucket_name,
         object_name=file_name,
