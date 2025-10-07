@@ -79,6 +79,17 @@ def process_bus_shape_to_staging(**context):
         return
 
     print(f"Uploading {len(gdf)} records to reference.dim_inter_city_bus_shape_staging...")
+
+    # Explicitly cast string columns to object (string) type
+    string_columns = [
+        "route_uid", "route_id", "route_name_zh_tw", "route_name_en",
+        "sub_route_uid", "sub_route_id", "sub_route_name_zh_tw", "sub_route_name_en",
+        "update_time"
+    ]
+    for col in string_columns:
+        if col in gdf.columns:
+            gdf[col] = gdf[col].astype(str)
+
     gdf.to_gbq(
         destination_table="reference.dim_inter_city_bus_shape_staging",
         project_id=project_id,
@@ -93,9 +104,9 @@ def process_bus_shape_to_staging(**context):
             {'name': 'sub_route_id', 'type': 'STRING'},
             {'name': 'sub_route_name_zh_tw', 'type': 'STRING'},
             {'name': 'sub_route_name_en', 'type': 'STRING'},
-            {'name': 'direction', 'type': 'INTEGER'},
+            {'name': 'direction', 'type': 'STRING'},
             {'name': 'update_time', 'type': 'STRING'},
-            {'name': 'version_id', 'type': 'INTEGER'},
+            {'name': 'version_id', 'type': 'STRING'},
             {'name': 'geometry', 'type': 'GEOGRAPHY'},
         ]
     )
