@@ -37,7 +37,7 @@ def fetch_bus_shape_to_gcs(**context):
     if gcs_hook.exists(bucket_name=bucket_name, object_name=file_name):
         print(f"File {file_name} already exists in GCS. Skipping download.")
         context["ti"].xcom_push(key="gcs_path", value=file_name)
-        return
+        # Removed the 'return' statement here to ensure XCom is properly registered
 
     gcs_hook.upload(
         bucket_name=bucket_name,
@@ -64,6 +64,7 @@ def process_bus_shape_to_staging(**context):
     project_id = Variable.get("gcp_project_id")
 
     print(f"Downloading bus shape from gs://{bucket_name}/{gcs_path}")
+    print(f"Retrieved GCS path from XCom: {gcs_path}")
     raw_data = gcs_hook.download_as_byte_array(
         bucket_name=bucket_name,
         object_name=gcs_path,
