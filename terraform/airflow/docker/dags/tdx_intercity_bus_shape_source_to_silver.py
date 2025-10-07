@@ -36,7 +36,7 @@ def fetch_bus_shape_to_gcs(**context):
     # Check if the file already exists in GCS for this execution date
     if gcs_hook.exists(bucket_name=bucket_name, object_name=file_name):
         print(f"File {file_name} already exists in GCS. Skipping download.")
-        context["ti"].xcom_push(key="gcs_object_path", value=file_name)
+        context["ti"].xcom_push(key="gcs_path", value=file_name)
         return
 
     gcs_hook.upload(
