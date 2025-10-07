@@ -19,14 +19,14 @@ def process_inter_city_bus_shape(raw_data: str) -> gpd.GeoDataFrame:
         version_id = feature['VersionID']
         if version_id is not None:
             try:
-                version_id = int(version_id)
+                version_id = str(version_id)
             except (ValueError, TypeError):
                 version_id = None
 
         direction = feature['Direction']
         if direction is not None:
             try:
-                direction = int(direction)
+                direction = str(direction)
             except (ValueError, TypeError):
                 direction = None
 
