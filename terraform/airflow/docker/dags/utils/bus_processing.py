@@ -39,7 +39,7 @@ def process_inter_city_bus_shape(raw_data: str) -> gpd.GeoDataFrame:
             'sub_route_id': feature['SubRouteID'],
             'sub_route_name_zh_tw': feature['SubRouteName']['Zh_tw'],
             'sub_route_name_en': feature['SubRouteName']['En'],
-            'direction': feature['Direction'],
+            'direction': direction,
             'update_time': feature['UpdateTime'],
             'version_id': version_id,
             'geometry': geom
