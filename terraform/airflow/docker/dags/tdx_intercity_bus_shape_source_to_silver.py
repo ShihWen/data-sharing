@@ -71,8 +71,7 @@ def process_bus_shape_to_staging(**context):
     
     print("Transforming bus shape...")
     gdf = process_inter_city_bus_shape(raw_data)
-    print("--------------------------------")
-    print(gdf.info())    
+
 
     if gdf.empty:
         print("No bus shape data to upload. Skipping.")
@@ -89,6 +88,9 @@ def process_bus_shape_to_staging(**context):
     for col in string_columns:
         if col in gdf.columns:
             gdf[col] = gdf[col].astype(str)
+
+    print("--------------------------------")
+    print(gdf.info())    
 
     gdf.to_gbq(
         destination_table="reference.dim_inter_city_bus_shape_staging",
