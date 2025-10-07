@@ -104,9 +104,9 @@ def process_bus_shape_to_staging(**context):
 with DAG(
     dag_id="tdx_intercity_bus_shape_source_to_silver",
     start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
-    schedule="@yearly",
+    schedule="@monthly",
     catchup=False,
-    tags=["reference", "silver", "dimensions", "town"],
+    tags=["bus", "silver", "tdx", "inter_city_bus_shape"],
     default_args={
         "owner": "data_engineering",
         "retries": 1,
