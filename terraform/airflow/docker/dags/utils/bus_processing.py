@@ -14,7 +14,22 @@ def process_inter_city_bus_shape(raw_data: str) -> gpd.GeoDataFrame:
     for feature in shape_data:
         
         geom = wkt.loads(feature['Geometry'])
-        
+
+
+        version_id = feature['VersionID']
+        if version_id is not None:
+            try:
+                version_id = int(version_id)
+            except (ValueError, TypeError):
+                version_id = None
+
+        direction = feature['Direction']
+        if direction is not None:
+            try:
+                direction = int(direction)
+            except (ValueError, TypeError):
+                direction = None
+
         records.append({
             'route_uid': feature['RouteUID'],
             'route_id': feature['RouteID'],
@@ -26,7 +41,7 @@ def process_inter_city_bus_shape(raw_data: str) -> gpd.GeoDataFrame:
             'sub_route_name_en': feature['SubRouteName']['En'],
             'direction': feature['Direction'],
             'update_time': feature['UpdateTime'],
-            'version_id': feature['VersionID'],
+            'version_id': version_id,
             'geometry': geom
         })
         
