@@ -176,34 +176,34 @@ with DAG(
         python_callable=process_bus_station_to_staging,
     )
     
-    # merge_into_silver_scd2 = BigQueryInsertJobOperator(
-    #     task_id="merge_into_silver_scd2",
-    #     configuration={
-    #         "query": {
-    #             "query": MERGE_SCD2_INTERCITY_BUS_STATION.format(
-    #                 project_id="{{ var.value.gcp_project_id }}",
-    #                 dataset_id="bus_silver",
-    #                 table_id="inter_city_bus_station",
-    #                 staging_table_id="inter_city_bus_station_staging",
-    #             ),
-    #             "useLegacySql": False,
-    #         }
-    #     },
-    # )
+    merge_into_silver_scd2 = BigQueryInsertJobOperator(
+        task_id="merge_into_silver_scd2",
+        configuration={
+            "query": {
+                "query": MERGE_SCD2_INTERCITY_BUS_STATION.format(
+                    project_id="{{ var.value.gcp_project_id }}",
+                    dataset_id="bus_silver",
+                    table_id="inter_city_bus_station",
+                    staging_table_id="inter_city_bus_station_staging",
+                ),
+                "useLegacySql": False,
+            }
+        },
+    )
 
-    # insert_updated_records = BigQueryInsertJobOperator(
-    #     task_id="insert_updated_records",
-    #     configuration={
-    #         "query": {
-    #             "query": INSERT_UPDATED_INTERCITY_BUS_STATION.format(
-    #                 project_id="{{ var.value.gcp_project_id }}",
-    #                 dataset_id="bus_silver",
-    #                 table_id="inter_city_bus_station",
-    #                 staging_table_id="inter_city_bus_station_staging",
-    #             ),
-    #             "useLegacySql": False,
-    #         }
-    #     },
-    # )
+    insert_updated_records = BigQueryInsertJobOperator(
+        task_id="insert_updated_records",
+        configuration={
+            "query": {
+                "query": INSERT_UPDATED_INTERCITY_BUS_STATION.format(
+                    project_id="{{ var.value.gcp_project_id }}",
+                    dataset_id="bus_silver",
+                    table_id="inter_city_bus_station",
+                    staging_table_id="inter_city_bus_station_staging",
+                ),
+                "useLegacySql": False,
+            }
+        },
+    )
 
-    fetch_bronze_data >> process_silver_staging #>> merge_into_silver_scd2 >> insert_updated_records 
+    fetch_bronze_data >> process_silver_staging >> merge_into_silver_scd2 >> insert_updated_records 
