@@ -121,10 +121,10 @@ def process_inter_city_bus_station(raw_data: str) -> pd.DataFrame:
             'update_time': feature.get('UpdateTime'),
             'version_id': feature.get('VersionID'),
             'geometry': geom,
-            'processed_at': current_timestamp.to_iso8601_string(),
-            'valid_from_ts': current_timestamp.to_iso8601_string(),
-            'valid_to_ts': valid_to_ts_default,
-            'is_current': True
+            # 'processed_at': current_timestamp.to_iso8601_string(),
+            # 'valid_from_ts': current_timestamp.to_iso8601_string(),
+            # 'valid_to_ts': valid_to_ts_default,
+            # 'is_current': True
         }
         processed_records.append(record)
         
