@@ -41,20 +41,42 @@ resource "google_bigquery_table" "tables" {
   clustering = lookup(each.value, "clustering", null)
 
   schema = jsonencode([
-    for field in each.value.schema : {
-      name        = field.name
-      type        = field.type
-      mode        = lookup(field, "mode", "NULLABLE") # Default to NULLABLE
-      description = lookup(field, "description", "")
-      # Handle nested fields for RECORD types
-      fields = lookup(field, "fields", null) != null ? [
-        for sub_field in field.fields : {
-          name        = sub_field.name
-          type        = sub_field.type
-          mode        = lookup(sub_field, "mode", "NULLABLE")
-          description = lookup(sub_field, "description", "")
-        }
-      ] : null
-    }
+    for field in each.value.schema :
+    merge(
+      {
+        name        = field.name
+        type        = field.type
+        mode        = lookup(field, "mode", "NULLABLE")
+        description = lookup(field, "description", null)
+      },
+      (field.type == "RECORD" && lookup(field, "fields", null) != null)
+      ? { fields = [
+          for sub_field in field.fields :
+          merge(
+            {
+              name        = sub_field.name
+              type        = sub_field.type
+              mode        = lookup(sub_field, "mode", "NULLABLE")
+              description = lookup(sub_field, "description", null)
+            },
+            (sub_field.type == "RECORD" && lookup(sub_field, "fields", null) != null)
+            ? { fields = [
+                for third_level_field in sub_field.fields :
+                merge(
+                  {
+                    name        = third_level_field.name
+                    type        = third_level_field.type
+                    mode        = lookup(third_level_field, "mode", "NULLABLE")
+                    description = lookup(third_level_field, "description", null)
+                  },
+                  # No further nesting handled here; if more levels exist, this needs extension
+                  {}
+                )
+              ] }
+            : {}
+          )
+        ] }
+      : {}
+    )
   ])
 } 
