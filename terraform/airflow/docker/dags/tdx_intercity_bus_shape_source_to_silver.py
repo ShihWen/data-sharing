@@ -12,7 +12,7 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobO
 
 from utils.bus_processing import process_inter_city_bus_shape
 from utils.tdx_api import get_tdx_data
-from sql.bus_route_queries import MERGE_SCD2_INTERCITY_BUS_ROUTE, INSERT_UPDATED_INTERCITY_BUS_ROUTE
+from sql.bus_queries import MERGE_SCD2_INTERCITY_BUS_ROUTE, INSERT_UPDATED_INTERCITY_BUS_ROUTE
 
 def fetch_bus_shape_to_gcs(**context):
     """
