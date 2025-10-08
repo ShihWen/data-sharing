@@ -16,7 +16,7 @@ schema:
   - {name: "sub_route_name_zh_tw", type: "STRING", mode: "REQUIRED", description: "Sub route name in Traditional Chinese"}
   - {name: "sub_route_name_en", type: "STRING", mode: "REQUIRED", description: "Sub route name in English"}
   - {name: "direction", type: "STRING", mode: "REQUIRED", description: "Direction"}
-  - {name: "update_time", type: "TIMESTAMP", mode: "REQUIRED", description: "Update time"}
+  - {name: "update_time", type: "STRING", mode: "REQUIRED", description: "Update time"}
   - {name: "version_id", type: "STRING", mode: "REQUIRED", description: "Version ID"}
   - {name: "geometry", type: "GEOGRAPHY", mode: "REQUIRED", description: "Geometry"}
   - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."}
