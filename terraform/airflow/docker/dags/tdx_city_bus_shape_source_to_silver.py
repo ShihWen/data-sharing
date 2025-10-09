@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pendulum
 import json
+import time
 
 from airflow.models.dag import DAG
 from airflow.models import Variable
@@ -52,6 +53,13 @@ def fetch_bus_shape_to_gcs(**context):
     
         # Ensure XCom is pushed exactly once at the end of the task
         context["ti"].xcom_push(key=f"gcs_path_{city}", value=file_name)
+
+        print(f"Pushed XCom for {city} bus shape data to GCS.")
+        print("Waiting for 15 seconds before fetching next city...")
+        time.sleep(15)
+        print("--------------------------------")
+    print("Finished fetching bus shape data to GCS.")
+
 
 def process_bus_shape_to_staging(**context):
     """
