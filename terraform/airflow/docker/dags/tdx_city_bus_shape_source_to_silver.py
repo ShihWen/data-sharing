@@ -3,6 +3,7 @@ from __future__ import annotations
 import pendulum
 import json
 import time
+import pandas as pd
 
 from airflow.models.dag import DAG
 from airflow.models import Variable
