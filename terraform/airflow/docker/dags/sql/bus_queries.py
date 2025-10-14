@@ -335,7 +335,7 @@ FROM (
         SELECT
             *
             , ROW_NUMBER() OVER (
-                PARTITION BY sub_route_uid
+                PARTITION BY route_uid, sub_route_uid, direction
                 ORDER BY update_time DESC
             ) as rn
         FROM `{project_id}.{dataset_id}.{staging_table_id}`
@@ -344,8 +344,8 @@ FROM (
 ) AS S
 JOIN `{project_id}.{dataset_id}.{table_id}` AS T
 ON S.sub_route_uid = T.sub_route_uid AND
-T.direction = T.direction AND
-T.route_uid = T.route_uid
+S.direction = T.direction AND
+S.route_uid = T.route_uid
 WHERE T.valid_to_ts = (
     SELECT MAX(T2.valid_to_ts)
     FROM `{project_id}.{dataset_id}.{table_id}` T2
