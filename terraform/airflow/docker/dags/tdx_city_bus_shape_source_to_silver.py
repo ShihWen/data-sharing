@@ -51,14 +51,14 @@ def fetch_bus_shape_to_gcs(**context):
                 data=json.dumps(data, ensure_ascii=False)
             )
             print(f"Saved raw bus shape data to gs://{bucket_name}/{file_name}")
-    
+            print("Waiting for 15 seconds before fetching next city...")
+            time.sleep(15)
+            print("--------------------------------")
         # Ensure XCom is pushed exactly once at the end of the task
+        print(f"Pushed XCom for {city} bus shape data to GCS.")
         context["ti"].xcom_push(key=f"gcs_path_{city}", value=file_name)
 
-        print(f"Pushed XCom for {city} bus shape data to GCS.")
-        print("Waiting for 15 seconds before fetching next city...")
-        time.sleep(15)
-        print("--------------------------------")
+
     print("Finished fetching bus shape data to GCS.")
 
 
