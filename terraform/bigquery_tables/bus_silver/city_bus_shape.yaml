@@ -1,0 +1,26 @@
+table_id: "city_bus_shape"
+description: "table containing city bus shape information from TDX API."
+labels:
+  data_source: "tdx"
+  data_type: "bus"
+  tier: "silver"
+  granularity: "bus"
+
+schema:   
+  - {name: "route_uid", type: "STRING", mode: "REQUIRED", description: "Unique identifier for the route"}
+  - {name: "route_id", type: "STRING", mode: "REQUIRED", description: "Route ID"}
+  - {name: "route_name_zh_tw", type: "STRING", mode: "REQUIRED", description: "Route name in Traditional Chinese"}
+  - {name: "route_name_en", type: "STRING", mode: "REQUIRED", description: "Route name in English"}
+  - {name: "sub_route_uid", type: "STRING", mode: "REQUIRED", description: "Unique identifier for the sub route"}
+  - {name: "sub_route_id", type: "STRING", mode: "REQUIRED", description: "Sub route ID"}
+  - {name: "sub_route_name_zh_tw", type: "STRING", mode: "REQUIRED", description: "Sub route name in Traditional Chinese"}
+  - {name: "sub_route_name_en", type: "STRING", mode: "REQUIRED", description: "Sub route name in English"}
+  - {name: "direction", type: "STRING", mode: "REQUIRED", description: "Direction"}
+  - {name: "update_time", type: "STRING", mode: "REQUIRED", description: "Update time"}
+  - {name: "version_id", type: "STRING", mode: "REQUIRED", description: "Version ID"}
+  - {name: "geometry", type: "GEOGRAPHY", mode: "REQUIRED", description: "Geometry"}
+  - {name: "city", type: "STRING", mode: "REQUIRED", description: "City"}
+  - {name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."}
+  - {name: "valid_from_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record became valid."}
+  - {name: "valid_to_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record expired. A future date indicates the current version."}
+  - {name: "is_current", type: "BOOLEAN", mode: "NULLABLE", description: "Flag to easily identify the current version of the record (TRUE for current)."} 

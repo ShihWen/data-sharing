@@ -243,7 +243,10 @@ USING (
     ) ranked
     WHERE rn = 1
 ) AS S
-ON T.route_uid = S.route_uid AND T.is_current = TRUE
+ON T.route_uid = S.route_uid AND 
+T.sub_route_uid = S.sub_route_uid AND
+T.direction = S.direction AND
+T.is_current = TRUE
 WHEN MATCHED AND T.update_time < S.update_time THEN
     UPDATE SET
         valid_to_ts = CURRENT_TIMESTAMP(),
@@ -262,6 +265,7 @@ WHEN NOT MATCHED BY TARGET THEN
         , update_time
         , version_id
         , geometry
+        , city
         , processed_at
         , valid_from_ts
         , valid_to_ts
@@ -280,6 +284,7 @@ WHEN NOT MATCHED BY TARGET THEN
         , S.update_time
         , S.version_id
         , S.geometry
+        , S.city
         , CURRENT_TIMESTAMP()
         , CURRENT_TIMESTAMP()
         , TIMESTAMP('9999-12-31T23:59:59')
@@ -287,7 +292,7 @@ WHEN NOT MATCHED BY TARGET THEN
     );
 """
 
-INSERT_UPDATED_INTERCITY_BUS_ROUTE = """
+INSERT_UPDATED_CITY_BUS_ROUTE = """
 INSERT INTO `{project_id}.{dataset_id}.{table_id}` (
     route_uid
     , route_id
@@ -301,6 +306,7 @@ INSERT INTO `{project_id}.{dataset_id}.{table_id}` (
     , update_time
     , version_id
     , geometry
+    , city
     , processed_at
     , valid_from_ts
     , valid_to_ts
@@ -319,6 +325,7 @@ SELECT
     , S.update_time
     , S.version_id
     , S.geometry
+    , S.city
     , CURRENT_TIMESTAMP() AS processed_at
     , CURRENT_TIMESTAMP() AS valid_from_ts
     , TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts
@@ -336,11 +343,16 @@ FROM (
     WHERE rn = 1
 ) AS S
 JOIN `{project_id}.{dataset_id}.{table_id}` AS T
-ON S.sub_route_uid = T.sub_route_uid
+ON S.sub_route_uid = T.sub_route_uid AND
+T.direction = T.direction AND
+T.route_uid = T.route_uid
 WHERE T.valid_to_ts = (
     SELECT MAX(T2.valid_to_ts)
     FROM `{project_id}.{dataset_id}.{table_id}` T2
-    WHERE T2.sub_route_uid = T.sub_route_uid
+    WHERE 
+    T2.route_uid = T.route_uid AND
+    T2.sub_route_uid = T.sub_route_uid AND
+    T2.direction = T.direction
 )
 AND T.is_current = FALSE;
 """
