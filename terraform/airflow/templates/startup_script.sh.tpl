@@ -521,7 +521,16 @@ EOL
             echo "Unpausing DAGs (keeping specific DAGs paused)..."
 
             # Define the list of DAGs that should remain paused
-            paused_dags="mrt_traffic_bronze_to_silver_full_load reference_boundaries_city_source_to_silver reference_boundaries_town_source_to_silver reference_boundaries_village_source_to_silver mrt_station_ntmc_source_to_bronze"
+            paused_dags=( \
+            mrt_traffic_bronze_to_silver_full_load \
+            reference_boundaries_city_source_to_silver \
+            reference_boundaries_town_source_to_silver \
+            reference_boundaries_village_source_to_silver \
+            mrt_station_ntmc_source_to_bronze \
+            tdx_railway_station_source_to_silver \
+            tdx_intercity_bus_station_source_to_silver \
+            tdx_intercity_bus_shape_source_to_silver \
+            tdx_city_bus_shape_source_to_silver)
 
             # Get list of all DAGs and unpause them individually (compatible with older Airflow versions)
             echo "Getting list of all DAGs..."
