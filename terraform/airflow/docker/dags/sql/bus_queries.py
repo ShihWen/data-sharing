@@ -236,7 +236,7 @@ USING (
         SELECT
             *
             , ROW_NUMBER() OVER (
-                PARTITION BY route_uid
+                PARTITION BY route_uid, sub_route_uid, direction
                 ORDER BY update_time DESC
             ) as rn
         FROM `{project_id}.{dataset_id}.{staging_table_id}`
