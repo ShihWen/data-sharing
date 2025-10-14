@@ -36,15 +36,16 @@ def fetch_bus_shape_to_gcs(**context):
     for city in city_list:
         url = f"https://tdx.transportdata.tw/api/basic/v2/Bus/Shape/City/{city}?%24format=JSON"
     
-        print(f"Fetching bus shape from {city} TDX API...")
-        data = get_tdx_data(app_id, app_key, auth_url, url)
-    
         file_name = f"bus/bronze/city_bus_shape/city_bus_shape_{city}_{execution_year_month}.json"
 
         # Check if the file already exists in GCS for this execution date
         if gcs_hook.exists(bucket_name=bucket_name, object_name=file_name):
             print(f"File {file_name} already exists in GCS. Skipping download.")
+            print("--------------------------------")
         else:
+            print(f"Fetching bus shape from {city} TDX API...")
+            data = get_tdx_data(app_id, app_key, auth_url, url)
+
             gcs_hook.upload(
                 bucket_name=bucket_name,
                 object_name=file_name,
