@@ -1,0 +1,44 @@
+table_id: "city_bus_station"
+description: "table containing city bus station information from TDX API."
+labels:
+  data_source: "tdx"
+  data_type: "bus"
+  tier: "silver"
+  granularity: "bus"
+
+schema:   
+  - { name: 'station_uid', 'type': 'STRING', 'mode': 'REQUIRED'}
+  - { name: 'station_id', 'type': 'STRING', 'mode': 'REQUIRED'}
+  - { name: 'station_name', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [
+      { name: 'zh_tw', 'type': 'STRING', 'mode': 'REQUIRED'},
+      { name: 'en', 'type': 'STRING', 'mode': 'NULLABLE'},
+  ]}
+  - { name: 'station_position', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [
+      { name: 'position_lon', 'type': 'FLOAT', 'mode': 'REQUIRED'},
+      { name: 'position_lat', 'type': 'FLOAT', 'mode': 'REQUIRED'},
+      { name: 'geohash', 'type': 'STRING', 'mode': 'NULLABLE'},
+  ]}
+  - { name: 'station_group_id', 'type': 'STRING', 'mode': 'NULLABLE'}
+  - { name: 'stops', 'type': 'RECORD', 'mode': 'REPEATED', 'fields': [
+      { name: 'stop_uid', 'type': 'STRING', 'mode': 'REQUIRED'},
+      { name: 'stop_id', 'type': 'STRING', 'mode': 'REQUIRED'},
+      { name: 'stop_name', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [
+          { name: 'zh_tw', 'type': 'STRING', 'mode': 'REQUIRED'},
+          { name: 'en', 'type': 'STRING', 'mode': 'NULLABLE'},
+      ]},
+      { name: 'route_uid', 'type': 'STRING', 'mode': 'REQUIRED'},
+      { name: 'route_id', 'type': 'STRING', 'mode': 'REQUIRED'},
+      { name: 'route_name', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [
+          { name: 'zh_tw', 'type': 'STRING', 'mode': 'REQUIRED'},
+          { name: 'en', 'type': 'STRING', 'mode': 'NULLABLE'},
+      ]}
+  ]}
+  - { name: 'location_city_code', 'type': 'STRING', 'mode': 'NULLABLE'}
+  - { name: 'bearing', 'type': 'STRING', 'mode': 'NULLABLE'}
+  - { name: 'update_time', 'type': 'TIMESTAMP', 'mode': 'NULLABLE'}
+  - { name: 'version_id', 'type': 'INTEGER', 'mode': 'NULLABLE'}
+  - { name: 'geometry', 'type': 'GEOGRAPHY', 'mode': 'NULLABLE'}
+  - { name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."}
+  - { name: "valid_from_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record became valid."}
+  - { name: "valid_to_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record expired. A future date indicates the current version."}
+  - { name: "is_current", type: "BOOLEAN", mode: "NULLABLE", description: "Flag to easily identify the current version of the record (TRUE for current)."} 
