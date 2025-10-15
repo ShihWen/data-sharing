@@ -1,4 +1,4 @@
-apache-airflow-providers-google
+apache-airflow-providers-google==10.5.0
 apache-airflow-providers-cncf-kubernetes
 apache-airflow-providers-docker
 pyarrow
@@ -9,4 +9,6 @@ osmium
 pandas
 pandas-gbq
 geopandas
-shapely 
+shapely
+google-cloud-core==2.4.3
+google-cloud-resource-manager==1.7.0
