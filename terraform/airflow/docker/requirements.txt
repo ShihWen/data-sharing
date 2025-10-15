@@ -12,3 +12,4 @@ geopandas
 shapely
 google-cloud-core==2.4.3
 google-cloud-resource-manager==1.7.0
+google-cloud-appengine-logging==1.6.2
