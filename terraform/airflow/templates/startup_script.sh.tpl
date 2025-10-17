@@ -9,6 +9,10 @@ echo "deb http://archive.debian.org/debian bullseye-backports main" > /etc/apt/s
 
 # Install Docker
 apt-get update -o Acquire::Check-Valid-Until=false
+# Fix any interrupted dpkg operations
+echo "Attempting to fix interrupted dpkg operations..."
+dpkg --configure -a || echo "WARNING: dpkg --configure -a failed or found nothing to do."
+echo "dpkg operation fix attempt complete."
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common python3-pip
 curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
 add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
