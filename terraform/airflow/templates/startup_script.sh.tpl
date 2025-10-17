@@ -19,6 +19,25 @@ apt-get install -y docker-ce docker-ce-cli containerd.io
 curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
+# --- NEW: Docker Hub Authentication ---
+echo "Fetching Docker Hub credentials from Secret Manager..."
+DOCKER_USERNAME=$(gcloud secrets versions access latest --secret="dockerhub-username" --project="${project_id}" 2>/dev/null)
+DOCKER_ACCESS_TOKEN=$(gcloud secrets versions access latest --secret="dockerhub-access-token" --project="${project_id}" 2>/dev/null)
+
+if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_ACCESS_TOKEN" ]; then
+    echo "WARNING: Docker Hub credentials not found in Secret Manager. Docker image pulls might fail due to rate limits."
+else
+    echo "Logging into Docker Hub..."
+    echo "$DOCKER_ACCESS_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
+    if [ $? -eq 0 ]; then
+        echo "SUCCESS: Logged into Docker Hub."
+    else
+        echo "ERROR: Failed to log into Docker Hub."
+        exit 1
+    fi
+fi
+# --- END NEW: Docker Hub Authentication ---
+
 # Install required Python packages
 pip3 install cryptography
 

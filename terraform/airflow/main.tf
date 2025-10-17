@@ -56,6 +56,20 @@ resource "google_project_iam_member" "airflow_sa_roles" {
   member  = "serviceAccount:${google_service_account.airflow_sa.email}"
 }
 
+# Grant access to Docker Hub username secret
+resource "google_secret_manager_secret_iam_member" "dockerhub_username_access" {
+  secret_id = "dockerhub-username"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.airflow_sa.email}"
+}
+
+# Grant access to Docker Hub access token secret
+resource "google_secret_manager_secret_iam_member" "dockerhub_access_token_access" {
+  secret_id = "dockerhub-access-token"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.airflow_sa.email}"
+}
+
 # Create service account for Cloud Scheduler
 resource "google_service_account" "scheduler_sa" {
   account_id   = "airflow-scheduler-sa"
