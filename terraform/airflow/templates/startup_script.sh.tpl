@@ -237,13 +237,17 @@ if [ -S /var/run/docker.sock ]; then
 fi
 
 # Stop any existing containers and clean up
-docker-compose down -v
+set -x
+docker-compose down -v 2>&1 | tee -a /var/log/docker-compose.log
+set +x
 
 # Start services with proper order and health checks
 echo "Starting services..."
 
 # Start Postgres first
-docker-compose up -d postgres
+set -x
+docker-compose up -d postgres 2>&1 | tee -a /var/log/docker-compose.log
+set +x
 echo "Waiting for Postgres to be healthy..."
 timeout=300  # Increased timeout
 while [ $timeout -gt 0 ]; do
@@ -256,28 +260,41 @@ while [ $timeout -gt 0 ]; do
     timeout=$((timeout - 5))
     if [ $timeout -eq 0 ]; then
         echo "Postgres failed to become healthy"
-        docker-compose logs postgres
+        set -x
+        docker-compose logs postgres 2>&1 | tee -a /var/log/docker-compose.log
+        set +x
         exit 1
     fi
 done
 
 # Run initialization - the docker-compose.yml now has the fixed command
 echo "Running Airflow initialization..."
-if ! docker-compose run --rm airflow-init; then
+set -x
+if ! docker-compose run --rm airflow-init 2>&1 | tee -a /var/log/docker-compose.log; then
+    set +x
     echo "Airflow initialization failed. Checking logs:"
-    docker-compose logs airflow-init
+    set -x
+    docker-compose logs airflow-init 2>&1 | tee -a /var/log/docker-compose.log
+    set +x
     
     # Try to create user manually if initialization failed
     echo "Attempting manual user creation..."
-    if docker-compose run --rm airflow-init airflow db migrate; then
+    set -x
+    if docker-compose run --rm airflow-init airflow db migrate 2>&1 | tee -a /var/log/docker-compose.log; then
+        set +x
         echo "Database migration successful, creating admin user..."
-        docker-compose run --rm airflow-init airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com || echo "Manual user creation also failed"
+        set -x
+        docker-compose run --rm airflow-init airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com 2>&1 | tee -a /var/log/docker-compose.log || echo "Manual user creation also failed" 2>&1 | tee -a /var/log/docker-compose.log
+        set +x
     fi
 fi
+set +x
 
 # Start remaining services
 echo "Starting Airflow services..."
-docker-compose up -d airflow-webserver airflow-scheduler
+set -x
+docker-compose up -d airflow-webserver airflow-scheduler 2>&1 | tee -a /var/log/docker-compose.log
+set +x
 
 # Wait for services to be healthy
 for service in airflow-webserver airflow-scheduler; do
@@ -297,14 +314,18 @@ for service in airflow-webserver airflow-scheduler; do
     
     if [ "$service_started" = false ]; then
         echo "$service failed to start properly within timeout"
-        docker-compose logs $service
+        set -x
+        docker-compose logs $service 2>&1 | tee -a /var/log/docker-compose.log
+        set +x
         # Don't exit here, just log the issue and continue
         echo "Warning: $service may not be fully healthy, but continuing..."
     fi
 done
 
 echo "Service startup completed!"
-docker-compose ps
+set -x
+docker-compose ps 2>&1 | tee -a /var/log/docker-compose.log
+set +x
 
 # Final health check - if webserver is responding, consider it successful
 echo "Performing final health check..."
