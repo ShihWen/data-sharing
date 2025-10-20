@@ -32,12 +32,21 @@ if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_ACCESS_TOKEN" ]; then
     echo "WARNING: Docker Hub credentials not found in Secret Manager. Docker image pulls might fail due to rate limits."
 else
     echo "Logging into Docker Hub..."
-    echo "$DOCKER_ACCESS_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
-    if [ $? -eq 0 ]; then
-        echo "SUCCESS: Logged into Docker Hub."
-    else
-        echo "ERROR: Failed to log into Docker Hub."
+    MAX_RETRIES=5
+    RETRY_COUNT=0
+    until [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+        echo "Attempting Docker login (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
+        echo "$DOCKER_ACCESS_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin && break
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "Docker login failed. Retrying in 10 seconds..."
+        sleep 10
+    done
+
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "ERROR: Failed to log into Docker Hub after $MAX_RETRIES attempts."
         exit 1
+    else
+        echo "SUCCESS: Logged into Docker Hub."
     fi
 fi
 # --- END NEW: Docker Hub Authentication ---
