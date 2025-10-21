@@ -591,14 +591,14 @@ EOL
 
             if [ -n "$dag_list" ]; then
                 echo "Found DAGs: $dag_list"
-                echo "DAGs that will remain paused: $paused_dags"
+                echo "DAGs that will remain paused: ${paused_dags[@]}"
                 unpause_success_count=0
                 unpause_total_count=0
                 
                 for dag_id in $dag_list; do
                     # Check if this DAG should remain paused
                     should_skip=false
-                    for paused_dag in $paused_dags; do
+                    for paused_dag in "${paused_dags[@]}"; do
                         if [ "$dag_id" = "$paused_dag" ]; then
                             echo "Skipping $paused_dag DAG (keeping it paused)"
                             should_skip=true
@@ -624,7 +624,7 @@ EOL
                 
                 # Ensure all specified DAGs remain paused
                 echo "Ensuring specified DAGs remain paused..."
-                for paused_dag in $paused_dags; do
+                for paused_dag in "${paused_dags[@]}"; do
                     if docker-compose exec -T airflow-webserver airflow dags pause "$paused_dag" >/dev/null 2>&1; then
                         echo "SUCCESS: $paused_dag DAG is confirmed paused"
                     else
