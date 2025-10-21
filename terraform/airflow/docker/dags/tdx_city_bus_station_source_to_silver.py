@@ -173,7 +173,7 @@ def process_bus_station_to_staging(**context):
     print("Successfully loaded data into bus_silver.city_bus_station_staging.")
 
 with DAG(
-    dag_id="tdx_intercity_bus_station_source_to_silver",
+    dag_id="tdx_city_bus_station_source_to_silver",
     start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
     schedule="@monthly",
     catchup=False,
