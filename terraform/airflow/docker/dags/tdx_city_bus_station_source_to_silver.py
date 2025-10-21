@@ -3,6 +3,7 @@ from __future__ import annotations
 import pendulum
 import json
 import pandas as pd
+import time
 
 from airflow.models.dag import DAG
 from airflow.models import Variable
@@ -76,7 +77,7 @@ def process_bus_station_to_staging(**context):
 
     gdfs = []
     for city in city_list:
-        gcs_path = context["ti"].xcom_pull(task_ids="fetch_bus_shape_to_gcs", key=f"gcs_path_{city}")
+        gcs_path = context["ti"].xcom_pull(task_ids="fetch_bus_station_to_gcs", key=f"gcs_path_{city}")
         
         if not gcs_path:
             raise ValueError(f"GCS path for bus shape {city} not found in XComs.")
