@@ -160,7 +160,8 @@ def process_bus_station_to_staging(**context):
         {'name': 'bearing', 'type': 'STRING', 'mode': 'NULLABLE'},
         {'name': 'update_time', 'type': 'TIMESTAMP', 'mode': 'NULLABLE'},
         {'name': 'version_id', 'type': 'INTEGER', 'mode': 'NULLABLE'},
-        {'name': 'geometry', 'type': 'GEOGRAPHY', 'mode': 'NULLABLE'},
+        {'name': 'geometry', 'type': 'STRING', 'mode': 'NULLABLE'},
+        {'name': 'city', 'type': 'STRING', 'mode': 'NULLABLE'},
     ]
         
     gdf.to_gbq(
