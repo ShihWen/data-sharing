@@ -66,7 +66,7 @@ mkdir -p /opt/airflow/logs/{scheduler,dag_processor_manager,webserver}
 # Set up Airflow users and groups
 echo "Setting up Airflow users and groups..."
 
-# Create airflow system user for host operations (if it doesn\'t exist)
+# Create airflow system user for host operations (if it doesn't exist)
 if ! getent group airflow > /dev/null; then
     echo "Creating airflow group..."
     groupadd --system airflow
@@ -76,7 +76,7 @@ if ! getent passwd airflow > /dev/null; then
     useradd --system --home-dir /opt/airflow --no-create-home --shell /bin/false --gid airflow airflow
 fi
 
-# Create airflow container user with UID 50000 (if it doesn\'t exist)
+# Create airflow container user with UID 50000 (if it doesn't exist)
 if ! getent passwd $AIRFLOW_UID > /dev/null; then
     echo "Creating airflow container user with UID $AIRFLOW_UID..."
     useradd --system --uid $AIRFLOW_UID --home-dir /opt/airflow --no-create-home --shell /bin/false --gid root airflow-container
@@ -326,7 +326,7 @@ for service in airflow-webserver airflow-scheduler; do
         set -x
         docker-compose logs $service 2>&1 | tee -a /var/log/docker-compose.log
         set +x
-        # Don\'t exit here, just log the issue and continue
+        # Don't exit here, just log the issue and continue
         echo "Warning: $service may not be fully healthy, but continuing..."
     fi
 done
@@ -396,7 +396,7 @@ if [ "$airflow_ready" = true ]; then
     else
         echo "WARNING: Could not download airflow-manager.sh, creating minimal connections script"
         # Create a comprehensive fallback script that includes variables and connections
-        cat > /opt/airflow/create_connections_fallback.sh <<\'FALLBACK_EOF\'
+        cat > /opt/airflow/create_connections_fallback.sh <<'FALLBACK_EOF'
 #!/bin/bash
 set -e
 echo "Creating comprehensive Airflow connections and variables..."
@@ -492,7 +492,6 @@ dag_list=$(docker-compose exec -T airflow-webserver airflow dags list --output t
 
 if [ -n "$dag_list" ]; then
     echo "Found DAGs: $dag_list"
-    echo "DAGs that will remain paused: ${paused_dags[@]}"
     unpause_success_count=0
     unpause_total_count=0
     
@@ -515,15 +514,13 @@ if [ -n "$dag_list" ]; then
     
     echo "SUCCESS: Unpaused $unpause_success_count out of $unpause_total_count DAGs"
     
-    # Ensure all specified DAGs remain paused
-    echo "Ensuring specified DAGs remain paused..."
-    for paused_dag in "${paused_dags[@]}"; do
-        if docker-compose exec -T airflow-webserver airflow dags pause "$paused_dag" >/dev/null 2>&1; then
-            echo "SUCCESS: $paused_dag DAG is confirmed paused"
-        else
-            echo "WARNING: Could not confirm pause status for $paused_dag DAG"
-        fi
-    done
+    # Ensure the specific DAG remains paused
+    echo "Ensuring mrt_traffic_bronze_to_silver_full_load DAG remains paused..."
+    if docker-compose exec -T airflow-webserver airflow dags pause mrt_traffic_bronze_to_silver_full_load >/dev/null 2>&1; then
+        echo "SUCCESS: mrt_traffic_bronze_to_silver_full_load DAG is confirmed paused"
+    else
+        echo "WARNING: Could not confirm pause status for mrt_traffic_bronze_to_silver_full_load DAG"
+    fi
 else
     echo "WARNING: Could not retrieve DAG list, skipping DAG unpausing"
 fi
@@ -577,16 +574,7 @@ EOL
             echo "Unpausing DAGs (keeping specific DAGs paused)..."
 
             # Define the list of DAGs that should remain paused
-            paused_dags=( \
-mrt_traffic_bronze_to_silver_full_load \
-reference_boundaries_city_source_to_silver \
-reference_boundaries_town_source_to_silver \
-reference_boundaries_village_source_to_silver \
-mrt_station_ntmc_source_to_bronze \
-tdx_railway_station_source_to_silver \
-tdx_intercity_bus_station_source_to_silver \
-tdx_intercity_bus_shape_source_to_silver \
-tdx_city_bus_shape_source_to_silver)
+            paused_dags="mrt_traffic_bronze_to_silver_full_load reference_boundaries_city_source_to_silver reference_boundaries_town_source_to_silver reference_boundaries_village_source_to_silver mrt_station_ntmc_source_to_bronze tdx_railway_station_source_to_silver tdx_intercity_bus_station_source_to_silver tdx_intercity_bus_shape_source_to_silver tdx_city_bus_shape_source_to_silver"
 
             # Get list of all DAGs and unpause them individually (compatible with older Airflow versions)
             echo "Getting list of all DAGs..."
@@ -594,14 +582,14 @@ tdx_city_bus_shape_source_to_silver)
 
             if [ -n "$dag_list" ]; then
                 echo "Found DAGs: $dag_list"
-                echo "DAGs that will remain paused: ${paused_dags[@]}"
+                echo "DAGs that will remain paused: $paused_dags"
                 unpause_success_count=0
                 unpause_total_count=0
                 
                 for dag_id in $dag_list; do
                     # Check if this DAG should remain paused
                     should_skip=false
-                    for paused_dag in "${paused_dags[@]}"; do
+                    for paused_dag in $paused_dags; do
                         if [ "$dag_id" = "$paused_dag" ]; then
                             echo "Skipping $paused_dag DAG (keeping it paused)"
                             should_skip=true
@@ -627,7 +615,7 @@ tdx_city_bus_shape_source_to_silver)
                 
                 # Ensure all specified DAGs remain paused
                 echo "Ensuring specified DAGs remain paused..."
-                for paused_dag in "${paused_dags[@]}"; do
+                for paused_dag in $paused_dags; do
                     if docker-compose exec -T airflow-webserver airflow dags pause "$paused_dag" >/dev/null 2>&1; then
                         echo "SUCCESS: $paused_dag DAG is confirmed paused"
                     else
@@ -636,7 +624,7 @@ tdx_city_bus_shape_source_to_silver)
                 done
             else
                 echo "WARNING: Could not retrieve DAG list, skipping DAG unpausing"
-fi
+            fi
         else
             echo "WARNING: airflow-manager.sh failed, trying fallback script..."
             if /opt/airflow/create_connections_fallback.sh; then
