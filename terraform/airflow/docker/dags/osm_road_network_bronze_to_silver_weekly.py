@@ -11,6 +11,7 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
+from airflow.exceptions import AirflowSkipException
 import geopandas as gpd
 
 from sql.osm_road_network_queries import MERGE_SCD2_ROAD_NETWORK
@@ -44,7 +45,7 @@ def download_osm_data_to_gcs(**context):
     if gcs_hook.exists(bucket_name=bucket_name, object_name=file_name):
         print(f"File {file_name} already exists in GCS. Skipping download.")
         context["ti"].xcom_push(key="gcs_object_path", value=file_name)
-        return
+        raise AirflowSkipException(f"File {file_name} already exists in GCS. Skipping this DAG run.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         local_file_path = Path(tmpdir) / "taiwan-latest.osm.pbf"
