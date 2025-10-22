@@ -37,7 +37,7 @@ schema:
   - { name: 'bearing', 'type': 'STRING', 'mode': 'NULLABLE'}
   - { name: 'update_time', 'type': 'TIMESTAMP', 'mode': 'NULLABLE'}
   - { name: 'version_id', 'type': 'INTEGER', 'mode': 'NULLABLE'}
-  - { name: 'geometry', 'type': 'STRING', 'mode': 'NULLABLE'}
+  - { name: 'geometry', 'type': 'GEOGRAPHY', 'mode': 'NULLABLE'}
   - { name: 'city', 'type': 'STRING', 'mode': 'NULLABLE'}
   - { name: "processed_at", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when the record was processed into the Silver layer."}
   - { name: "valid_from_ts", type: "TIMESTAMP", mode: "NULLABLE", description: "The timestamp when this version of the record became valid."}
