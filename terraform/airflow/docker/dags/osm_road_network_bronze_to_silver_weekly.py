@@ -33,11 +33,12 @@ def download_osm_data_to_gcs(**context):
     Downloads the latest OSM PBF data for Taiwan from Geofabrik and uploads it to GCS.
     If the file for the execution date already exists, this task will be skipped.
     """
-    execution_date = context["ds"]
+
+    execution_year_month = context["ds"][:7]
     gcs_hook = GCSHook()
     bucket_name = Variable.get("gcs_data_lake_bucket")
     
-    file_name = f"osm/bronze/pbf/taiwan-latest-{execution_date}.osm.pbf"
+    file_name = f"osm/bronze/pbf/taiwan-latest-{execution_year_month}.osm.pbf"
 
     # Check if the file already exists in GCS for this execution date
     if gcs_hook.exists(bucket_name=bucket_name, object_name=file_name):
