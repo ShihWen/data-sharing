@@ -442,13 +442,40 @@ variables_to_set=(
 
 for var_pair in "$${variables_to_set[@]}"; do
     read -r key value <<<"$$var_pair"
-    echo "Setting variable: $$key = $$value"
-    if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
-        echo "SUCCESS: Set variable: $$key"
+    echo "Processing variable: $$key"
+
+    current_value=$(docker-compose exec -T airflow-webserver airflow variables get "$key" 2>/dev/null || echo "__VAR_NOT_FOUND__") # Get current value, or a special string if not found
+
+    if [ "$current_value" = "__VAR_NOT_FOUND__" ]; then
+        echo "Variable $$key does not exist, setting initial value to: $$value"
+        if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
+            echo "SUCCESS: Set variable: $$key"
+        else
+            echo "ERROR: Failed to set variable: $$key"
+        fi
+    elif [ "$current_value" != "$value" ]; then
+        echo "Variable $$key value changed from '$current_value' to '$value', updating."
+        if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
+            echo "SUCCESS: Updated variable: $$key"
+        else
+            echo "ERROR: Failed to update variable: $$key"
+        fi
     else
-                    echo "ERROR: Failed to set variable: $$key"
+        echo "Variable $$key already exists with the same value, skipping update."
     fi
 done
+
+# Set paused_dags_list if it doesn't exist
+if ! docker-compose exec -T airflow-webserver airflow variables get "paused_dags_list" >/dev/null 2>&1; then
+    echo "Setting initial 'paused_dags_list' variable."
+    if docker-compose exec -T airflow-webserver airflow variables set "paused_dags_list" "mrt_traffic_bronze_to_silver_full_load,reference_boundaries_city_source_to_silver,reference_boundaries_town_source_to_silver,reference_boundaries_village_source_to_silver,mrt_station_ntmc_source_to_bronze,tdx_railway_station_source_to_silver,tdx_intercity_bus_station_source_to_silver,tdx_intercity_bus_shape_source_to_silver,tdx_city_bus_shape_source_to_silver"; then
+        echo "SUCCESS: Set variable: paused_dags_list"
+    else
+        echo "ERROR: Failed to set variable: paused_dags_list"
+    fi
+else
+    echo "'paused_dags_list' variable already exists, skipping initial set."
+fi
 
 # Try to get TDX credentials from Secret Manager if available
 echo ""
@@ -569,61 +596,66 @@ EOL
         if /opt/airflow/airflow-manager.sh connections; then
             echo "SUCCESS: Successfully created connections and variables using airflow-manager.sh"
             
-            # Unpause all DAGs except specific ones that should remain paused
-            echo ""
-            echo "Unpausing DAGs (keeping specific DAGs paused)..."
+            # Pausing specific DAGs as defined in Airflow variables
+            paused_dags_string=$(docker-compose exec -T airflow-webserver airflow variables get paused_dags_list)
+            if [ -n "$paused_dags_string" ]; then
+                # Split the comma-separated string into an array
+                IFS=',' read -r -a paused_dags_array <<< "$paused_dags_string"
 
-            # Define the list of DAGs that should remain paused
-            paused_dags="mrt_traffic_bronze_to_silver_full_load reference_boundaries_city_source_to_silver reference_boundaries_town_source_to_silver reference_boundaries_village_source_to_silver mrt_station_ntmc_source_to_bronze tdx_railway_station_source_to_silver tdx_intercity_bus_station_source_to_silver tdx_intercity_bus_shape_source_to_silver tdx_city_bus_shape_source_to_silver"
+                echo ""
+                echo "Unpausing DAGs (keeping specified DAGs paused from variable)..."
 
-            # Get list of all DAGs and unpause them individually (compatible with older Airflow versions)
-            echo "Getting list of all DAGs..."
-            dag_list=$(docker-compose exec -T airflow-webserver airflow dags list --output table 2>/dev/null | grep -v "dag_id" | awk '{print $1}' | grep -v "^$" || echo "")
+                # Get list of all DAGs and unpause them individually
+                echo "Getting list of all DAGs..."
+                dag_list=$(docker-compose exec -T airflow-webserver airflow dags list --output table 2>/dev/null | grep -v "^$" | tail -n +2 | awk '{print $1}' || echo "")
 
-            if [ -n "$dag_list" ]; then
-                echo "Found DAGs: $dag_list"
-                echo "DAGs that will remain paused: $paused_dags"
-                unpause_success_count=0
-                unpause_total_count=0
-                
-                for dag_id in $dag_list; do
-                    # Check if this DAG should remain paused
-                    should_skip=false
-                    for paused_dag in $paused_dags; do
-                        if [ "$dag_id" = "$paused_dag" ]; then
-                            echo "Skipping $paused_dag DAG (keeping it paused)"
-                            should_skip=true
-                            break
+                if [ -n "$dag_list" ]; then
+                    echo "Found DAGs: $dag_list"
+                    echo "DAGs that will remain paused (from variable): ${paused_dags_array[*]}"
+                    unpause_success_count=0
+                    unpause_total_count=0
+
+                    for dag_id in $dag_list; do
+                        # Check if this DAG should remain paused
+                        should_skip=false
+                        for paused_dag in "${paused_dags_array[@]}"; do
+                            if [ "$dag_id" = "$paused_dag" ]; then
+                                echo "Skipping $paused_dag DAG (keeping it paused)"
+                                should_skip=true
+                                break
+                            fi
+                        done
+
+                        if [ "$should_skip" = true ]; then
+                            continue
+                        fi
+
+                        echo "Unpausing DAG: $dag_id"
+                        if docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id" >/dev/null 2>&1; then
+                            echo "SUCCESS: Unpaused DAG: $dag_id"
+                            unpause_success_count=$((unpause_success_count + 1))
+                        else
+                            echo "WARNING: Failed to unpause DAG: $dag_id"
+                        fi
+                        unpause_total_count=$((unpause_total_count + 1))
+                    done
+
+                    echo "SUCCESS: Unpaused $unpause_success_count out of $unpause_total_count DAGs"
+
+                    # Ensure all specified DAGs remain paused
+                    echo "Ensuring specified DAGs remain paused..."
+                    for paused_dag in "${paused_dags_array[@]}"; do
+                        if docker-compose exec -T airflow-webserver airflow dags pause "$paused_dag" >/dev/null 2>&1; then
+                            echo "SUCCESS: $paused_dag DAG is confirmed paused"
+                        else
+                            echo "WARNING: Could not confirm pause status for $paused_dag DAG"
                         fi
                     done
-                    
-                    if [ "$should_skip" = true ]; then
-                        continue
-                    fi
-                    
-                    echo "Unpausing DAG: $dag_id"
-                    if docker-compose exec -T airflow-webserver airflow dags unpause "$dag_id" >/dev/null 2>&1; then
-                        echo "SUCCESS: Unpaused DAG: $dag_id"
-                        unpause_success_count=$((unpause_success_count + 1))
-                    else
-                        echo "WARNING: Failed to unpause DAG: $dag_id"
-                    fi
-                    unpause_total_count=$((unpause_total_count + 1))
-                done
-                
-                echo "SUCCESS: Unpaused $unpause_success_count out of $unpause_total_count DAGs"
-                
-                # Ensure all specified DAGs remain paused
-                echo "Ensuring specified DAGs remain paused..."
-                for paused_dag in $paused_dags; do
-                    if docker-compose exec -T airflow-webserver airflow dags pause "$paused_dag" >/dev/null 2>&1; then
-                        echo "SUCCESS: $paused_dag DAG is confirmed paused"
-                    else
-                        echo "WARNING: Could not confirm pause status for $paused_dag DAG"
-                    fi
-                done
+                else
+                    echo "WARNING: Could not retrieve DAG list, skipping DAG unpausing"
+                fi
             else
-                echo "WARNING: Could not retrieve DAG list, skipping DAG unpausing"
+                echo "No DAGs specified in 'paused_dags_list' Airflow variable to pause."
             fi
         else
             echo "WARNING: airflow-manager.sh failed, trying fallback script..."

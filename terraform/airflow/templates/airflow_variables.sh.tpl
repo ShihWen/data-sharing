@@ -40,6 +40,9 @@ airflow variables set "gcs_data_lake_bucket" "open-data-v2-cicd-data-lake"
 # Cloud Function URLs
 airflow variables set "mrt_station_ntmc_function_uri" "${mrt_station_ntmc_function_uri}"
 
+# Paused DAGs list (initial value)
+airflow variables set "paused_dags_list" "mrt_traffic_bronze_to_silver_full_load,reference_boundaries_city_source_to_silver,reference_boundaries_town_source_to_silver,reference_boundaries_village_source_to_silver,mrt_station_ntmc_source_to_bronze,tdx_railway_station_source_to_silver,tdx_intercity_bus_station_source_to_silver,tdx_intercity_bus_shape_source_to_silver,tdx_city_bus_shape_source_to_silver"
+
 # TDX API Credentials - fetched from Secret Manager by the VM's service account
 airflow variables set "tdx_client_id" "$(gcloud secrets versions access latest --secret=tdx_client_id)"
 airflow variables set "tdx_client_secret" "$(gcloud secrets versions access latest --secret=tdx_client_secret)"
