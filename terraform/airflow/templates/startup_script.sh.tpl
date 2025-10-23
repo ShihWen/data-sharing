@@ -442,26 +442,16 @@ variables_to_set=(
 
 for var_pair in "$${variables_to_set[@]}"; do
     read -r key value <<<"$$var_pair"
-    echo "Processing variable: $$key"
-
-    current_value=$(docker-compose exec -T airflow-webserver airflow variables get "$key" 2>/dev/null || echo "__VAR_NOT_FOUND__") # Get current value, or a special string if not found
-
-    if [ "$current_value" = "__VAR_NOT_FOUND__" ]; then
-        echo "Variable $$key does not exist, setting initial value to: $$value"
+    echo "Setting variable: $$key = $$value"
+    # Conditionally set variables: only set if they don't exist
+    if ! docker-compose exec -T airflow-webserver airflow variables get "$key" >/dev/null 2>&1; then
         if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
             echo "SUCCESS: Set variable: $$key"
         else
             echo "ERROR: Failed to set variable: $$key"
         fi
-    elif [ "$current_value" != "$value" ]; then
-        echo "Variable $$key value changed from '$current_value' to '$value', updating."
-        if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
-            echo "SUCCESS: Updated variable: $$key"
-        else
-            echo "ERROR: Failed to update variable: $$key"
-        fi
     else
-        echo "Variable $$key already exists with the same value, skipping update."
+        echo "Variable $$key already exists, skipping initial set."
     fi
 done
 
@@ -611,14 +601,14 @@ EOL
 
                 if [ -n "$dag_list" ]; then
                     echo "Found DAGs: $dag_list"
-                    echo "DAGs that will remain paused (from variable): ${paused_dags_array[*]}"
+                    echo "DAGs that will remain paused (from variable): $${paused_dags_array[*]}"
                     unpause_success_count=0
                     unpause_total_count=0
 
                     for dag_id in $dag_list; do
                         # Check if this DAG should remain paused
                         should_skip=false
-                        for paused_dag in "${paused_dags_array[@]}"; do
+                        for paused_dag in "$${paused_dags_array[@]}"; do
                             if [ "$dag_id" = "$paused_dag" ]; then
                                 echo "Skipping $paused_dag DAG (keeping it paused)"
                                 should_skip=true
@@ -644,7 +634,7 @@ EOL
 
                     # Ensure all specified DAGs remain paused
                     echo "Ensuring specified DAGs remain paused..."
-                    for paused_dag in "${paused_dags_array[@]}"; do
+                    for paused_dag in "$${paused_dags_array[@]}"; do
                         if docker-compose exec -T airflow-webserver airflow dags pause "$paused_dag" >/dev/null 2>&1; then
                             echo "SUCCESS: $paused_dag DAG is confirmed paused"
                         else
