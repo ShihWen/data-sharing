@@ -438,34 +438,33 @@ variables_to_set=(
     "tpe_mrt_gold_dataset_id tpe_mrt_gold"
     "gcs_data_lake_bucket open-data-v2-cicd-data-lake"
     "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt-station-ntmc-fetcher"
+    "paused_dags_list mrt_traffic_bronze_to_silver_full_load,reference_boundaries_city_source_to_silver,reference_boundaries_town_source_to_silver,reference_boundaries_village_source_to_silver,mrt_station_ntmc_source_to_bronze,tdx_railway_station_source_to_silver,tdx_intercity_bus_station_source_to_silver,tdx_intercity_bus_shape_source_to_silver,tdx_city_bus_shape_source_to_silver"
 )
 
 for var_pair in "$${variables_to_set[@]}"; do
     read -r key value <<<"$$var_pair"
-    echo "Setting variable: $$key = $$value"
-    # Conditionally set variables: only set if they don't exist
-    if ! docker-compose exec -T airflow-webserver airflow variables get "$key" >/dev/null 2>&1; then
+    echo "Processing variable: $$key"
+
+    current_value=$(docker-compose exec -T airflow-webserver airflow variables get "$key" 2>/dev/null || echo "__VAR_NOT_FOUND__") # Get current value, or a special string if not found
+
+    if [ "$current_value" = "__VAR_NOT_FOUND__" ]; then
+        echo "Variable $$key does not exist, setting initial value to: $$value"
         if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
             echo "SUCCESS: Set variable: $$key"
         else
             echo "ERROR: Failed to set variable: $$key"
         fi
+    elif [ "$current_value" != "$value" ]; then
+        echo "Variable $$key value changed from '$current_value' to '$value', updating."
+        if docker-compose exec -T airflow-webserver airflow variables set "$key" "$value"; then
+            echo "SUCCESS: Updated variable: $$key"
+        else
+            echo "ERROR: Failed to update variable: $$key"
+        fi
     else
-        echo "Variable $$key already exists, skipping initial set."
+        echo "Variable $$key already exists with the same value, skipping update."
     fi
 done
-
-# Set paused_dags_list if it doesn't exist
-if ! docker-compose exec -T airflow-webserver airflow variables get "paused_dags_list" >/dev/null 2>&1; then
-    echo "Setting initial 'paused_dags_list' variable."
-    if docker-compose exec -T airflow-webserver airflow variables set "paused_dags_list" "mrt_traffic_bronze_to_silver_full_load,reference_boundaries_city_source_to_silver,reference_boundaries_town_source_to_silver,reference_boundaries_village_source_to_silver,mrt_station_ntmc_source_to_bronze,tdx_railway_station_source_to_silver,tdx_intercity_bus_station_source_to_silver,tdx_intercity_bus_shape_source_to_silver,tdx_city_bus_shape_source_to_silver"; then
-        echo "SUCCESS: Set variable: paused_dags_list"
-    else
-        echo "ERROR: Failed to set variable: paused_dags_list"
-    fi
-else
-    echo "'paused_dags_list' variable already exists, skipping initial set."
-fi
 
 # Try to get TDX credentials from Secret Manager if available
 echo ""
