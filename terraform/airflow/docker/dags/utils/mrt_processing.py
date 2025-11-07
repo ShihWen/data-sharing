@@ -16,7 +16,7 @@ def process_mrt_shape(raw_data: str) -> gpd.GeoDataFrame:
         geom = wkt.loads(feature['Geometry'])
 
         records.append({
-            'line_no': feature['LineNo'],
+            'line_no': feature.get('LineNo'),
             'line_id': feature['LineID'],
             'line_name_zh_tw': feature['LineName'].get('Zh_tw', ''),
             'line_name_en': feature['LineName'].get('En', ''),
