@@ -41,7 +41,7 @@ def fetch_mrt_shape_to_gcs(**context):
     for system_id, system_name in system_dict.items():
         url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Shape/{system_id}?%24format=JSON"
     
-        file_name = f"bus/bronze/mrt_shape/mrt_shape_{system_id}_{execution_year_month}.json"
+        file_name = f"mrt/bronze/mrt_shape/mrt_shape_{system_id}_{execution_year_month}.json"
 
         # Check if the file already exists in GCS for this execution date
         if gcs_hook.exists(bucket_name=bucket_name, object_name=file_name):
