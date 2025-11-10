@@ -438,7 +438,7 @@ variables_to_set=(
     "tpe_mrt_gold_dataset_id tpe_mrt_gold"
     "gcs_data_lake_bucket open-data-v2-cicd-data-lake"
     "mrt_station_ntmc_function_uri https://asia-east1-open-data-v2-cicd.cloudfunctions.net/mrt-station-ntmc-fetcher"
-    "paused_dags_list mrt_traffic_bronze_to_silver_full_load,reference_boundaries_city_source_to_silver,reference_boundaries_town_source_to_silver,reference_boundaries_village_source_to_silver,mrt_station_ntmc_source_to_bronze,tdx_railway_station_source_to_silver,tdx_intercity_bus_station_source_to_silver,tdx_intercity_bus_shape_source_to_silver,tdx_city_bus_shape_source_to_silver,tdx_city_bus_station_source_to_silver"
+    "paused_dags_list mrt_traffic_bronze_to_silver_full_load,reference_boundaries_city_source_to_silver,reference_boundaries_town_source_to_silver,reference_boundaries_village_source_to_silver,mrt_station_ntmc_source_to_bronze,tdx_railway_station_source_to_silver,tdx_intercity_bus_station_source_to_silver,tdx_intercity_bus_shape_source_to_silver,tdx_city_bus_shape_source_to_silver,tdx_city_bus_station_source_to_silver,tdx_mrt_shape_source_to_silver"
 )
 
 for var_pair in "$${variables_to_set[@]}"; do
