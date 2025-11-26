@@ -117,7 +117,7 @@ def process_bus_stop_of_route_to_staging(**context):
             {'name': 'zh_tw', 'type': 'STRING', 'mode': 'REQUIRED'},
             {'name': 'en', 'type': 'STRING', 'mode': 'NULLABLE'},
         ]},
-        {'name': 'operators', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [
+        {'name': 'operators', 'type': 'RECORD', 'mode': 'REPEATED', 'fields': [
             {'name': 'operator_id', 'type': 'STRING', 'mode': 'REQUIRED'},
             {'name': 'operator_name', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [
                 {'name': 'zh_tw', 'type': 'STRING', 'mode': 'REQUIRED'},

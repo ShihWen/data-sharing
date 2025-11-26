@@ -150,14 +150,25 @@ def process_inter_city_bus_stop_of_route(raw_data: str) -> pd.DataFrame:
         route_name_dict = feature.get('RouteName', {})
         route_name_zh_tw = route_name_dict.get('Zh_tw', '')
         route_name_en = route_name_dict.get('En', '')
-        
-        operator_dict = feature.get('Operators', {})
-        operator_id = operator_dict.get('OperatorID', '')
-        operator_name_dict = operator_dict.get('OperatorName', {})
-        operator_name_zh_tw = operator_name_dict.get('Zh_tw', '')
-        operator_name_en = operator_name_dict.get('En', '')
-        operator_code = operator_dict.get('OperatorCode', '')
-        operator_no = operator_dict.get('OperatorNo', '')
+
+        processed_operators = []
+        operators_data = feature.get('Operators', [])
+        for operator in operators_data:
+            operator_id = operator.get('OperatorID', '')
+            operator_name_dict = operator.get('OperatorName', {})
+            operator_name_zh_tw = operator_name_dict.get('Zh_tw', '')
+            operator_name_en = operator_name_dict.get('En', '')
+            operator_code = operator.get('OperatorCode', '')
+            operator_no = operator.get('OperatorNo', '')
+            processed_operators.append({
+                'operator_id': operator_id,
+                'operator_name': {
+                    'zh_tw': operator_name_zh_tw,
+                    'en': operator_name_en
+                },
+                'operator_code': operator_code,
+                'operator_no': operator_no
+            })
 
         sub_route_uid = feature.get('SubRouteUID', {})
         sub_route_id = feature.get('SubRouteID', {})
@@ -202,15 +213,7 @@ def process_inter_city_bus_stop_of_route(raw_data: str) -> pd.DataFrame:
                 'zh_tw': route_name_zh_tw,
                 'en': route_name_en
             },
-            'operators': {
-                'operator_id': operator_id,
-                'operator_name': {
-                    'zh_tw': operator_name_zh_tw,
-                    'en': operator_name_en
-                },
-                'operator_code': operator_code,
-                'operator_no': operator_no
-            },
+            'operators': processed_operators,
             'sub_route_uid': sub_route_uid,
             'sub_route_id': sub_route_id,
             'sub_route_name': {
