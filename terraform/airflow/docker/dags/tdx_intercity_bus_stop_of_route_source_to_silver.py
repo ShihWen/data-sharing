@@ -72,7 +72,7 @@ def process_bus_stop_of_route_to_staging(**context):
     ).decode('utf-8')
     
     print("Transforming bus station...")
-    gdf = process_inter_city_bus_station(raw_data)
+    gdf = process_inter_city_bus_stop_of_route(raw_data)
 
 
     if gdf.empty:
