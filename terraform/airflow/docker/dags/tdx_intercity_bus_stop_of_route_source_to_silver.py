@@ -53,7 +53,7 @@ def process_bus_stop_of_route_to_staging(**context):
     Reads the raw bus station JSON file from GCS, transforms it,
     and loads it into a staging table in the reference dataset.
     """
-    gcs_path = context["ti"].xcom_pull(task_ids="fetch_bus_station_to_gcs", key="gcs_path")
+    gcs_path = context["ti"].xcom_pull(task_ids="fetch_bus_stop_of_route_to_gcs", key="gcs_path")
     
     if not gcs_path:
         raise ValueError("GCS path for bus station not found in XComs.")
