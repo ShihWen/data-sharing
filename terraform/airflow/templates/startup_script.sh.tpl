@@ -19,6 +19,15 @@ add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(
 apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io
 
+
+# --- FIX START: Configure Docker to accept older clients ---
+# Docker v29+ raised the minimum API version to 1.44, breaking compatibility with older docker-compose.
+# We explicitly set the minimum API version to 1.32 to allow docker-compose v2.20 to work.
+echo '{"min-api-version": "1.32"}' > /etc/docker/daemon.json
+systemctl restart docker
+# --- FIX END ---
+
+
 # Install Docker Compose
 curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
