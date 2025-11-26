@@ -180,8 +180,8 @@ with DAG(
     )
 
     process_silver_staging = PythonOperator(
-        task_id="process_bus_stop_of_route_to_staging",
-        python_callable=process_bus_stop_of_route_to_staging,
+        task_id="process_inter_city_bus_stop_of_route",
+        python_callable=process_inter_city_bus_stop_of_route,
     )
     
     # merge_into_silver_scd2 = BigQueryInsertJobOperator(
