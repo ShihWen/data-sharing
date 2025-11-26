@@ -48,7 +48,7 @@ def fetch_bus_stop_of_route_to_gcs(**context):
     # Ensure XCom is pushed exactly once at the end of the task
     context["ti"].xcom_push(key="gcs_path", value=file_name)
 
-def process_bus_station_to_staging(**context):
+def process_bus_stop_of_route_to_staging(**context):
     """
     Reads the raw bus station JSON file from GCS, transforms it,
     and loads it into a staging table in the reference dataset.
@@ -180,8 +180,8 @@ with DAG(
     )
 
     process_silver_staging = PythonOperator(
-        task_id="process_inter_city_bus_stop_of_route",
-        python_callable=process_inter_city_bus_stop_of_route,
+        task_id="process_bus_stop_of_route_to_staging",
+        python_callable=process_bus_stop_of_route_to_staging,
     )
     
     # merge_into_silver_scd2 = BigQueryInsertJobOperator(
