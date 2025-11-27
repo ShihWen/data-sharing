@@ -130,6 +130,8 @@ def process_bus_station_to_staging(**context):
                 {'name': 'zh_tw', 'type': 'STRING', 'mode': 'REQUIRED'},
                 {'name': 'en', 'type': 'STRING', 'mode': 'NULLABLE'},
             ]},
+            {'name': 'stop_boarding', 'type': 'INTEGER', 'mode': 'NULLABLE'},
+            {'name': 'stop_sequence', 'type': 'INTEGER', 'mode': 'NULLABLE'},
             {'name': 'route_uid', 'type': 'STRING', 'mode': 'REQUIRED'},
             {'name': 'route_id', 'type': 'STRING', 'mode': 'REQUIRED'},
             {'name': 'route_name', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [

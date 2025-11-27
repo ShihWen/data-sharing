@@ -185,6 +185,7 @@ def process_inter_city_bus_stop_of_route(raw_data: str) -> pd.DataFrame:
             stop_name_zh_tw = stop_name_dict.get('Zh_tw', '')
             stop_name_en = stop_name_dict.get('En', '')
 
+
             stop_position_dict = stop.get('StopPosition', {})
             stop_position_lon = stop_position_dict.get('PositionLon', '')
             stop_position_lat = stop_position_dict.get('PositionLat', '')
@@ -196,6 +197,8 @@ def process_inter_city_bus_stop_of_route(raw_data: str) -> pd.DataFrame:
                     'zh_tw': stop_name_dict.get('Zh_tw'),
                     'en': stop_name_dict.get('En', '')
                 },
+                'stop_boarding': stop.get('StopBoarding', ''),
+                'stop_sequence': stop.get('StopSequence', ''),
                 'stop_position': {
                     'position_lon': stop_position_lon,
                     'position_lat': stop_position_lat,
