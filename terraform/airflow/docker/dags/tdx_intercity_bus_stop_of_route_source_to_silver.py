@@ -101,6 +101,9 @@ def process_bus_stop_of_route_to_staging(**context):
     # Convert version_id to integer if it exists
     if 'version_id' in gdf.columns:
         gdf['version_id'] = pd.to_numeric(gdf['version_id'], errors='coerce').astype('Int64')
+
+    if 'version_id' in gdf.columns:
+        gdf['direction'] = gdf['direction'].astype(str)
     
     # Convert update_time to datetime objects
     if 'update_time' in gdf.columns:
