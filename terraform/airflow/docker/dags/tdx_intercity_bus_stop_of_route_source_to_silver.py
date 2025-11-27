@@ -143,6 +143,8 @@ def process_bus_stop_of_route_to_staging(**context):
                 {'name': 'zh_tw', 'type': 'STRING', 'mode': 'REQUIRED'},
                 {'name': 'en', 'type': 'STRING', 'mode': 'NULLABLE'},
             ]},
+            {'name': 'stop_boarding', 'type': 'INTEGER', 'mode': 'NULLABLE'},
+            {'name': 'stop_sequence', 'type': 'INTEGER', 'mode': 'NULLABLE'},
             {'name': 'stop_position', 'type': 'RECORD', 'mode': 'REQUIRED', 'fields': [
                 {'name': 'position_lon', 'type': 'FLOAT', 'mode': 'REQUIRED'},
                 {'name': 'position_lat', 'type': 'FLOAT', 'mode': 'REQUIRED'},
