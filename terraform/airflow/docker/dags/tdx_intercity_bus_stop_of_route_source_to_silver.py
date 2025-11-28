@@ -13,7 +13,7 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobO
 
 from utils.bus_processing import process_inter_city_bus_stop_of_route
 from utils.tdx_api import get_tdx_data
-from sql.bus_queries import MERGE_SCD2_INTERCITY_BUS_STOP_OF_ROUTE, INSERT_UPDATED_INTERCITY_BUS_STOP_OF_ROUTE
+from sql.bus_queries import MERGE_SCD2_INTERCITY_BUS_STOP_OF_ROUTE
 
 def fetch_bus_stop_of_route_to_gcs(**context):
     """
@@ -204,19 +204,4 @@ with DAG(
         },
     )
 
-    insert_updated_records = BigQueryInsertJobOperator(
-        task_id="insert_updated_records",
-        configuration={
-            "query": {
-                "query": INSERT_UPDATED_INTERCITY_BUS_STOP_OF_ROUTE.format(
-                    project_id="{{ var.value.gcp_project_id }}",
-                    dataset_id="bus_silver",
-                    table_id="inter_city_bus_stop_of_route",
-                    staging_table_id="inter_city_bus_stop_of_route_staging",
-                ),
-                "useLegacySql": False,
-            }
-        },
-    )
-
-    fetch_bronze_data >> process_silver_staging >> merge_into_silver_scd2 >> insert_updated_records 
+    fetch_bronze_data >> process_silver_staging >> merge_into_silver_scd2
