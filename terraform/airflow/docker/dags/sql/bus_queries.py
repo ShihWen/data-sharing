@@ -91,10 +91,10 @@ SELECT
     , S.update_time
     , S.version_id
     , S.geometry
-    , CURRENT_TIMESTAMP() AS processed_at
-    , CURRENT_TIMESTAMP() AS valid_from_ts
-    , TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts
-    , TRUE AS is_current
+    , CURRENT_TIMESTAMP() --AS processed_at
+    , CURRENT_TIMESTAMP() --AS valid_from_ts
+    , TIMESTAMP('9999-12-31T23:59:59') --AS valid_to_ts
+    , TRUE --AS is_current
 FROM (
     SELECT * FROM (
         SELECT
@@ -326,10 +326,10 @@ SELECT
     , S.version_id
     , S.geometry
     , S.city
-    , CURRENT_TIMESTAMP() AS processed_at
-    , CURRENT_TIMESTAMP() AS valid_from_ts
-    , TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts
-    , TRUE AS is_current
+    , CURRENT_TIMESTAMP() --AS processed_at
+    , CURRENT_TIMESTAMP() --AS valid_from_ts
+    , TIMESTAMP('9999-12-31T23:59:59') --AS valid_to_ts
+    , TRUE --AS is_current
 FROM (
     SELECT * FROM (
         SELECT
@@ -447,10 +447,10 @@ SELECT
     S.version_id,
     ST_GEOGFROMTEXT(S.geometry) AS geometry,
     S.city,
-    CURRENT_TIMESTAMP() AS processed_at,
-    CURRENT_TIMESTAMP() AS valid_from_ts,
-    TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts,
-    TRUE AS is_current
+    CURRENT_TIMESTAMP() --AS processed_at,
+    CURRENT_TIMESTAMP() --AS valid_from_ts,
+    TIMESTAMP('9999-12-31T23:59:59') --AS valid_to_ts,
+    TRUE --AS is_current
 FROM (
     SELECT * FROM (
         SELECT
@@ -532,7 +532,7 @@ WHEN NOT MATCHED BY TARGET THEN
         , CURRENT_TIMESTAMP()
         , CURRENT_TIMESTAMP()
         , TIMESTAMP('9999-12-31T23:59:59')
-        , TRUE AS is_current
+        , TRUE
     );
 """
 
@@ -566,10 +566,10 @@ SELECT
     , S.update_time
     , S.version_id
     , S.stops
-    , CURRENT_TIMESTAMP() AS processed_at
-    , CURRENT_TIMESTAMP() AS valid_from_ts
-    , TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts
-    , TRUE AS is_current
+    , CURRENT_TIMESTAMP()
+    , CURRENT_TIMESTAMP()
+    , TIMESTAMP('9999-12-31T23:59:59')
+    , TRUE
 FROM (
     SELECT * FROM (
         SELECT
