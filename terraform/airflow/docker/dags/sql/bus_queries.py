@@ -529,8 +529,8 @@ WHEN NOT MATCHED BY TARGET THEN
         , S.stops
         , S.update_time
         , S.version_id
-        , CURRENT_TIMESTAMP() AS processed_at
-        , CURRENT_TIMESTAMP() AS valid_from_ts
+        , CURRENT_TIMESTAMP()
+        , CURRENT_TIMESTAMP()
         , TIMESTAMP('9999-12-31T23:59:59') AS valid_to_ts
         , TRUE AS is_current
     );
