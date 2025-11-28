@@ -483,7 +483,7 @@ USING (
         SELECT
             *
             , ROW_NUMBER() OVER (
-                PARTITION BY route_uid, sub_route_uid, direction, operator_no
+                PARTITION BY route_uid, sub_route_uid, direction
                 ORDER BY update_time DESC
             ) as rn
         FROM `{project_id}.{dataset_id}.{staging_table_id}`
@@ -493,7 +493,6 @@ USING (
 ON T.route_uid = S.route_uid AND 
 T.sub_route_uid = S.sub_route_uid AND
 T.direction = S.direction AND
-T.operator_no = S.operator_no AND
 T.is_current = TRUE
 WHEN MATCHED AND T.update_time < S.update_time THEN
     UPDATE SET
@@ -504,7 +503,6 @@ WHEN NOT MATCHED BY TARGET THEN
         route_uid
         , route_id
         , route_name
-        , operators
         , sub_route_uid
         , sub_route_id
         , sub_route_name
@@ -521,7 +519,6 @@ WHEN NOT MATCHED BY TARGET THEN
         S.route_uid
         , S.route_id
         , S.route_name
-        , S.operators
         , S.sub_route_uid
         , S.sub_route_id
         , S.sub_route_name
@@ -541,7 +538,6 @@ INSERT INTO `{project_id}.{dataset_id}.{table_id}` (
     route_uid
     , route_id
     , route_name
-    , operators
     , sub_route_uid
     , sub_route_id
     , sub_route_name
@@ -558,7 +554,6 @@ SELECT
     S.route_uid
     , S.route_id
     , S.route_name
-    , S.operators
     , S.sub_route_uid
     , S.sub_route_id
     , S.sub_route_name
@@ -573,19 +568,19 @@ SELECT
 FROM (
     SELECT * FROM (
         SELECT
-            *
+            A.*
             , ROW_NUMBER() OVER (
-                PARTITION BY route_uid, sub_route_uid, direction, operator_no
+                PARTITION BY route_uid, sub_route_uid, direction
                 ORDER BY update_time DESC
             ) as rn
-        FROM `{project_id}.{dataset_id}.{staging_table_id}`
+        FROM `{project_id}.{dataset_id}.{staging_table_id}` A
+        , UNNEST(A.operators) as B
     ) ranked
     WHERE rn = 1
 ) AS S
 JOIN `{project_id}.{dataset_id}.{table_id}` AS T
 ON S.sub_route_uid = T.sub_route_uid AND
 S.direction = T.direction AND
-S.operator_no = T.operator_no AND
 S.route_uid = T.route_uid
 WHERE T.valid_to_ts = (
     SELECT MAX(T2.valid_to_ts)
@@ -594,7 +589,6 @@ WHERE T.valid_to_ts = (
     T2.route_uid = T.route_uid AND
     T2.sub_route_uid = T.sub_route_uid AND
     T2.direction = T.direction AND
-    T2.operator_no = T.operator_no
 )
 AND T.is_current = FALSE;
 """
