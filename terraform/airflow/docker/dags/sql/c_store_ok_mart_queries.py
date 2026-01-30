@@ -45,6 +45,7 @@ SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , SPLIT(service, ',') as service
        , CURRENT_TIMESTAMP() AS processed_at
        , store_type
+       , store_id
 FROM `{project_id}.{bronze_dataset_id}.ok_mart`
 WHERE extract_date = '{target_date}'
 """
