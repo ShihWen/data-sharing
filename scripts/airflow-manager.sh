@@ -292,9 +292,9 @@ mkdir -p /opt/airflow/.gsutil
 # 8. Get configurations from GCS if needed
 echo "8️⃣ Getting configurations from GCS..."
 cd /opt/airflow
-if [ ! -f "docker-compose.yml" ]; then
+    if [ ! -f "docker-compose.yml" ]; then
     echo "Downloading configurations from GCS..."
-    gsutil -m cp -r gs://open-data-v2-cicd-airflow-storage/docker/* . 2>/dev/null || echo "Could not download from GCS, continuing..."
+    gsutil cp -r gs://open-data-v2-cicd-airflow-storage/docker/* . 2>/dev/null || echo "Could not download from GCS, continuing..."
 fi
 
 # 9. Create service account key if missing
@@ -349,7 +349,9 @@ Type=simple
 User=airflow-container
 Group=root
 Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json"
-ExecStart=/usr/bin/gsutil -m rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
+Environment="GSUTIL_PARALLEL_PROCESS_COUNT=1"
+Environment="GSUTIL_PARALLEL_THREAD_COUNT=1"
+ExecStart=/usr/bin/gsutil rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
 
@@ -543,7 +545,9 @@ Type=simple
 User=airflow-container
 Group=root
 Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json"
-ExecStart=/usr/bin/gsutil -m rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
+Environment="GSUTIL_PARALLEL_PROCESS_COUNT=1"
+Environment="GSUTIL_PARALLEL_THREAD_COUNT=1"
+ExecStart=/usr/bin/gsutil rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
 
@@ -689,9 +693,9 @@ mkdir -p /opt/airflow/.gsutil
 # 8. Get configurations from GCS if needed
 echo "8️⃣ Getting configurations from GCS..."
 cd /opt/airflow
-if [ ! -f "docker-compose.yml" ]; then
+    if [ ! -f "docker-compose.yml" ]; then
     echo "Downloading configurations from GCS..."
-    gsutil -m cp -r gs://open-data-v2-cicd-airflow-storage/docker/* . 2>/dev/null || echo "Could not download from GCS, continuing..."
+    gsutil cp -r gs://open-data-v2-cicd-airflow-storage/docker/* . 2>/dev/null || echo "Could not download from GCS, continuing..."
 fi
 
 # 9. Create service account key if missing
@@ -746,7 +750,9 @@ Type=simple
 User=airflow-container
 Group=root
 Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json"
-ExecStart=/usr/bin/gsutil -m rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
+Environment="GSUTIL_PARALLEL_PROCESS_COUNT=1"
+Environment="GSUTIL_PARALLEL_THREAD_COUNT=1"
+ExecStart=/usr/bin/gsutil rsync -r -d gs://open-data-v2-cicd-airflow-storage/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
 
@@ -1089,7 +1095,7 @@ upload_dags() {
     fi
 
     print_info "Syncing DAGs from $SOURCE_DIR to $DESTINATION"
-    gsutil -m rsync -r -d "$SOURCE_DIR" "$DESTINATION"
+    gsutil rsync -r -d "$SOURCE_DIR" "$DESTINATION"
     
     print_status "Successfully synced Airflow DAGs to $DESTINATION"
 }

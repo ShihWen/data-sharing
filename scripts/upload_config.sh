@@ -15,11 +15,11 @@ fi
 
 # Sync DAGs to GCS - this will add, update, and delete files as needed
 echo "Syncing DAGs from $SOURCE_DIR to $DESTINATION"
-gsutil -m rsync -r -d "$SOURCE_DIR" "$DESTINATION"
+gsutil rsync -r -d "$SOURCE_DIR" "$DESTINATION"
 
 # The -d flag enables deletion of files in destination that don't exist in source
 # The -r flag enables recursive sync
-# The -m flag enables parallel uploads for better performance
+# Parallel uploads (-m) are disabled to prevent bandwidth bursts that trigger DoS flags
 
 echo "Successfully synced Airflow DAGs to $DESTINATION"
 echo "Files added, updated, and deleted as necessary to match local state" 

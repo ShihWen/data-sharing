@@ -50,25 +50,43 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
+                    // Detect changes in Terraform files (excluding DAGs)
+                    def tfChanges = sh(
+                        script: """
+                            echo '${changedFiles}' | grep -E "^terraform/" | grep -qv "terraform/airflow/docker/dags/" && echo "true" || echo "false"
+                        """,
+                        returnStdout: true
+                    ).trim()
+
                     env.DAG_CHANGES = dagChanges
+                    env.TF_CHANGES = tfChanges
                     
                     if (dagChanges == "true") {
-                        echo "DAG changes detected. Will upload to GCS."
-                    } else {
-                        echo "No DAG changes detected."
+                        echo "DAG changes detected."
+                    }
+                    if (tfChanges == "true") {
+                        echo "Terraform infrastructure changes detected."
                     }
                 }
             }
         }
 
         stage('Upload Airflow Configuration') {
+            when {
+                anyOf {
+                    changeset "terraform/airflow/docker/Dockerfile"
+                    changeset "terraform/airflow/docker/requirements.txt"
+                    changeset "terraform/airflow/docker/docker-compose.yml"
+                    changeset "terraform/airflow/docker/config/**"
+                }
+            }
             steps {
                 script {
                     sh '''
                         echo "Uploading core Airflow configuration files to GCS..."
                         # Use rsync to sync the entire docker config directory, which is more robust
                         # and includes Dockerfile, requirements.txt, and docker-compose.yml
-                        gsutil -m rsync -r -d terraform/airflow/docker/ gs://${AIRFLOW_BUCKET}/docker/
+                        gsutil rsync -r -d terraform/airflow/docker/ gs://${AIRFLOW_BUCKET}/docker/
                         echo "SUCCESS: Core configuration directory synced."
                     '''
                 }
@@ -76,6 +94,9 @@ pipeline {
         }
 
         stage('Upload Airflow Manager Script') {
+            when {
+                changeset "scripts/airflow-manager.sh"
+            }
             steps {
                 script {
                     sh '''

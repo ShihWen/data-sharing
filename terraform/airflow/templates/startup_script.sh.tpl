@@ -107,7 +107,7 @@ echo "Airflow users created successfully"
 # Pull Airflow configurations from GCS
 echo "Pulling configurations from GCS..."
 cd /opt/airflow
-gsutil -m cp -r gs://${gcs_bucket}/docker/* .
+gsutil cp -r gs://${gcs_bucket}/docker/* .
 
 # Set up GCS sync service to run as the container user (UID 50000)
 echo "Setting up GCS sync service..."
@@ -121,7 +121,7 @@ Type=simple
 User=airflow-container
 Group=root
 Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/service-account.json"
-ExecStart=/usr/bin/gsutil -m rsync -r -d gs://${gcs_bucket}/docker/dags/ /opt/airflow/dags/
+ExecStart=/usr/bin/gsutil rsync -r -d gs://${gcs_bucket}/docker/dags/ /opt/airflow/dags/
 Restart=always
 RestartSec=60
 
