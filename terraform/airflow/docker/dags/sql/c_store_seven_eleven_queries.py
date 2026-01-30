@@ -45,6 +45,7 @@ SELECT extract_date
        , lat
        , service 
        , CURRENT_TIMESTAMP() AS processed_at
+       , store_id
 FROM `{project_id}.{bronze_dataset_id}`.seven_eleven
 WHERE extract_date = '{target_date}';
 """
@@ -60,6 +61,7 @@ SELECT distinct extract_date
             , lat
             , service 
             , CURRENT_TIMESTAMP() AS processed_at
+            , store_id
 FROM `{project_id}.{silver_dataset_id}.seven_eleven_step1_duplicate`
 WHERE extract_date = '{target_date}';
 """
@@ -75,6 +77,7 @@ select A.extract_date
        , A.lat
        , A.service
        , CURRENT_TIMESTAMP() AS processed_at
+       , A.store_id
 from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate` A
 left join
 (
@@ -87,6 +90,7 @@ left join
          , long
          , lat
          , service
+         , store_id
   from `{project_id}.{silver_dataset_id}.seven_eleven_step2_remove_exact_duplicate`
   where extract_date = '{target_date}'
   and district = '南區'
@@ -141,6 +145,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
               , A.long
               , A.lat
               , A.service 
+              , A.store_id
         from `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` A
         inner join duplicate_store_name B
         on A.name = B.name and A.extract_date = B.extract_date
@@ -159,6 +164,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
             , T.long
             , T.lat
             , T.service 
+            , T.store_id
             , row_number() over(partition by T.extract_date, T.name, T.city, T.district order by length(service) desc ) idx
     from `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` T
     inner join duplicate_store U on T.name = U.name and T.extract_date = U.extract_date
@@ -171,6 +177,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
          , X.long
          , X.lat
          , X.service
+         , X.store_id
          , CURRENT_TIMESTAMP() AS processed_at
   from `{project_id}.{silver_dataset_id}.seven_eleven_step3_remove_store_in_south_district_tainan` X
   left join
@@ -183,6 +190,7 @@ CREATE OR REPLACE TABLE `{project_id}.{silver_dataset_id}.seven_eleven_step4_rem
   and X.long = Y.long
   and X.lat = Y.lat
   and X.service = Y.service
+  and X.store_id = Y.store_id
   WHERE Y.name is null; 
 """
 
@@ -196,6 +204,7 @@ SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , ST_GEOGPOINT(long, lat) as location
        , SPLIT(service, ',') as service
        , CURRENT_TIMESTAMP() AS processed_at
+       , store_id
 FROM `{project_id}.{silver_dataset_id}.seven_eleven_step4_remove_shorter_service_store`
 """
 
@@ -209,6 +218,7 @@ SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , ST_GEOGPOINT(long, lat) as location
        , SPLIT(service, ',') as service
        , CURRENT_TIMESTAMP() AS processed_at
+       , store_id
 FROM `{project_id}.{bronze_dataset_id}.seven_eleven`
 WHERE extract_date = '{target_date}'
 """
