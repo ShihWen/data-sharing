@@ -16,3 +16,4 @@ schema:
   - {name: "address",                    type: "STRING",  mode: "NULLABLE", description: "address of convenience store"}
   - {name: "service",                    type: "STRING",  mode: "NULLABLE", description: "service of convenience store, separated by comma"}
   - {name: "store_type",                 type: "STRING",  mode: "NULLABLE", description: "store type of convenience store"}
+  - {name: "store_id",                   type: "STRING",  mode: "NULLABLE", description: "store id of convenience store"}
