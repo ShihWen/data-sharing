@@ -17,3 +17,4 @@ schema:
   - {name: "long",                       type: "FLOAT",   mode: "NULLABLE", description: "longitude of convenience store"}
   - {name: "lat",                        type: "FLOAT",   mode: "NULLABLE", description: "latitude of convenience store"}
   - {name: "service",                    type: "STRING",  mode: "NULLABLE", description: "service of convenience store, separated by comma"}
+  - {name: "store_id",                   type: "STRING",  mode: "NULLABLE", description: "store id of convenience store"}
