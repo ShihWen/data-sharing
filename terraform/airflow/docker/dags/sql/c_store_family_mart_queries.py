@@ -44,6 +44,7 @@ SELECT PARSE_DATE('%Y-%m-%d', extract_date) as extract_date
        , ST_GEOGPOINT(long, lat) as location
        , SPLIT(service, ',') as service
        , CURRENT_TIMESTAMP() AS processed_at
+       , store_id
 FROM `{project_id}.{bronze_dataset_id}.family_mart`
 WHERE extract_date = '{target_date}'
 """
